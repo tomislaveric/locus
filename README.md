@@ -1,9 +1,11 @@
 # Post-ride AR POC
 
-Single-container POC for generating a short GoPro clip with a static `+100 XP` coin overlay. Upload one FIT file and one original GPS5 GoPro MP4; the app detects a configured location in the FIT track, maps that event onto the video timeline, renders the clip, and provides it for download.
+Single-container POC for generating a short GoPro clip with animated Coin Collect effects. Upload one FIT file and one original GPS5 GoPro MP4; the app detects a configured location in the FIT track, maps that event onto the video timeline, renders the clip, and provides it for download.
 
 ## Features
 
+- [Coin collection](features/coin-collection/README.md) — animate Coin pickups
+  with a 2.5D Collect effect, reward, and generated audio Chime.
 - [Multi Clip creation](features/multi-clip-creation/README.md) — select detected
   Coin passages and combine them into one chronological highlight video.
 
@@ -61,7 +63,11 @@ coin coordinates → FIT track crossing time → GPS5-clock-aligned video second
 The app lists the first detected passage for each configured Coin. Select the
 passages to include, then download one chronological highlight video. Each event
 uses a three-second-before/-after window; overlapping or adjacent windows are
-merged, and each selected Coin receives its overlay.
+merged. A selected Coin approaches the center over three seconds, then expands
+to three times its normal size in the final second before it pops into a
+glow/burst at pickup, then floats its `+value` reward upward for 0.95 seconds.
+Each pickup synthesizes a Chime and briefly ducks source audio; videos without
+audio receive a Chime-only 48 kHz stereo track.
 
 ## Operations
 
