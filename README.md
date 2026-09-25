@@ -28,7 +28,10 @@ npm run build
 npm start
 ```
 
-Open `http://localhost:3000`. Standardmäßig sind bis zu 6 GiB Uploadgröße und 15 Minuten Verarbeitungszeit vorgesehen, damit originale mehrgigabytegroße GoPro-Kapitel verarbeitet werden können. Beide Werte lassen sich bei Bedarf mit `MAX_UPLOAD_BYTES` und `PROCESS_TIMEOUT_MS` überschreiben.
+Open `http://localhost:3000`. The default limits allow uploads up to 6 GiB and
+processing for up to 15 minutes so that original multi-gigabyte GoPro chapters can
+be processed. Override these values with `MAX_UPLOAD_BYTES` and
+`PROCESS_TIMEOUT_MS` when necessary.
 
 ## Run in Docker
 

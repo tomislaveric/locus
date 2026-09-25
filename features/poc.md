@@ -1,129 +1,183 @@
-# POC-Plan: FIT + GoPro zu einem Coin-Clip
+# POC Plan: FIT + GoPro to a Coin Clip
 
-## Ziel
+## Goal
 
-Der POC beweist nur diese Annahme:
+The POC verifies only this assumption:
 
-> Eine hochgeladene FIT-Datei und eine passende GPS-aktivierte GoPro-MP4 reichen aus, um automatisch einen kurzen MP4-Clip mit einem Coin-Overlay zu erzeugen.
+> An uploaded FIT file and a matching GPS-enabled GoPro MP4 are sufficient to automatically create a short MP4 clip with a Coin overlay.
 
-Die Anwendung ist eine kleine Web-App. Nutzer laden genau eine FIT-Datei und genau eine MP4 hoch. Ein einzelner Server-Container verarbeitet die Dateien und bietet danach den Clip zum Download an.
+The application is a small web app. Users upload exactly one FIT file and exactly
+one MP4. A single server container processes the files and then offers the clip for
+download.
 
-## Strenger Scope
+## Strict scope
 
-| Im POC | Nicht im POC |
+| Included in the POC | Not included in the POC |
 |---|---|
-| Ein vorab festgelegtes GoPro-Testgerät und **ein** daraus ausgelesener GPMF-Streamtyp (`GPS5` *oder* `GPS9`) | Andere GoPro-Modelle bzw. der andere GPMF-Streamtyp |
-| Eine FIT-Datei, eine MP4, ein aktiver Coin | Mehrere Videos, weitere Kameras, mehrere Coins |
-| Automatischer Zeitabgleich über FIT- und GPMF-Zeit | Manuelle Synchronisierung, GPS-/Positionsabgleich als zweite Validierung |
-| Ein statisches Coin-Overlay mit `+100 XP` | Animationen, AR, 3D, Computer Vision |
-| Anonymer Upload und einmaliger Download | Accounts, Historie, Social Sharing, Admin-UI |
+| One predefined GoPro test device and **one** GPMF stream type read from it (`GPS5` *or* `GPS9`) | Other GoPro models or the other GPMF stream type |
+| One FIT file, one MP4, one active Coin | Multiple videos, other cameras, multiple Coins |
+| Automatic clock alignment through FIT and GPMF timestamps | Manual synchronization or GPS/position matching as a second validation |
+| A static Coin overlay with `+100 XP` | Animation, AR, 3D, or computer vision |
+| Anonymous upload and a one-time download | Accounts, history, social sharing, or an admin UI |
 
-Das Testgerät und dessen Streamtyp werden anhand der ersten zulässigen Referenzaufnahme festgelegt. Der POC unterstützt anschließend nur diese eine Kombination.
+The test device and its stream type are determined from the first admissible
+reference recording. The POC subsequently supports only that combination.
 
-## Ergebnis
+## Result
 
-Der POC ist mit der festgelegten GPS5-GoPro-Referenzfahrt erfolgreich nachgewiesen:
+The POC was successfully verified with the selected GPS5 GoPro reference ride:
 
-- Die FIT-Durchfahrt durch den konfigurierten Coin wird erkannt, einschließlich linearer Interpolation zwischen zwei FIT-Trackpoints.
-- Die GoPro-GPS5-Uhr wird automatisch mit den FIT-Zeitstempeln abgeglichen.
-- Der MP4-Clip wird korrekt um das Ereignis gekürzt, mit einem statischen Coin-/`+100 XP`-Overlay versehen und erfolgreich heruntergeladen.
+- The FIT passage through the configured Coin is detected, including linear
+  interpolation between two FIT trackpoints.
+- The GoPro GPS5 clock is automatically aligned with the FIT timestamps.
+- The MP4 clip is correctly trimmed around the event, receives a static
+  Coin/`+100 XP` overlay, and is downloaded successfully.
 
-Für den Zeitabgleich genügt die GPS-Uhr im GPMF-Stream. Ein gültiger GPS-Positions-Fix der Kamera ist nicht erforderlich: plausible Zeitstempel werden über den daraus abgeleiteten Video-Startzeitpunkt geclustert; Platzhalter-Zeitstempel werden verworfen.
+The GPS clock in the GPMF stream is sufficient for time alignment. A valid camera
+GPS position fix is not required: plausible timestamps are clustered using the
+resulting video start time, while placeholder timestamps are discarded.
 
-## Messbares Erfolgskriterium
+## Measurable success criterion
 
-Für die Referenzfahrt wird der Coin-Durchfahrtszeitpunkt im Video einmal manuell protokolliert.
+For the reference ride, the Coin-passage timestamp in the video is manually
+recorded once.
 
-Der POC ist bestanden, wenn:
+The POC passes when:
 
-1. die Anwendung die Coin-Durchquerung aus der FIT-Datei erkennt,
-2. sie den Durchfahrtszeitpunkt automatisch auf eine Videosekunde abbildet,
-3. diese Videosekunde höchstens **1,5 Sekunden** vom protokollierten Referenzwert abweicht und
-4. ein abspielbarer Clip heruntergeladen werden kann.
+1. the application detects the Coin crossing from the FIT file;
+2. it automatically maps the crossing time to a video second;
+3. that video second deviates by no more than **1.5 seconds** from the recorded
+   reference value; and
+4. a playable clip can be downloaded.
 
-Der Clip umfasst standardmäßig drei Sekunden vor und nach dem ermittelten Zeitpunkt. Liegt das Ereignis am Videorand, darf das Fenster asymmetrisch sein, muss aber mindestens vier Sekunden lang bleiben.
+The clip normally spans three seconds before and after the detected event. When the
+event is near a video boundary, the window may be asymmetric but must remain at
+least four seconds long.
 
-## Minimalarchitektur
+## Minimal architecture
 
 ```text
 Browser
-  │ Multipart-Upload
+  │ Multipart upload
   ▼
-Ein Docker-Container
-  ├─ kleine Upload-/Status-Webseite
+One Docker container
+  ├─ Small upload/status web page
   ├─ API
-  ├─ temporäre Jobverzeichnisse
-  ├─ FIT-Parser
-  ├─ GPMF-Extraktor für einen Streamtyp
+  ├─ Temporary job directories
+  ├─ FIT parser
+  ├─ GPMF extractor for one stream type
   ├─ FFmpeg / FFprobe
   ├─ coins.json
-  └─ ein Hintergrundjob im selben Prozess
+  └─ One background job in the same process
         │
         ▼
-Browser: Status-Polling und Download
+Browser: status polling and download
 ```
 
-- **Ein Container, kein externer Dienst:** Keine Datenbank, keine Queue, kein Object Storage, kein PostGIS und keine getrennten Worker.
-- **Dateien:** Jeder Job erhält ein temporäres Verzeichnis mit hochgeladenen Dateien, `job.json`, `detection.json` und Ergebnis-MP4. Ein langer, zufälliger Job-Token schützt Status und Download.
-- **Coin-Konfiguration:** Eine gemountete `coins.json` enthält genau einen aktiven Coin mit `id`, `latitude`, `longitude`, `radius_m` und `value`. Der Radius beträgt mindestens 5 m. Die Datei wird zu Beginn jedes Jobs gelesen; Coin-Änderungen brauchen keinen Image-Build.
-- **Auslastung:** Es läuft höchstens ein Renderjob gleichzeitig. Ist der Container beschäftigt, wird ein neuer Upload klar abgelehnt.
-- **Aufräumen:** Uploads, Zwischenartefakte und Ergebnisdateien bleiben höchstens 30 Minuten erhalten. Ein einfacher In-Process-Intervalljob entfernt danach das gesamte Jobverzeichnis.
-- **Minimale Schutzgrenzen:** Uploadgröße, FFprobe-Vorprüfung sowie Laufzeitlimits für Parser und FFmpeg verhindern, dass beschädigte oder zu große Dateien den Container dauerhaft blockieren. Für originale GoPro-Kapitel im mehrstelligen-GB-Bereich werden die Grenzen per Umgebungsvariablen erhöht.
+- **One container, no external service:** No database, queue, object storage,
+  PostGIS, or separate workers.
+- **Files:** Every job receives a temporary directory with uploaded files,
+  `job.json`, `detection.json`, and the result MP4. A long random job token protects
+  status and download endpoints.
+- **Coin configuration:** A mounted `coins.json` contains exactly one active Coin
+  with `id`, `latitude`, `longitude`, `radius_m`, and `value`. Its radius is at
+  least 5 m. The file is read at the beginning of every job, so Coin changes do not
+  require rebuilding the image.
+- **Capacity:** At most one render job runs at a time. New uploads are clearly
+  rejected while the container is busy.
+- **Cleanup:** Uploads, intermediate artifacts, and result files remain for at
+  most 30 minutes. A simple in-process interval job then removes the entire job
+  directory.
+- **Minimal protection limits:** Upload-size limits, FFprobe prevalidation, and
+  parser and FFmpeg timeouts prevent malformed or oversized files from permanently
+  blocking the container. Limits can be increased through environment variables for
+  original multi-gigabyte GoPro chapters.
 
-## Technischer Ablauf
+## Technical flow
 
-1. Der Browser lädt FIT und MP4 hoch; die API legt ein temporäres Jobverzeichnis und einen Job-Token an.
-2. FFprobe prüft den MP4-Container. Fehlt der festgelegte GPMF-Stream oder ist die Datei ungültig, endet der Job mit einem klaren Fehler.
-3. Der FIT-Parser liest nach Zeit sortierte GPS-Trackpoints.
-4. Die Engine prüft die FIT-Trackpoints auf zwei aufeinanderfolgende Positionen, die den Coin-Radius einschließen. Zwischen diesen beiden Punkten interpoliert sie den Durchquerungszeitpunkt linear aus Distanz und Zeit. Für typische 1-Hz-FIT-Samples und das 1,5-Sekunden-Ziel wird bewusst keine geodätische Linien-/Kreis-Schnittberechnung implementiert.
-5. Der GPMF-Extraktor liest aus dem `gpmd`-Track des festgelegten Streamtyps GPS5-Zeit und relative Videozeit. Aus plausiblen GPS-Zeitstempeln wird ein stabiler UTC-Video-Startzeitpunkt ermittelt; ein GPS-Positions-Fix der Kamera ist dafür nicht erforderlich.
-6. Die FIT-Durchfahrtszeit wird über diesen UTC-Video-Startzeitpunkt auf eine relative Videosekunde abgebildet. Liegt sie außerhalb der tatsächlichen Videodauer, wird kein Clip erstellt.
-7. FFmpeg schneidet den Clip und legt am ermittelten Zeitpunkt ein statisches transparentes Overlay mit Coin und `+100 XP` darüber. Quellaudio wird übernommen, sofern dies ohne zusätzliche Komplexität möglich ist; Audio ist kein Erfolgskriterium des POC.
-8. FFprobe prüft das Ergebnis-MP4. Die API setzt den Status auf erfolgreich und bietet den Download an.
+1. The browser uploads FIT and MP4; the API creates a temporary job directory and a
+   job token.
+2. FFprobe validates the MP4 container. If the selected GPMF stream is missing or
+   the file is invalid, the job ends with a clear error.
+3. The FIT parser reads GPS trackpoints sorted by timestamp.
+4. The engine examines pairs of consecutive FIT trackpoints that enclose the Coin
+   radius. It linearly interpolates the crossing time from distance and timestamp
+   between those points. For typical 1 Hz FIT samples and the 1.5-second target, it
+   intentionally does not implement a geodetic line/circle intersection.
+5. The GPMF extractor reads GPS5 time and relative video time from the `gpmd` track
+   for the selected stream type. Plausible GPS timestamps establish a stable UTC
+   video start time; a camera GPS position fix is not required.
+6. The FIT passage time is mapped to a relative video second using that UTC video
+   start time. No clip is created when it falls outside the real video duration.
+7. FFmpeg trims the clip and places a static transparent Coin and `+100 XP` overlay
+   at the detected time. Source audio is retained when doing so adds no additional
+   complexity; audio is not a POC success criterion.
+8. FFprobe validates the result MP4. The API marks the job as successful and offers
+   the download.
 
-## Arbeitspakete
+## Work packages
 
-1. **Telemetrie-Nachweis**
-   - Eine zulässige Referenz-GPS-GoPro-MP4, passende FIT-Datei und den manuell protokollierten Coin-Durchfahrtszeitpunkt bereitstellen.
-   - Den GPMF-Streamtyp der Aufnahme bestimmen und nur diesen Stream mit einem geeigneten Extraktor auslesen.
-   - FIT-Zeit auf die Videozeit abbilden und die Abweichung zum Referenzwert messen.
-   - Den FIT-/GPMF-Uhrzeitversatz als zentrale Annahme prüfen. Überschreitet die Abweichung 1,5 Sekunden, wird zuerst die Zeitbasis, UTC-Normalisierung und Stream-Zeitzuordnung untersucht – nicht vorschnell der Parser ersetzt.
-   - Nur wenn die Abweichung maximal 1,5 Sekunden beträgt, mit dem Web-POC fortfahren.
+1. **Telemetry verification**
+   - Provide an admissible reference GPS GoPro MP4, its matching FIT file, and the
+     manually recorded Coin-passage timestamp.
+   - Identify the recording's GPMF stream type and read only that stream through a
+     suitable extractor.
+   - Map FIT time to video time and measure its deviation from the reference value.
+   - Verify the FIT/GPMF clock offset as the central assumption. If the deviation
+     exceeds 1.5 seconds, investigate the time base, UTC normalization, and stream
+     time assignment first; do not prematurely replace the parser.
+   - Continue with the web POC only when the deviation is at most 1.5 seconds.
 
-2. **Ein-Container-Web-POC**
-   - Docker-Container mit kleiner Upload-/Status-Seite, API, FIT-Parser, GPMF-Extraktor, FFmpeg und FFprobe erstellen.
-   - Multipart-Upload, zufälligen Job-Token, Status-Polling und Ergebnisdownload implementieren.
-   - Temporäre Jobverzeichnisse, Einzeljob-Sperre, Upload-/Laufzeitgrenzen und zeitgesteuerte Bereinigung implementieren.
+2. **Single-container web POC**
+   - Create a Docker container with a small upload/status page, API, FIT parser,
+     GPMF extractor, FFmpeg, and FFprobe.
+   - Implement multipart upload, random job tokens, status polling, and result
+     download.
+   - Implement temporary job directories, a single-job lock, upload and runtime
+     limits, and scheduled cleanup.
 
-3. **Coin-Durchfahrt und Zeitabbildung**
-   - Den einzelnen Coin aus dem gemounteten `coins.json` laden.
-   - Zwei aufeinanderfolgende FIT-Trackpoints erkennen, die den Coin-Radius einschließen, und den Zeitpunkt über lineare Distanz-/Zeitinterpolation bestimmen.
-   - Den FIT-Zeitpunkt mit dem einen unterstützten GPMF-Stream über dessen stabile GPS-Uhr auf eine Videosekunde abbilden.
-   - Nur diese Fehler behandeln: ungültige Eingabe, fehlender unterstützter GPMF-Stream, keine Coin-Durchfahrt, instabile GPS-Uhr, Ereignis außerhalb der Videodauer und zu kurzes Video.
+3. **Coin passage and time mapping**
+   - Load the single Coin from mounted `coins.json`.
+   - Detect two consecutive FIT trackpoints that enclose the Coin radius and
+     interpolate the timestamp through distance and time.
+   - Map the FIT timestamp to a video second through the stable GPS clock of the
+     one supported GPMF stream.
+   - Handle only these errors: invalid input, missing supported GPMF stream, no Coin
+     passage, unstable GPS clock, event outside video duration, and video too short.
 
-4. **Clip rendern**
-   - Ein statisches transparentes Coin-/`+100 XP`-Overlay bereitstellen.
-   - Mit FFmpeg einen 4- bis 6-sekündigen MP4-Clip inklusive Quellaudio erzeugen.
-   - Ergebnis mit FFprobe validieren und bei Erfolg zum Download anbieten.
+4. **Render the clip**
+   - Provide a static transparent Coin/`+100 XP` overlay.
+   - Generate a four- to six-second MP4 clip with FFmpeg, including source audio.
+   - Validate the result with FFprobe and offer it for download on success.
 
-5. **POC nachweisen**
-   - Browser-End-to-End-Test: Upload, Status, automatische Zeitabbildung, Rendering und Download.
-   - Die ermittelte Videosekunde gegen den manuellen Referenzwert testen.
-   - Negative Tests für ungültige FIT, MP4 ohne unterstützten GPMF-Stream, instabile GPS-Uhr, Ereignis außerhalb der Videodauer, keine Coin-Durchfahrt und zu kurzes Video durchführen.
+5. **Prove the POC**
+   - Run a browser end-to-end test covering upload, status, automatic time mapping,
+     rendering, and download.
+   - Compare the detected video second to the manual reference value.
+   - Run negative tests for invalid FIT, MP4 without the supported GPMF stream,
+     unstable GPS clock, event outside video duration, no Coin passage, and video
+     too short.
 
-## Akzeptanzkriterien
+## Acceptance criteria
 
-- Die Referenz-FIT und die passende MP4 des festgelegten GoPro-Testgeräts können im Browser hochgeladen werden.
-- Die Coin-Durchfahrt wird auch dann erkannt, wenn sie zwischen zwei FIT-Trackpoints liegt.
-- Die automatisch bestimmte Videosekunde liegt maximal 1,5 Sekunden vom protokollierten Referenzwert entfernt.
-- Die Anwendung erzeugt einen abspielbaren, mindestens vier Sekunden langen MP4-Clip mit statischem Coin- und `+100 XP`-Overlay.
-- Nicht unterstützte, nicht synchronisierbare oder zeitlich nicht passende Eingaben liefern einen klaren Fehler statt eines vermeintlich erfolgreichen Clips.
-- Nach höchstens 30 Minuten löscht der Container Uploads, Zwischenartefakte und Ergebnisdatei.
+- The reference FIT and matching MP4 for the selected GoPro test device can be
+  uploaded in the browser.
+- Coin passage is detected even when it occurs between two FIT trackpoints.
+- The automatically determined video second is within 1.5 seconds of the recorded
+  reference value.
+- The application creates a playable MP4 clip at least four seconds long with a
+  static Coin and `+100 XP` overlay.
+- Unsupported, unsynchronizable, or temporally incompatible inputs produce a clear
+  error rather than a seemingly successful clip.
+- The container deletes uploads, intermediate artifacts, and the result file within
+  30 minutes.
 
-## Erst nach bestandenem POC
+## After the POC passes
 
-1. Der andere GPMF-Streamtyp, weitere GoPro-Modelle und Position-/Fixqualitätsprüfungen.
-2. Coin-Animation, mehrere Coins und Highlight-Zusammenfassungen.
-3. Object Storage, Datenbank, Queue und getrennte Worker für parallele Jobs.
-4. Weitere Eventtypen, Videoquellen und GoPro-Kapiteldateien.
-5. Manueller Synchronisationsanker, Admin-Karteneditor, Accounts und Community-Funktionen.
+1. The other GPMF stream type, additional GoPro models, and position/fix-quality
+   checks.
+2. Coin animation, multiple Coins, and highlight compilations.
+3. Object storage, database, queue, and separate workers for parallel jobs.
+4. Additional event types, video sources, and GoPro chapter files.
+5. A manual synchronization anchor, admin map editor, accounts, and community
+   features.
