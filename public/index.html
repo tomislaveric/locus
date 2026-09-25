@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Post-ride AR POC</title>
+    <style>
+      body { background: #10131a; color: #f5f7fa; font: 16px system-ui, sans-serif; margin: 0; }
+      main { max-width: 620px; margin: 8vh auto; padding: 2rem; background: #1b2130; border-radius: 12px; }
+      h1 { margin-top: 0; } label { display: block; margin: 1rem 0; } input { display: block; margin-top: .4rem; }
+      button { background: #ffd83d; border: 0; border-radius: 5px; color: #171717; cursor: pointer; font-weight: 700; padding: .7rem 1rem; }
+      #status { min-height: 1.5rem; margin-top: 1rem; } a { color: #ffd83d; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Coin clip</h1>
+      <p>GPS5 GoPro MP4 + matching FIT track. One render runs at a time.</p>
+      <form id="upload">
+        <label>FIT file <input name="fit" type="file" accept=".fit" required></label>
+        <label>GoPro MP4 <input name="video" type="file" accept="video/mp4,.mp4" required></label>
+        <button>Generate clip</button>
+      </form>
+      <p id="status" role="status"></p>
+    </main>
+    <script src="/app.js"></script>
+  </body>
+</html>

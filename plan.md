@@ -20,6 +20,16 @@ Die Anwendung ist eine kleine Web-App. Nutzer laden genau eine FIT-Datei und gen
 
 Das Testgerät und dessen Streamtyp werden anhand der ersten zulässigen Referenzaufnahme festgelegt. Der POC unterstützt anschließend nur diese eine Kombination.
 
+## Ergebnis
+
+Der POC ist mit der festgelegten GPS5-GoPro-Referenzfahrt erfolgreich nachgewiesen:
+
+- Die FIT-Durchfahrt durch den konfigurierten Coin wird erkannt, einschließlich linearer Interpolation zwischen zwei FIT-Trackpoints.
+- Die GoPro-GPS5-Uhr wird automatisch mit den FIT-Zeitstempeln abgeglichen.
+- Der MP4-Clip wird korrekt um das Ereignis gekürzt, mit einem statischen Coin-/`+100 XP`-Overlay versehen und erfolgreich heruntergeladen.
+
+Für den Zeitabgleich genügt die GPS-Uhr im GPMF-Stream. Ein gültiger GPS-Positions-Fix der Kamera ist nicht erforderlich: plausible Zeitstempel werden über den daraus abgeleiteten Video-Startzeitpunkt geclustert; Platzhalter-Zeitstempel werden verworfen.
+
 ## Messbares Erfolgskriterium
 
 Für die Referenzfahrt wird der Coin-Durchfahrtszeitpunkt im Video einmal manuell protokolliert.
@@ -55,10 +65,10 @@ Browser: Status-Polling und Download
 
 - **Ein Container, kein externer Dienst:** Keine Datenbank, keine Queue, kein Object Storage, kein PostGIS und keine getrennten Worker.
 - **Dateien:** Jeder Job erhält ein temporäres Verzeichnis mit hochgeladenen Dateien, `job.json`, `detection.json` und Ergebnis-MP4. Ein langer, zufälliger Job-Token schützt Status und Download.
-- **Coin-Konfiguration:** Eine gemountete `coins.json` enthält genau einen aktiven Coin mit `id`, `latitude`, `longitude`, `radius_m` und `value`. Der Radius beträgt mindestens 20 m. Die Datei wird zu Beginn jedes Jobs gelesen; Coin-Änderungen brauchen keinen Image-Build.
+- **Coin-Konfiguration:** Eine gemountete `coins.json` enthält genau einen aktiven Coin mit `id`, `latitude`, `longitude`, `radius_m` und `value`. Der Radius beträgt mindestens 5 m. Die Datei wird zu Beginn jedes Jobs gelesen; Coin-Änderungen brauchen keinen Image-Build.
 - **Auslastung:** Es läuft höchstens ein Renderjob gleichzeitig. Ist der Container beschäftigt, wird ein neuer Upload klar abgelehnt.
 - **Aufräumen:** Uploads, Zwischenartefakte und Ergebnisdateien bleiben höchstens 30 Minuten erhalten. Ein einfacher In-Process-Intervalljob entfernt danach das gesamte Jobverzeichnis.
-- **Minimale Schutzgrenzen:** Uploadgröße, FFprobe-Vorprüfung sowie Laufzeitlimits für Parser und FFmpeg verhindern, dass beschädigte oder zu große Dateien den Container dauerhaft blockieren.
+- **Minimale Schutzgrenzen:** Uploadgröße, FFprobe-Vorprüfung sowie Laufzeitlimits für Parser und FFmpeg verhindern, dass beschädigte oder zu große Dateien den Container dauerhaft blockieren. Für originale GoPro-Kapitel im mehrstelligen-GB-Bereich werden die Grenzen per Umgebungsvariablen erhöht.
 
 ## Technischer Ablauf
 
@@ -66,8 +76,8 @@ Browser: Status-Polling und Download
 2. FFprobe prüft den MP4-Container. Fehlt der festgelegte GPMF-Stream oder ist die Datei ungültig, endet der Job mit einem klaren Fehler.
 3. Der FIT-Parser liest nach Zeit sortierte GPS-Trackpoints.
 4. Die Engine prüft die FIT-Trackpoints auf zwei aufeinanderfolgende Positionen, die den Coin-Radius einschließen. Zwischen diesen beiden Punkten interpoliert sie den Durchquerungszeitpunkt linear aus Distanz und Zeit. Für typische 1-Hz-FIT-Samples und das 1,5-Sekunden-Ziel wird bewusst keine geodätische Linien-/Kreis-Schnittberechnung implementiert.
-5. Der GPMF-Extraktor liest für den festgelegten Streamtyp dessen GPS-Zeit und relative Videozeit.
-6. Bei überlappenden Zeitbereichen wird die FIT-Durchfahrtszeit auf eine relative Videosekunde abgebildet. Ohne Zeitüberlappung wird kein Clip erstellt.
+5. Der GPMF-Extraktor liest aus dem `gpmd`-Track des festgelegten Streamtyps GPS5-Zeit und relative Videozeit. Aus plausiblen GPS-Zeitstempeln wird ein stabiler UTC-Video-Startzeitpunkt ermittelt; ein GPS-Positions-Fix der Kamera ist dafür nicht erforderlich.
+6. Die FIT-Durchfahrtszeit wird über diesen UTC-Video-Startzeitpunkt auf eine relative Videosekunde abgebildet. Liegt sie außerhalb der tatsächlichen Videodauer, wird kein Clip erstellt.
 7. FFmpeg schneidet den Clip und legt am ermittelten Zeitpunkt ein statisches transparentes Overlay mit Coin und `+100 XP` darüber. Quellaudio wird übernommen, sofern dies ohne zusätzliche Komplexität möglich ist; Audio ist kein Erfolgskriterium des POC.
 8. FFprobe prüft das Ergebnis-MP4. Die API setzt den Status auf erfolgreich und bietet den Download an.
 
@@ -88,8 +98,8 @@ Browser: Status-Polling und Download
 3. **Coin-Durchfahrt und Zeitabbildung**
    - Den einzelnen Coin aus dem gemounteten `coins.json` laden.
    - Zwei aufeinanderfolgende FIT-Trackpoints erkennen, die den Coin-Radius einschließen, und den Zeitpunkt über lineare Distanz-/Zeitinterpolation bestimmen.
-   - Den FIT-Zeitpunkt mit dem einen unterstützten GPMF-Stream auf eine Videosekunde abbilden.
-   - Nur diese Fehler behandeln: ungültige Eingabe, fehlender unterstützter GPMF-Stream, keine Coin-Durchfahrt, keine Zeitüberlappung und zu kurzes Video.
+   - Den FIT-Zeitpunkt mit dem einen unterstützten GPMF-Stream über dessen stabile GPS-Uhr auf eine Videosekunde abbilden.
+   - Nur diese Fehler behandeln: ungültige Eingabe, fehlender unterstützter GPMF-Stream, keine Coin-Durchfahrt, instabile GPS-Uhr, Ereignis außerhalb der Videodauer und zu kurzes Video.
 
 4. **Clip rendern**
    - Ein statisches transparentes Coin-/`+100 XP`-Overlay bereitstellen.
@@ -99,7 +109,7 @@ Browser: Status-Polling und Download
 5. **POC nachweisen**
    - Browser-End-to-End-Test: Upload, Status, automatische Zeitabbildung, Rendering und Download.
    - Die ermittelte Videosekunde gegen den manuellen Referenzwert testen.
-   - Negative Tests für ungültige FIT, MP4 ohne unterstützten GPMF-Stream, fehlende Zeitüberlappung, keine Coin-Durchfahrt und zu kurzes Video durchführen.
+   - Negative Tests für ungültige FIT, MP4 ohne unterstützten GPMF-Stream, instabile GPS-Uhr, Ereignis außerhalb der Videodauer, keine Coin-Durchfahrt und zu kurzes Video durchführen.
 
 ## Akzeptanzkriterien
 
@@ -107,7 +117,7 @@ Browser: Status-Polling und Download
 - Die Coin-Durchfahrt wird auch dann erkannt, wenn sie zwischen zwei FIT-Trackpoints liegt.
 - Die automatisch bestimmte Videosekunde liegt maximal 1,5 Sekunden vom protokollierten Referenzwert entfernt.
 - Die Anwendung erzeugt einen abspielbaren, mindestens vier Sekunden langen MP4-Clip mit statischem Coin- und `+100 XP`-Overlay.
-- Nicht unterstützte oder nicht synchronisierbare Eingaben liefern einen klaren Fehler statt eines vermeintlich erfolgreichen Clips.
+- Nicht unterstützte, nicht synchronisierbare oder zeitlich nicht passende Eingaben liefern einen klaren Fehler statt eines vermeintlich erfolgreichen Clips.
 - Nach höchstens 30 Minuten löscht der Container Uploads, Zwischenartefakte und Ergebnisdatei.
 
 ## Erst nach bestandenem POC

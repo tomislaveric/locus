@@ -1,0 +1,27 @@
+FROM node:22-bookworm-slim AS build
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+COPY tsconfig.json ./
+COPY src ./src
+RUN npm run build
+
+FROM node:22-bookworm-slim
+RUN apt-get update \
+  && apt-get install --no-install-recommends -y ffmpeg \
+  && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
+ENV NODE_ENV=production \
+    PORT=3000 \
+    DATA_DIR=/data/jobs \
+    COINS_FILE=/data/coins.json \
+    MAX_UPLOAD_BYTES=1073741824 \
+    JOB_TTL_MS=1800000 \
+    PROCESS_TIMEOUT_MS=300000
+COPY package*.json ./
+RUN npm ci --omit=dev
+COPY --from=build /app/dist ./dist
+COPY public ./public
+VOLUME ["/data"]
+EXPOSE 3000
+CMD ["node", "dist/server.js"]
