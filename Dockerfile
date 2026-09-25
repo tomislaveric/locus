@@ -15,9 +15,9 @@ ENV NODE_ENV=production \
     PORT=3000 \
     DATA_DIR=/data/jobs \
     COINS_FILE=/data/coins.json \
-    MAX_UPLOAD_BYTES=1073741824 \
+    MAX_UPLOAD_BYTES=6442450944 \
     JOB_TTL_MS=1800000 \
-    PROCESS_TIMEOUT_MS=300000
+    PROCESS_TIMEOUT_MS=900000
 COPY package*.json ./
 RUN npm ci --omit=dev
 COPY --from=build /app/dist ./dist

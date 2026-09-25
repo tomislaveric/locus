@@ -20,18 +20,16 @@ Requirements: Node.js 22+ and FFmpeg/FFprobe with H.264 (`libx264`) support.
 cp coins.json.example coins.json
 npm install
 npm run build
-MAX_UPLOAD_BYTES=6442450944 PROCESS_TIMEOUT_MS=900000 npm start
+npm start
 ```
 
-Open `http://localhost:3000`. The larger limits above support original multi-gigabyte GoPro chapters; use smaller values when appropriate for the deployment.
+Open `http://localhost:3000`. Standardmäßig sind bis zu 6 GiB Uploadgröße und 15 Minuten Verarbeitungszeit vorgesehen, damit originale mehrgigabytegroße GoPro-Kapitel verarbeitet werden können. Beide Werte lassen sich bei Bedarf mit `MAX_UPLOAD_BYTES` und `PROCESS_TIMEOUT_MS` überschreiben.
 
 ## Run in Docker
 
 ```bash
 docker build -t post-ride-ar .
 docker run --rm -p 3000:3000 \
-  -e MAX_UPLOAD_BYTES=6442450944 \
-  -e PROCESS_TIMEOUT_MS=900000 \
   -v "$PWD/coins.json:/data/coins.json:ro" \
   post-ride-ar
 ```
