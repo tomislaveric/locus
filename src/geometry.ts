@@ -40,3 +40,15 @@ export const detectCoinPassage = (
   }
   return undefined;
 };
+
+export const detectFirstCoinPassages = (
+  points: TrackPoint[],
+  coins: Coin[]
+): Array<{ coin: Coin; timestampMs: number }> =>
+  coins
+    .map((coin) => {
+      const timestampMs = detectCoinPassage(points, coin);
+      return timestampMs === undefined ? undefined : { coin, timestampMs };
+    })
+    .filter((passage): passage is { coin: Coin; timestampMs: number } => passage !== undefined)
+    .sort((left, right) => left.timestampMs - right.timestampMs);
