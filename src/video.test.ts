@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildClipIntervals, buildSegmentFilter, planCoinEffect } from "./video.js";
+import { buildClipIntervals, buildHudSegmentFilter, buildSegmentFilter, planCoinEffect } from "./video.js";
 
 describe("buildClipIntervals", () => {
   it("clamps windows before merging overlapping passages", () => {
@@ -15,6 +15,24 @@ describe("buildClipIntervals", () => {
     expect(intervals).toHaveLength(2);
     expect(intervals[0]).toMatchObject({ start: 0, end: 7, passages: [{ coinId: "start" }, { coinId: "overlap" }] });
     expect(intervals[1]).toMatchObject({ start: 12, end: 18, passages: [{ coinId: "separate" }] });
+  });
+
+  describe("HUD segment planning", () => {
+    it("overlays compact HUD layers while preserving source audio", () => {
+      const plan = buildHudSegmentFilter(6, true, { map: true, feed: true });
+      expect(plan.filter).toContain("overlay=W-w-24:H-h-24");
+      expect(plan.filter).toContain("overlay=W-w-24:24");
+      expect(plan.filter).toContain("[0:a]atrim=duration=6.000");
+      expect(plan.filter).not.toContain("amix=");
+      expect(plan.videoOutput).toBe("[hud-feed]");
+    });
+
+    it("keeps a no-overlay plan when both visual features are disabled", () => {
+      const plan = buildHudSegmentFilter(6, false, { map: false, feed: false });
+      expect(plan.videoOutput).toBe("[base]");
+      expect(plan.filter).toContain("anullsrc=r=48000:cl=stereo");
+      expect(plan.filter).not.toContain("overlay=");
+    });
   });
 });
 

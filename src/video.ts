@@ -8,8 +8,10 @@ import {
   COIN_REWARD_SECONDS
 } from "./coin-effect.js";
 import { runCommand } from "./commands.js";
-import type { DetectedCoinPassage } from "./domain.js";
+import { config } from "./config.js";
+import type { DetectedCoinPassage, HudTimeline } from "./domain.js";
 import { UserInputError } from "./errors.js";
+import { renderHudFrames } from "./hud/hudRenderer.js";
 
 interface ProbeFormat {
   duration?: string;
@@ -17,7 +19,7 @@ interface ProbeFormat {
 
 interface ProbeResult {
   format?: ProbeFormat;
-  streams?: Array<{ index?: number; codec_type?: string; codec_tag_string?: string }>;
+  streams?: Array<{ index?: number; codec_type?: string; codec_tag_string?: string; width?: number; height?: number }>;
 }
 
 export interface ClipInterval {
@@ -40,6 +42,24 @@ export const gpmfStreamIndex = async (file: string, timeoutMs: number): Promise<
     throw new UserInputError("MP4 has no GPMF metadata track. Upload the original GoPro MP4, not an exported or trimmed copy.");
   }
   return stream.index;
+};
+
+export const probeVideoSize = async (file: string, timeoutMs: number): Promise<{ width: number; height: number }> => {
+  const metadata = await inspectMedia(file, timeoutMs);
+  const stream = metadata.streams?.find((candidate) => candidate.codec_type === "video");
+  const width = stream?.width;
+  const height = stream?.height;
+  if (
+    typeof width !== "number" ||
+    typeof height !== "number" ||
+    !Number.isSafeInteger(width) ||
+    !Number.isSafeInteger(height) ||
+    width < 1 ||
+    height < 1
+  ) {
+    throw new UserInputError("Video has no readable dimensions.");
+  }
+  return { width, height };
 };
 
 export const buildClipIntervals = (passages: DetectedCoinPassage[], duration: number): ClipInterval[] => {
@@ -161,25 +181,86 @@ export const buildSegmentFilter = (
   return { filter: filters.join(";"), videoOutput: videoLabel, audioOutput: audio.output };
 };
 
+export const buildHudSegmentFilter = (
+  clipDuration: number,
+  audioPresent: boolean,
+  layers: { map: boolean; feed: boolean }
+): { filter: string; videoOutput: string; audioOutput: string } => {
+  const filters = [`[0:v]trim=duration=${seconds(clipDuration)},setpts=PTS-STARTPTS[base]`];
+  let videoOutput = "[base]";
+  let input = 1;
+  for (const layer of [
+    { enabled: layers.map, x: "W-w-24", y: "H-h-24", label: "map" },
+    { enabled: layers.feed, x: "W-w-24", y: "24", label: "feed" }
+  ]) {
+    if (!layer.enabled) continue;
+    filters.push(`[${input}:v]setpts=PTS-STARTPTS[${layer.label}]`);
+    const output = `hud-${layer.label}`;
+    filters.push(`${videoOutput}[${layer.label}]overlay=${layer.x}:${layer.y}:format=auto:eof_action=pass:repeatlast=1[${output}]`);
+    videoOutput = `[${output}]`;
+    input += 1;
+  }
+  filters.push(
+    audioPresent
+      ? `[0:a]atrim=duration=${seconds(clipDuration)},asetpts=PTS-STARTPTS[aout]`
+      : `anullsrc=r=48000:cl=stereo,atrim=duration=${seconds(clipDuration)}[aout]`
+  );
+  return { filter: filters.join(";"), videoOutput, audioOutput: "[aout]" };
+};
+
 export const renderSelectedClips = async (
   input: string,
   output: string,
   passages: DetectedCoinPassage[],
   duration: number,
   workDirectory: string,
-  timeoutMs: number
+  timeoutMs: number,
+  hudTimeline?: HudTimeline
 ): Promise<void> => {
   const intervals = buildClipIntervals(passages, duration);
   if (intervals.length === 0) throw new UserInputError("Select at least one detected coin.");
   const audioPresent = await hasAudio(input, timeoutMs);
+  const videoSize = hudTimeline && config.hudEnabled && !config.showLegacyCoinOverlay
+    ? await probeVideoSize(input, timeoutMs)
+    : undefined;
   const segmentFiles: string[] = [];
   for (const [intervalIndex, interval] of intervals.entries()) {
-    const assets = await Promise.all(
-      interval.passages.map((passage, index) => createCoinEffectAssets(path.join(workDirectory, `effect-${intervalIndex}-${index}`), passage.value))
-    );
+    const useHud = hudTimeline !== undefined && config.hudEnabled && !config.showLegacyCoinOverlay;
+    const useLegacy = !useHud && config.showLegacyCoinOverlay;
+    const assets = useLegacy
+      ? await Promise.all(
+          interval.passages.map((passage, index) => createCoinEffectAssets(path.join(workDirectory, `effect-${intervalIndex}-${index}`), passage.value))
+        )
+      : [];
     const inputArgs = ["-ss", seconds(interval.start), "-i", input];
-    for (const asset of assets) inputArgs.push("-loop", "1", "-i", asset.coin, "-loop", "1", "-i", asset.burst, "-loop", "1", "-i", asset.reward);
-    const plan = buildSegmentFilter(interval, audioPresent);
+    let plan: { filter: string; videoOutput: string; audioOutput: string };
+    if (useHud) {
+      const frames = await renderHudFrames(
+        path.join(workDirectory, `hud-${intervalIndex}`),
+        interval.start,
+        interval.end,
+        videoSize!.width,
+        videoSize!.height,
+        hudTimeline!,
+        {
+          minimapEnabled: config.minimapEnabled,
+          eventFeedEnabled: config.eventFeedEnabled,
+          nextItemEnabled: config.nextItemEnabled,
+          mapRangeMeters: config.mapRangeMeters,
+          eventFeedDurationSeconds: config.eventFeedDurationSeconds,
+          eventFeedMaxItems: config.eventFeedMaxItems,
+          frameRate: config.hudFrameRate
+        }
+      );
+      if (frames.mapPattern) inputArgs.push("-framerate", String(config.hudFrameRate), "-start_number", "0", "-i", frames.mapPattern);
+      if (frames.feedPattern) inputArgs.push("-framerate", String(config.hudFrameRate), "-start_number", "0", "-i", frames.feedPattern);
+      plan = buildHudSegmentFilter(interval.end - interval.start, audioPresent, { map: Boolean(frames.mapPattern), feed: Boolean(frames.feedPattern) });
+    } else if (useLegacy) {
+      for (const asset of assets) inputArgs.push("-loop", "1", "-i", asset.coin, "-loop", "1", "-i", asset.burst, "-loop", "1", "-i", asset.reward);
+      plan = buildSegmentFilter(interval, audioPresent);
+    } else {
+      plan = buildHudSegmentFilter(interval.end - interval.start, audioPresent, { map: false, feed: false });
+    }
     const segmentFile = path.join(workDirectory, `segment-${intervalIndex}.mp4`);
     await runCommand(
       "ffmpeg",

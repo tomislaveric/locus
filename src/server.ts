@@ -5,11 +5,12 @@ import path from "node:path";
 import multer from "multer";
 import { readCoins } from "./coin.js";
 import { config } from "./config.js";
-import type { DetectedCoinPassage, Job } from "./domain.js";
+import type { DetectedCoinPassage, HudTimeline, Job } from "./domain.js";
 import { UserInputError } from "./errors.js";
 import { parseFitTrack } from "./fit.js";
 import { detectFirstCoinPassages } from "./geometry.js";
 import { extractGps5Times, mapToVideoSecond } from "./gpmf.js";
+import { createHudTimeline, loadHudTimeline, saveHudTimeline } from "./hud/timeline.js";
 import { buildClipIntervals, gpmfStreamIndex, probeDuration, renderSelectedClips } from "./video.js";
 
 interface UploadRequest extends Request {
@@ -93,7 +94,8 @@ const processDetection = async (directory: string, job: Job): Promise<void> => {
     const fit = path.join(directory, "track.fit");
     const sourceDuration = await probeDuration(video, config.processTimeoutMs);
     const streamIndex = await gpmfStreamIndex(video, config.processTimeoutMs);
-    const passages = detectFirstCoinPassages(await parseFitTrack(fit), coins);
+    const track = await parseFitTrack(fit);
+    const passages = detectFirstCoinPassages(track, coins);
     const samples = await extractGps5Times(
       video,
       path.join(directory, "metadata.gpmf"),
@@ -115,9 +117,14 @@ const processDetection = async (directory: string, job: Job): Promise<void> => {
     if (mappedPassages.length === 0) {
       throw new UserInputError("No configured coin passage maps to a time within the video.");
     }
+    const allPassages = mappedPassages.sort((left, right) => left.videoSecond - right.videoSecond);
+    await saveHudTimeline(
+      path.join(directory, "hud-timeline.json"),
+      createHudTimeline(track, coins, allPassages, samples, sourceDuration)
+    );
     job.state = "awaiting_selection";
     job.sourceDuration = sourceDuration;
-    job.passages = mappedPassages.sort((left, right) => left.videoSecond - right.videoSecond);
+    job.passages = allPassages;
   } catch (error) {
     job.state = "failed";
     job.error = error instanceof Error ? error.message : "Unexpected processing failure.";
@@ -138,6 +145,9 @@ const renderSelection = async (
 ): Promise<void> => {
   try {
     if (job.sourceDuration === undefined) throw new UserInputError("Job has no source video duration.");
+    const hudTimeline: HudTimeline | undefined = config.hudEnabled && !config.showLegacyCoinOverlay
+      ? await loadHudTimeline(path.join(directory, "hud-timeline.json"))
+      : undefined;
     const outputFile = "clip.mp4";
     await renderSelectedClips(
       path.join(directory, "video.mp4"),
@@ -145,7 +155,8 @@ const renderSelection = async (
       passages,
       job.sourceDuration,
       directory,
-      config.processTimeoutMs
+      config.processTimeoutMs,
+      hudTimeline
     );
     job.state = "succeeded";
     job.outputFile = outputFile;

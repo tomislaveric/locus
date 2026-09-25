@@ -6,6 +6,8 @@ Single-container POC for generating a short GoPro clip with animated Coin Collec
 
 - [Coin collection](features/coin-collection/README.md) — animate Coin pickups
   with a 2.5D Collect effect, reward, and generated audio Chime.
+- [HUD](features/hud/README.md) — replace physical-scene Coin visuals with a
+  compact, camera-independent route and event overlay.
 - [Multi Clip creation](features/multi-clip-creation/README.md) — select detected
   Coin passages and combine them into one chronological highlight video.
 
@@ -63,11 +65,18 @@ coin coordinates → FIT track crossing time → GPS5-clock-aligned video second
 The app lists the first detected passage for each configured Coin. Select the
 passages to include, then download one chronological highlight video. Each event
 uses a three-second-before/-after window; overlapping or adjacent windows are
-merged. A selected Coin approaches the center over three seconds, then expands
-to three times its normal size in the final second before it pops into a
-glow/burst at pickup, then floats its `+value` reward upward for 0.95 seconds.
-Each pickup synthesizes a Chime and briefly ducks source audio; videos without
-audio receive a Chime-only 48 kHz stereo track.
+merged. The default output adds a screen-space HUD: a fixed, heading-aligned map
+of the current clip segment where the rider moves toward the top and turns with
+the route. It includes nearby Coin markers, a subtle north compass, the next
+detected Coin and its direct distance, and a brief collection feed. It uses only
+FIT/GPS timing and does not depend on camera pose, road geometry, or image
+analysis. Source audio is unchanged.
+
+HUD behavior can be configured with `HUD_ENABLED`, `MINIMAP_ENABLED`,
+`EVENT_FEED_ENABLED`, `NEXT_ITEM_ENABLED`, `MAP_RANGE_METERS` (default `150`),
+`EVENT_FEED_DURATION_SECONDS`, `EVENT_FEED_MAX_ITEMS`, and `HUD_FRAME_RATE`.
+Set `SHOW_LEGACY_COIN_OVERLAY=true` to restore the previous centered Coin effect
+with its audio behavior; it is disabled by default.
 
 ## Operations
 

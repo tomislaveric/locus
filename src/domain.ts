@@ -25,6 +25,19 @@ export interface DetectedCoinPassage {
   videoSecond: number;
 }
 
+export interface HudTrackSample {
+  latitude: number;
+  longitude: number;
+  videoSecond: number;
+}
+
+export interface HudTimeline {
+  version: 1;
+  track: HudTrackSample[];
+  coins: Coin[];
+  events: DetectedCoinPassage[];
+}
+
 export type JobState = "processing" | "awaiting_selection" | "rendering" | "succeeded" | "failed";
 
 export interface Job {
