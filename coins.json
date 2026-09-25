@@ -1,8 +1,15 @@
 [
   {
     "id": "reference-coin",
-    "latitude": 49.014,
-    "longitude": 8.40323,
+    "latitude": 49.01435,
+    "longitude": 8.39826,
+    "radius_m": 5,
+    "value": 100
+  },
+  {
+    "id": "reference-coin6",
+    "latitude": 49.01422,
+    "longitude": 8.3984,
     "radius_m": 5,
     "value": 100
   },
@@ -10,6 +17,27 @@
     "id": "reference-coin2",
     "latitude": 49.01382,
     "longitude": 8.40753,
+    "radius_m": 5,
+    "value": 100
+  },
+  {
+    "id": "reference-coin3",
+    "latitude": 49.01383,
+    "longitude": 8.40738,
+    "radius_m": 5,
+    "value": 100
+  },
+  {
+    "id": "reference-coin4",
+    "latitude": 49.01373,
+    "longitude": 8.408,
+    "radius_m": 5,
+    "value": 100
+  },
+  {
+    "id": "reference-coin5",
+    "latitude": 49.01377,
+    "longitude": 8.40814,
     "radius_m": 5,
     "value": 100
   }
