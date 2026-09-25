@@ -3,14 +3,14 @@ import express, { type NextFunction, type Request, type Response } from "express
 import { access, mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import multer from "multer";
-import { readCoin } from "./coin.js";
+import { readCoins } from "./coin.js";
 import { config } from "./config.js";
-import type { Job } from "./domain.js";
+import type { DetectedCoinPassage, Job } from "./domain.js";
 import { UserInputError } from "./errors.js";
 import { parseFitTrack } from "./fit.js";
-import { detectCoinPassage } from "./geometry.js";
+import { detectFirstCoinPassages } from "./geometry.js";
 import { extractGps5Times, mapToVideoSecond } from "./gpmf.js";
-import { gpmfStreamIndex, probeDuration, renderClip } from "./video.js";
+import { buildClipIntervals, gpmfStreamIndex, probeDuration, renderSelectedClips } from "./video.js";
 
 interface UploadRequest extends Request {
   job?: Job;
@@ -86,48 +86,99 @@ const cleanupReservation = async (request: UploadRequest): Promise<void> => {
   if (request.jobDir) await rm(request.jobDir, { recursive: true, force: true });
 };
 
-const processJob = async (directory: string, job: Job): Promise<void> => {
+const processDetection = async (directory: string, job: Job): Promise<void> => {
   try {
-    const coin = await readCoin(config.coinsFile);
+    const coins = await readCoins(config.coinsFile);
     const video = path.join(directory, "video.mp4");
     const fit = path.join(directory, "track.fit");
     const sourceDuration = await probeDuration(video, config.processTimeoutMs);
     const streamIndex = await gpmfStreamIndex(video, config.processTimeoutMs);
-    const passageTime = detectCoinPassage(await parseFitTrack(fit), coin);
-    if (passageTime === undefined) throw new UserInputError("The FIT track does not pass through the configured coin.");
-    const videoSecond = mapToVideoSecond(
-      passageTime,
-      await extractGps5Times(
-        video,
-        path.join(directory, "metadata.gpmf"),
-        streamIndex,
-        config.processTimeoutMs
-      )
-    );
-    if (videoSecond < 0 || videoSecond > sourceDuration) {
-      throw new UserInputError("Mapped event time is outside the video duration.");
-    }
-    const outputFile = "clip.mp4";
-    await renderClip(
+    const passages = detectFirstCoinPassages(await parseFitTrack(fit), coins);
+    const samples = await extractGps5Times(
       video,
-      path.join(directory, outputFile),
-      videoSecond,
-      sourceDuration,
-      coin.value,
-      path.join(directory, "overlay.png"),
+      path.join(directory, "metadata.gpmf"),
+      streamIndex,
       config.processTimeoutMs
     );
-    job.state = "succeeded";
-    job.detectedVideoSecond = Number(videoSecond.toFixed(3));
-    job.outputFile = outputFile;
+    const mappedPassages: DetectedCoinPassage[] = [];
+    for (const passage of passages) {
+      const videoSecond = mapToVideoSecond(passage.timestampMs, samples);
+      if (videoSecond < 0 || videoSecond > sourceDuration) continue;
+      mappedPassages.push({
+        coinId: passage.coin.id,
+        value: passage.coin.value,
+        latitude: passage.coin.latitude,
+        longitude: passage.coin.longitude,
+        videoSecond: Number(videoSecond.toFixed(3))
+      });
+    }
+    if (mappedPassages.length === 0) {
+      throw new UserInputError("No configured coin passage maps to a time within the video.");
+    }
+    job.state = "awaiting_selection";
+    job.sourceDuration = sourceDuration;
+    job.passages = mappedPassages.sort((left, right) => left.videoSecond - right.videoSecond);
   } catch (error) {
     job.state = "failed";
     job.error = error instanceof Error ? error.message : "Unexpected processing failure.";
     console.error(`Job ${job.token} failed:`, error);
   } finally {
-    await saveJob(directory, job);
-    busy = false;
+    try {
+      await saveJob(directory, job);
+    } finally {
+      busy = false;
+    }
   }
+};
+
+const renderSelection = async (
+  directory: string,
+  job: Job,
+  passages: DetectedCoinPassage[]
+): Promise<void> => {
+  try {
+    if (job.sourceDuration === undefined) throw new UserInputError("Job has no source video duration.");
+    const outputFile = "clip.mp4";
+    await renderSelectedClips(
+      path.join(directory, "video.mp4"),
+      path.join(directory, outputFile),
+      passages,
+      job.sourceDuration,
+      directory,
+      config.processTimeoutMs
+    );
+    job.state = "succeeded";
+    job.outputFile = outputFile;
+  } catch (error) {
+    job.state = "failed";
+    job.error = error instanceof Error ? error.message : "Unexpected rendering failure.";
+    console.error(`Job ${job.token} rendering failed:`, error);
+  } finally {
+    try {
+      await saveJob(directory, job);
+    } finally {
+      busy = false;
+    }
+  }
+};
+
+const selectedPassages = (job: Job, value: unknown): DetectedCoinPassage[] => {
+  if (!Array.isArray(value) || value.length === 0 || !value.every((id) => typeof id === "string")) {
+    throw new UserInputError("Select at least one detected coin id.");
+  }
+  if (value.length > config.maxSelectedCoins) {
+    throw new UserInputError(`Select no more than ${config.maxSelectedCoins} coins.`);
+  }
+  const ids = new Set(value);
+  if (ids.size !== value.length) throw new UserInputError("Selected coin ids must be unique.");
+  const knownPassages = new Map((job.passages ?? []).map((passage) => [passage.coinId, passage]));
+  const passages = value.map((id) => knownPassages.get(id));
+  if (passages.some((passage) => passage === undefined)) {
+    throw new UserInputError("Selection contains an unknown detected coin.");
+  }
+  return (passages as DetectedCoinPassage[]).sort(
+    (left, right) => left.videoSecond - right.videoSecond
+  );
 };
 
 const cleanExpiredJobs = async (): Promise<void> => {
@@ -144,7 +195,17 @@ const cleanExpiredJobs = async (): Promise<void> => {
       const directory = path.join(config.dataDir, entry);
       try {
         const info = await stat(directory);
-        if (info.isDirectory() && Date.now() - info.mtimeMs > config.jobTtlMs) {
+        if (!info.isDirectory()) return;
+        let expired = Date.now() - info.mtimeMs > config.jobTtlMs;
+        try {
+          const job = JSON.parse(await readFile(jobFile(directory), "utf8")) as Job;
+          const updatedAt = new Date(job.updatedAt).getTime();
+          const ttl = job.state === "awaiting_selection" ? config.selectionTtlMs : config.jobTtlMs;
+          expired = !Number.isFinite(updatedAt) || Date.now() - updatedAt > ttl;
+        } catch {
+          // The directory-mtime fallback removes incomplete or corrupt job directories.
+        }
+        if (expired) {
           await rm(directory, { recursive: true, force: true });
         }
       } catch (error) {
@@ -160,6 +221,7 @@ setInterval(() => void cleanExpiredJobs(), Math.min(config.jobTtlMs, 60_000)).un
 
 const app = express();
 app.use(express.static(path.resolve("public")));
+app.use(express.json({ limit: "16kb" }));
 
 app.post(
   "/api/jobs",
@@ -172,7 +234,7 @@ app.post(
       response.status(400).json({ error: "Both one FIT file and one MP4 file are required." });
       return;
     }
-    void processJob(request.jobDir, request.job);
+    void processDetection(request.jobDir, request.job);
     response.status(202).json({ token: request.job.token });
     next();
   }
@@ -185,11 +247,49 @@ app.get("/api/jobs/:token", async (request, response) => {
       token: job.token,
       state: job.state,
       error: job.error,
-      detectedVideoSecond: job.detectedVideoSecond,
+      passages: job.passages,
       downloadUrl: job.state === "succeeded" ? `/api/jobs/${job.token}/download` : undefined
     });
   } catch (error) {
     response.status(404).json({ error: error instanceof Error ? error.message : "Unknown job." });
+  }
+});
+
+app.post("/api/jobs/:token/render", async (request, response) => {
+  try {
+    const { job, directory } = await loadJob(request.params.token);
+    if (job.state !== "awaiting_selection") {
+      response.status(409).json({ error: "This job is not ready for selection rendering." });
+      return;
+    }
+    if (busy) {
+      response.status(429).json({ error: "The renderer is busy. Try again after the current job finishes." });
+      return;
+    }
+    const passages = selectedPassages(job, request.body?.coinIds);
+    if (job.sourceDuration === undefined) throw new UserInputError("Job has no source video duration.");
+    const totalDuration = buildClipIntervals(passages, job.sourceDuration).reduce(
+      (total, interval) => total + interval.end - interval.start,
+      0
+    );
+    if (totalDuration > config.maxOutputDurationSeconds) {
+      throw new UserInputError(
+        `Selected clips exceed the ${config.maxOutputDurationSeconds}-second output limit.`
+      );
+    }
+    busy = true;
+    job.state = "rendering";
+    try {
+      await saveJob(directory, job);
+    } catch (error) {
+      busy = false;
+      throw error;
+    }
+    void renderSelection(directory, job, passages);
+    response.status(202).json({ token: job.token, state: job.state });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Could not render the selected clips.";
+    response.status(error instanceof UserInputError ? 400 : 500).json({ error: message });
   }
 });
 

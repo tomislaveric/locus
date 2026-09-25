@@ -9,19 +9,29 @@
       main { max-width: 620px; margin: 8vh auto; padding: 2rem; background: #1b2130; border-radius: 12px; }
       h1 { margin-top: 0; } label { display: block; margin: 1rem 0; } input { display: block; margin-top: .4rem; }
       button { background: #ffd83d; border: 0; border-radius: 5px; color: #171717; cursor: pointer; font-weight: 700; padding: .7rem 1rem; }
-      #status { min-height: 1.5rem; margin-top: 1rem; } a { color: #ffd83d; }
+      button:disabled { cursor: wait; opacity: .65; }
+      #status { min-height: 1.5rem; margin-top: 1rem; } #passages { margin-top: 1rem; }
+      #passages label { border: 1px solid #43506b; border-radius: 5px; padding: .6rem; }
+      #passages input { display: inline; margin: 0 .5rem 0 0; } a { color: #ffd83d; }
     </style>
   </head>
   <body>
     <main>
-      <h1>Coin clip</h1>
-      <p>GPS5 GoPro MP4 + matching FIT track. One render runs at a time.</p>
+      <h1>Coin clips</h1>
+      <p>GPS5 GoPro MP4 + matching FIT track. Select detected Coin passages to create one highlight video.</p>
       <form id="upload">
         <label>FIT file <input name="fit" type="file" accept=".fit" required></label>
         <label>GoPro MP4 <input name="video" type="file" accept="video/mp4,.mp4" required></label>
-        <button>Generate clip</button>
+        <button>Find Coin passages</button>
       </form>
       <p id="status" role="status"></p>
+      <form id="passages" hidden>
+        <fieldset>
+          <legend>Detected Coin passages</legend>
+          <div id="passage-list"></div>
+        </fieldset>
+        <button type="submit">Generate selected clips</button>
+      </form>
     </main>
     <script src="/app.js"></script>
   </body>

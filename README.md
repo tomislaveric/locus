@@ -2,6 +2,11 @@
 
 Single-container POC for generating a short GoPro clip with a static `+100 XP` coin overlay. Upload one FIT file and one original GPS5 GoPro MP4; the app detects a configured location in the FIT track, maps that event onto the video timeline, renders the clip, and provides it for download.
 
+## Features
+
+- [Multi Clip creation](features/multi-clip-creation/README.md) — select detected
+  Coin passages and combine them into one chronological highlight video.
+
 ## Verified POC result
 
 The POC was validated end-to-end with the selected GPS5 GoPro reference setup:
@@ -39,7 +44,10 @@ docker run --rm -p 3000:3000 \
 - **FIT:** Must contain at least two time-stamped GPS trackpoints.
 - **MP4:** Use an original GoPro chapter copied directly from the camera. QuickTime trimming, re-encoding, or export removes the required `gpmd` GPMF metadata track.
 - **Telemetry:** This POC supports **GPS5** only. The correct GoPro chapter must cover the FIT coin-passage time.
-- **Coin:** `coins.json` contains one active coin with `id`, `latitude`, `longitude`, `radius_m`, and `value`. The minimum `radius_m` is **5 m**. The file is read at the start of every job, so coordinate changes do not require rebuilding the image.
+- **Coins:** `coins.json` contains a nonempty list of Coins with unique `id`,
+  `latitude`, `longitude`, `radius_m`, and `value` fields. The minimum `radius_m`
+  is **5 m**. The file is read at the start of every job, so coordinate changes do
+  not require rebuilding the image.
 
 The app derives the event in three steps:
 
@@ -47,14 +55,24 @@ The app derives the event in three steps:
 coin coordinates → FIT track crossing time → GPS5-clock-aligned video second
 ```
 
-The output clip normally spans three seconds before and after the event; it remains at least four seconds long near video boundaries.
+The app lists the first detected passage for each configured Coin. Select the
+passages to include, then download one chronological highlight video. Each event
+uses a three-second-before/-after window; overlapping or adjacent windows are
+merged, and each selected Coin receives its overlay.
 
 ## Operations
 
-Only one render job runs at a time. Each job receives a random token used for status polling and download. Uploads, telemetry artifacts, and result clips are deleted after 30 minutes.
+Only one telemetry or render job runs at a time. Each job receives a random token
+used for status polling and download. Detection releases the renderer while the job
+waits for selection; selections expire after 30 minutes by default. Uploads,
+telemetry artifacts, and result clips are deleted after 30 minutes. To guard server
+resources, at most 20 Coins and 120 seconds of merged output can be selected; set
+`MAX_SELECTED_COINS`, `MAX_OUTPUT_DURATION_SECONDS`, `SELECTION_TTL_MS`, or
+`JOB_TTL_MS` to override the defaults.
 
 ## API
 
 - `POST /api/jobs` multipart fields: `fit`, `video`
 - `GET /api/jobs/:token`
+- `POST /api/jobs/:token/render` JSON body: `{ "coinIds": ["coin-a", "coin-b"] }`
 - `GET /api/jobs/:token/download`

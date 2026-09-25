@@ -17,7 +17,15 @@ export interface VideoTimeSample {
   videoSeconds: number;
 }
 
-export type JobState = "processing" | "succeeded" | "failed";
+export interface DetectedCoinPassage {
+  coinId: string;
+  value: number;
+  latitude: number;
+  longitude: number;
+  videoSecond: number;
+}
+
+export type JobState = "processing" | "awaiting_selection" | "rendering" | "succeeded" | "failed";
 
 export interface Job {
   token: string;
@@ -25,6 +33,7 @@ export interface Job {
   createdAt: string;
   updatedAt: string;
   error?: string;
-  detectedVideoSecond?: number;
+  sourceDuration?: number;
+  passages?: DetectedCoinPassage[];
   outputFile?: string;
 }

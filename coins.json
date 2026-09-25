@@ -1,7 +1,16 @@
-{
-  "id": "reference-coin",
-  "latitude": 49.01400,
-  "longitude": 8.40323,
-  "radius_m": 5,
-  "value": 100
-}
+[
+  {
+    "id": "reference-coin",
+    "latitude": 49.014,
+    "longitude": 8.40323,
+    "radius_m": 5,
+    "value": 100
+  },
+  {
+    "id": "reference-coin2",
+    "latitude": 49.01382,
+    "longitude": 8.40753,
+    "radius_m": 5,
+    "value": 100
+  }
+]
