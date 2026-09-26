@@ -7,7 +7,8 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "dev": "tsx watch src/server.ts",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:sync": "tsx src/runSyncValidation.ts"
   },
   "dependencies": {
     "express": "^4.21.2",

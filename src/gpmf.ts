@@ -165,12 +165,13 @@ export const mapToVideoSecond = (
   eventTimestampMs: number,
   times: VideoTimeSample[]
 ): number => {
-  if (!times.length) {
-    throw new UserInputError("GPS5 stream has no synchronized timestamps.");
-  }
+  return (eventTimestampMs - videoStartMilliseconds(times)) / 1000;
+};
+
+export const videoStartMilliseconds = (times: VideoTimeSample[]): number => {
+  if (!times.length) throw new UserInputError("GPS5 stream has no synchronized timestamps.");
   const starts = times
     .map((sample) => sample.timestampMs - sample.videoSeconds * 1000)
     .sort((left, right) => left - right);
-  const videoStartMs = starts[Math.floor(starts.length / 2)];
-  return (eventTimestampMs - videoStartMs) / 1000;
+  return starts[Math.floor(starts.length / 2)];
 };

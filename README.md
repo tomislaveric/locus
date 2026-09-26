@@ -14,6 +14,8 @@ Single-container POC for generating a short GoPro clip with animated Coin Collec
   compact, camera-independent route and event overlay.
 - [Multi Clip creation](features/multi-clip-creation/README.md) — select detected
   Coin passages and combine them into one chronological highlight video.
+- [Robust sync](features/robust-sync/README.md) — validate the existing FIT/GPS5
+  synchronization against manually verified reference events.
 
 ## Verified POC result
 
@@ -40,6 +42,25 @@ Open `http://localhost:3000`. The default limits allow uploads up to 6 GiB and
 processing for up to 15 minutes so that original multi-gigabyte GoPro chapters can
 be processed. Override these values with `MAX_UPLOAD_BYTES` and
 `PROCESS_TIMEOUT_MS` when necessary.
+
+## Synchronization validation
+
+Run `npm run test:sync` to validate the FIT-to-GPS5 mapping against committed
+reference fixtures. Fixture JSON is stored in `fixtures/sync`; media is not
+committed. Point `SYNC_FIXTURE_ROOT` to a directory containing the FIT and MP4
+paths declared by a fixture:
+
+```bash
+SYNC_FIXTURE_ROOT=/path/to/reference-media npm run test:sync
+```
+
+Absent media is reported as **SKIPPED**. Available media produces one result per
+reference event plus aggregate error metrics; an unavailable event, an out-of-video
+mapping, a video-start UTC mismatch greater than 1.5 seconds, or an error above
+its tolerance exits nonzero. A corrupt available fixture fails its own events but
+does not prevent later fixtures from running or the final aggregate summary from
+printing. Pass `-- --debug` to show diagnostics for passing events too.
+`SYNC_VALIDATION_TIMEOUT_MS` overrides the 15-minute media-processing timeout.
 
 ## Run in Docker
 

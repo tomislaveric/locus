@@ -1,0 +1,22 @@
+{
+  "name": "bike2work-poc",
+  "fit": "bike2work.fit",
+  "video": "GH020028.MP4",
+  "expectedVideoStartUtc": "2026-09-01T06:25:57.139Z",
+  "coins": [
+    {
+      "id": "reference-coin6",
+      "latitude": 49.01422,
+      "longitude": 8.3984,
+      "radius_m": 5,
+      "value": 100
+    }
+  ],
+  "events": [
+    {
+      "coinId": "reference-coin6",
+      "expectedVideoSecond": 14.68,
+      "toleranceSeconds": 1.5
+    }
+  ]
+}
