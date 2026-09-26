@@ -1,4 +1,5 @@
 import { mountReplay } from "./replay.js";
+import { applyActivityXp, getLevelProgress } from "./progression.js";
 
 const form = document.querySelector("#upload");
 const status = document.querySelector("#status");
@@ -6,6 +7,8 @@ const passagesForm = document.querySelector("#passages");
 const passageList = document.querySelector("#passage-list");
 const activityResultSection = document.querySelector("#activity-result");
 let loadedActivityToken;
+let totalXp = 0;
+const progressionByJob = new Map();
 
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -50,12 +53,21 @@ passagesForm.addEventListener("submit", async (event) => {
 });
 
 async function showActivity(token) {
-  if (loadedActivityToken === token) return;
+  if (loadedActivityToken === token) {
+    renderProgression(progressionByJob.get(token));
+    return;
+  }
   const response = await fetch(`/api/jobs/${token}/activity`);
   const body = await response.json();
   if (!response.ok) throw new Error(body.error);
   loadedActivityToken = token;
   const result = body.activityResult;
+  let progression = progressionByJob.get(token);
+  if (!progression) {
+    progression = applyActivityXp(totalXp, result.totalPoints);
+    totalXp = progression.newTotalXp;
+    progressionByJob.set(token, progression);
+  }
   const unavailable = "Unavailable";
   const distance = result.distance === undefined ? unavailable : `${(result.distance / 1000).toFixed(2)} km`;
   const duration = result.duration === undefined ? unavailable : `${Math.round(result.duration / 60)} min`;
@@ -79,7 +91,25 @@ async function showActivity(token) {
   document.querySelector("#replay-play").onclick = replay.play;
   document.querySelector("#replay-pause").onclick = replay.pause;
   document.querySelector("#replay-restart").onclick = replay.restart;
+  renderProgression(progression);
   activityResultSection.hidden = false;
+}
+
+function renderProgression(progression) {
+  const progress = getLevelProgress(progression.newTotalXp);
+  const percent = Math.round(progress.progressToNextLevel * 100);
+  document.querySelector("#progression-earned").textContent = `+${progression.xpEarned} XP`;
+  document.querySelector("#progression-level").textContent = `LEVEL ${progress.level}`;
+  document.querySelector("#progression-total").textContent =
+    `${progression.previousTotalXp.toLocaleString()} -> ${progression.newTotalXp.toLocaleString()} XP`;
+  document.querySelector("#progression-progress").value = progress.progressToNextLevel;
+  document.querySelector("#progression-progress-label").textContent =
+    `${Math.round(progress.currentLevelXp).toLocaleString()} / ${progress.nextLevelXp.toLocaleString()} XP (${percent}%)`;
+  const levelUp = document.querySelector("#progression-level-up");
+  levelUp.hidden = progression.levelsGained === 0;
+  if (!levelUp.hidden) {
+    levelUp.textContent = `LEVEL UP · ${progression.previousLevel} -> ${progression.newLevel}`;
+  }
 }
 
 async function poll(token, button) {

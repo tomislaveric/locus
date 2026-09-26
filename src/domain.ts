@@ -74,6 +74,23 @@ export interface ActivityResult {
   nearMisses: NearMissCollectible[];
 }
 
+export interface PlayerProgress {
+  totalXp: number;
+  level: number;
+  currentLevelXp: number;
+  nextLevelXp: number;
+  progressToNextLevel: number;
+}
+
+export interface ProgressionResult {
+  previousTotalXp: number;
+  xpEarned: number;
+  newTotalXp: number;
+  previousLevel: number;
+  newLevel: number;
+  levelsGained: number;
+}
+
 export interface HudTrackSample {
   latitude: number;
   longitude: number;

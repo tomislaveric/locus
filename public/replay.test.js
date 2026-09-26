@@ -99,6 +99,11 @@ describe("activity replay", () => {
     expect(replayCompletion(11.9, 12, 1, 25)).toBeUndefined();
   });
 
+  it("keeps replay scoring limited to the current ride events", () => {
+    expect(replayScore([coinEvent], Number.POSITIVE_INFINITY)).toBe(25);
+    expect(replayScore([landmarkEvent], Number.POSITIVE_INFINITY)).toBe(50);
+  });
+
   it("retains a marker for a collected event absent from relevant world sources", () => {
     const fallback = replayMarkers({ collectibles: [], events: [coinEvent] });
     expect(fallback).toMatchObject([{

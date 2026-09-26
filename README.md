@@ -23,19 +23,21 @@ Single-container POC for turning a FIT ride into collectible game events and an 
   retention-aware.
 - [Multi Clip creation](features/multi-clip-creation/README.md) — select detected
   Coin passages and combine them into one chronological highlight video.
+- [Progression V1](features/progression-v1/README.md) — make each completed ride
+  contribute XP toward a derived player level without adding persistence or rewards.
 - [Renderer resilience output validation](features/renderer-resilience-output-validation/README.md)
   — harden highlight rendering with media inspection, timestamp-safe concat, and
   final MP4 validation.
 - [Robust sync](features/robust-sync/README.md) — validate the existing FIT/GPS5
   synchronization against manually verified reference events.
+- [Route-Relevant World Query V1](features/route-relevant-world-query-v1/README.md)
+  — cheaply limit the configured world to the padded geographic region around an
+  activity route before existing precise collectible detection and presentation.
 - [Synchronization diagnostics](features/synchronization-diagnostics/README.md)
   — make FIT/GPS5 synchronization failures explicit and operationally visible.
 - [World Collectible Domain Model V1](features/world-collectible-domain-model-v1/README.md)
   — normalize legacy Coin configuration into reusable world Collectibles with
   canonical event relationships and shared replay/HUD presentation metadata.
-- [Route-Relevant World Query V1](features/route-relevant-world-query-v1/README.md)
-  — cheaply limit the configured world to the padded geographic region around an
-  activity route before existing precise collectible detection and presentation.
 
 ## Verified POC result
 

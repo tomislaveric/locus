@@ -14,6 +14,12 @@
       #passages label { border: 1px solid #43506b; border-radius: 5px; padding: .6rem; }
       #passages input { display: inline; margin: 0 .5rem 0 0; } a { color: #ffd83d; }
       #activity-result { container-type: inline-size; }
+      #progression { background: #202838; border: 1px solid #43506b; border-radius: 8px; margin: 1rem 0; padding: .85rem; }
+      #progression-summary { align-items: baseline; display: flex; flex-wrap: wrap; gap: .25rem .75rem; }
+      #progression-earned { color: #ffd83d; font-size: 1.15rem; } #progression-level { letter-spacing: .06em; }
+      #progression-total, #progression-progress-label { color: #c8d2e4; font-size: .9rem; }
+      #progression-progress { accent-color: #ffd83d; display: block; height: .7rem; margin: .65rem 0 .35rem; width: 100%; }
+      #progression-level-up { color: #7ee787; font-size: .9rem; font-weight: 800; margin: .65rem 0 0; }
       .replay-summary { align-items: baseline; display: flex; flex-wrap: wrap; gap: .5rem 1rem; margin: .5rem 0; }
       #replay-score { color: #ffd83d; font-size: 1.3rem; font-weight: 800; }
       #replay-count { color: #c8d2e4; font-size: .9rem; font-weight: 700; }
@@ -58,6 +64,16 @@
       <section id="activity-result" hidden>
         <h2>Completed ride</h2>
         <p id="activity-stats"></p>
+        <section id="progression" aria-label="Player progression">
+          <div id="progression-summary">
+            <strong id="progression-earned">+0 XP</strong>
+            <strong id="progression-level">LEVEL 1</strong>
+            <span id="progression-total">0 -> 0 XP</span>
+          </div>
+          <progress id="progression-progress" max="1" value="0"></progress>
+          <span id="progression-progress-label">0 / 100 XP (0%)</span>
+          <p id="progression-level-up" aria-live="polite" hidden></p>
+        </section>
         <div class="replay-summary" aria-live="polite">
           <strong id="replay-score">0 XP</strong>
           <span id="replay-count">0 collectibles</span>
