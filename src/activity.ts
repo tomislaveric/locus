@@ -1,5 +1,8 @@
-import type { Activity, ActivityResult, Collectible, GameEvent, TrackPoint } from "./domain.js";
-import { distanceMeters, detectFirstCollectiblePassages } from "./geometry.js";
+import type { Activity, ActivityResult, Collectible, GameEvent, NearMissCollectible, TrackPoint } from "./domain.js";
+import { distanceMeters, detectFirstCollectiblePassages, minimumRouteDistanceMeters } from "./geometry.js";
+
+export const NEAR_MISS_THRESHOLD_METERS = 100;
+export const MAX_NEAR_MISSES = 5;
 
 export const deriveActivity = (id: string, route: TrackPoint[]): Activity => {
   const distance = route.slice(1).reduce(
@@ -18,6 +21,26 @@ export const deriveActivity = (id: string, route: TrackPoint[]): Activity => {
     distance,
     duration: Math.max(0, (endedAt - startedAt) / 1000)
   };
+};
+
+export const deriveNearMisses = (
+  activity: Activity,
+  collectibles: Collectible[],
+  events: GameEvent[]
+): NearMissCollectible[] => {
+  const collectedIds = new Set(events.map((event) => event.sourceId));
+  return collectibles
+    .filter((collectible) => !collectedIds.has(collectible.id))
+    .map((collectible) => ({
+      collectibleId: collectible.id,
+      name: collectible.name,
+      value: collectible.value,
+      ...(collectible.rarity === undefined ? {} : { rarity: collectible.rarity }),
+      minimumDistanceMeters: minimumRouteDistanceMeters(activity.route, collectible)
+    }))
+    .filter((collectible) => collectible.minimumDistanceMeters <= NEAR_MISS_THRESHOLD_METERS)
+    .sort((left, right) => left.minimumDistanceMeters - right.minimumDistanceMeters)
+    .slice(0, MAX_NEAR_MISSES);
 };
 
 export const deriveActivityResult = (activity: Activity, collectibles: Collectible[]): ActivityResult => {
@@ -43,6 +66,7 @@ export const deriveActivityResult = (activity: Activity, collectibles: Collectib
     collectedCount: events.length,
     totalPoints: events.reduce((total, event) => total + event.value, 0),
     collectibles,
-    events
+    events,
+    nearMisses: deriveNearMisses(activity, collectibles, events)
   };
 };

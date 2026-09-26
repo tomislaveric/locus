@@ -13,8 +13,29 @@
       #status { min-height: 1.5rem; margin-top: 1rem; } #passages, #activity-result { margin-top: 1rem; }
       #passages label { border: 1px solid #43506b; border-radius: 5px; padding: .6rem; }
       #passages input { display: inline; margin: 0 .5rem 0 0; } a { color: #ffd83d; }
-      #replay { background: #0a0d13; border: 1px solid #43506b; border-radius: 5px; display: block; max-width: 100%; }
-      #replay-controls { display: flex; gap: .5rem; margin-top: .5rem; } #activity-feed { padding-left: 1.25rem; }
+      #activity-result { container-type: inline-size; }
+      .replay-summary { align-items: baseline; display: flex; flex-wrap: wrap; gap: .5rem 1rem; margin: .5rem 0; }
+      #replay-score { color: #ffd83d; font-size: 1.3rem; font-weight: 800; }
+      #replay-count { color: #c8d2e4; font-size: .9rem; font-weight: 700; }
+      .is-updated { transform: scale(1.06); transition: transform 160ms ease; }
+      #replay { background: #0a0d13; border: 1px solid #43506b; border-radius: 8px; display: block; height: auto; max-width: 100%; width: 100%; }
+      #replay-feedback, #replay-next, #replay-completion { border-radius: 6px; margin-top: .5rem; padding: .55rem .7rem; }
+      #replay-feedback { background: #263555; border-left: 3px solid #ffd83d; font-weight: 700; }
+      #replay-next { background: #202838; color: #c8d2e4; font-size: .9rem; }
+      #replay-completion { background: #173828; border-left: 3px solid #7ee787; font-weight: 700; }
+      #replay-controls { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .5rem; }
+      #activity-feed { list-style: none; margin: .8rem 0 0; padding: 0; }
+      .activity-feed-item { border-bottom: 1px solid #303b51; color: #c8d2e4; font-size: .9rem; margin: 0; padding: .45rem 0; }
+      #near-misses { margin-top: 1rem; } #near-misses h3 { font-size: 1rem; margin-bottom: .35rem; }
+      #near-miss-list { list-style: none; margin: 0; padding: 0; }
+      .near-miss-item { color: #c8d2e4; font-size: .9rem; padding: .35rem 0; }
+      .rarity-common { border-left: 2px solid #aab6ca; padding-left: .45rem; }
+      .rarity-rare { border-left: 2px solid #62b6ff; padding-left: .45rem; }
+      .rarity-epic { border-left: 2px solid #cf8cff; padding-left: .45rem; }
+      @container (max-width: 420px) {
+        .replay-summary { align-items: flex-start; flex-direction: column; gap: .15rem; }
+        #replay-controls button { flex: 1 1 5rem; min-height: 2.7rem; padding: .6rem; }
+      }
     </style>
   </head>
   <body>
@@ -37,13 +58,24 @@
       <section id="activity-result" hidden>
         <h2>Completed ride</h2>
         <p id="activity-stats"></p>
+        <div class="replay-summary" aria-live="polite">
+          <strong id="replay-score">0 XP</strong>
+          <span id="replay-count">0 collectibles</span>
+        </div>
         <canvas id="replay" width="560" height="320" aria-label="Animated route replay"></canvas>
+        <div id="replay-feedback" aria-live="polite" hidden></div>
+        <div id="replay-next" hidden></div>
+        <div id="replay-completion" aria-live="polite" hidden></div>
         <div id="replay-controls">
           <button id="replay-play" type="button">Play</button>
           <button id="replay-pause" type="button">Pause</button>
           <button id="replay-restart" type="button">Restart</button>
         </div>
         <ul id="activity-feed"></ul>
+        <section id="near-misses" hidden>
+          <h3>Almost got these</h3>
+          <ul id="near-miss-list"></ul>
+        </section>
       </section>
     </main>
     <script type="module" src="/app.js"></script>
