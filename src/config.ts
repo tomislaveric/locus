@@ -44,5 +44,6 @@ export const config = {
   eventFeedDurationSeconds: decimalEnv("EVENT_FEED_DURATION_SECONDS", 4),
   eventFeedMaxItems: integerEnv("EVENT_FEED_MAX_ITEMS", 3),
   hudFrameRate: integerEnv("HUD_FRAME_RATE", 10),
-  showLegacyCoinOverlay: booleanEnv("SHOW_LEGACY_COIN_OVERLAY", false)
+  showLegacyCoinOverlay: booleanEnv("SHOW_LEGACY_COIN_OVERLAY", false),
+  fitSampleGapWarningSeconds: decimalEnv("FIT_SAMPLE_GAP_WARNING_SECONDS", 30)
 };

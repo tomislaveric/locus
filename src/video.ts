@@ -11,6 +11,7 @@ import { runCommand } from "./commands.js";
 import { config } from "./config.js";
 import type { GameEvent, HudTimeline } from "./domain.js";
 import { UserInputError } from "./errors.js";
+import { synchronizationFailure } from "./synchronization.js";
 import { planHighlights } from "./highlightPlanner.js";
 import { renderHudFrames } from "./hud/hudRenderer.js";
 
@@ -43,7 +44,7 @@ export const gpmfStreamIndex = async (file: string, timeoutMs: number): Promise<
   const metadata = await inspectMedia(file, timeoutMs);
   const stream = metadata.streams?.find((candidate) => candidate.codec_type === "data" && candidate.codec_tag_string === "gpmd");
   if (stream?.index === undefined) {
-    throw new UserInputError("MP4 has no GPMF metadata track. Upload the original GoPro MP4, not an exported or trimmed copy.");
+    throw synchronizationFailure("NO_GPMD_TRACK");
   }
   return stream.index;
 };

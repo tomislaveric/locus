@@ -3,11 +3,37 @@ import { GoProTelemetry } from "gopro-telemetry";
 import { runCommand } from "./commands.js";
 import type { VideoTimeSample } from "./domain.js";
 import { UserInputError } from "./errors.js";
+import { SynchronizationError, synchronizationFailure } from "./synchronization.js";
 
 interface GpsSample {
   date?: unknown;
   cts?: unknown;
 }
+
+export const selectGps5Times = (samples: GpsSample[]): VideoTimeSample[] => {
+  const candidates = samples
+    .map((sample) => {
+      const timestampMs = dateToMilliseconds(sample.date);
+      if (timestampMs === undefined || typeof sample.cts !== "number") return undefined;
+      const year = new Date(timestampMs).getUTCFullYear();
+      if (year < 2020 || year > 2100) return undefined;
+      return { ctsMs: sample.cts, videoStartMs: timestampMs - sample.cts };
+    })
+    .filter((sample): sample is { ctsMs: number; videoStartMs: number } => sample !== undefined);
+  if (candidates.length < 20) throw synchronizationFailure("NO_VALID_VIDEO_CLOCK");
+  const counts = new Map<number, number>();
+  for (const candidate of candidates) {
+    const second = Math.round(candidate.videoStartMs / 1000);
+    counts.set(second, (counts.get(second) ?? 0) + 1);
+  }
+  const mode = [...counts.entries()].reduce((best, entry) => (entry[1] > best[1] ? entry : best));
+  const clustered = candidates.filter((candidate) => Math.abs(candidate.videoStartMs / 1000 - mode[0]) <= 2)
+    .sort((left, right) => left.videoStartMs - right.videoStartMs);
+  if (clustered.length < 20) throw synchronizationFailure("NO_VALID_VIDEO_CLOCK");
+  const videoStartMs = clustered[Math.floor(clustered.length / 2)].videoStartMs;
+  return clustered.map((sample) => ({ timestampMs: videoStartMs + sample.ctsMs, videoSeconds: sample.ctsMs / 1000 }))
+    .sort((left, right) => left.timestampMs - right.timestampMs);
+};
 
 const asRecord = (value: unknown): Record<string, unknown> | undefined =>
   typeof value === "object" && value !== null ? (value as Record<string, unknown>) : undefined;
@@ -114,51 +140,17 @@ export const extractGps5Times = async (
       { stream: ["GPS5"], dateStream: true, repeatSticky: true, removeGaps: false }
     );
   } catch (error) {
+    if (error instanceof SynchronizationError) throw error;
     const message = error instanceof Error ? error.message : String(error);
-    throw new UserInputError(`Could not extract required GPS5 GPMF telemetry: ${message}`);
+    console.error(`Could not extract required GPS5 GPMF telemetry: ${message}`);
+    throw synchronizationFailure("UNSUPPORTED_VIDEO_METADATA");
   }
 
   const samples = locateGps5Samples(output);
   if (!samples?.length) {
-    throw new UserInputError("MP4 has no supported GPS5 GPMF stream.");
+    throw synchronizationFailure("UNSUPPORTED_VIDEO_METADATA");
   }
-  const candidates = samples
-    .map((sample) => {
-      const timestampMs = dateToMilliseconds(sample.date);
-      if (timestampMs === undefined || typeof sample.cts !== "number") return undefined;
-      const year = new Date(timestampMs).getUTCFullYear();
-      if (year < 2020 || year > 2100) return undefined;
-      return { ctsMs: sample.cts, videoStartMs: timestampMs - sample.cts };
-    })
-    .filter(
-      (sample): sample is { ctsMs: number; videoStartMs: number } => sample !== undefined
-    );
-  if (candidates.length < 20) {
-    throw new UserInputError("GPS5 stream has insufficient plausible UTC timestamps for synchronization.");
-  }
-
-  const counts = new Map<number, number>();
-  for (const candidate of candidates) {
-    const second = Math.round(candidate.videoStartMs / 1000);
-    counts.set(second, (counts.get(second) ?? 0) + 1);
-  }
-  const mode = [...counts.entries()].reduce((best, entry) => (entry[1] > best[1] ? entry : best));
-  const clustered = candidates
-    .filter((candidate) => Math.abs(candidate.videoStartMs / 1000 - mode[0]) <= 2)
-    .sort((left, right) => left.videoStartMs - right.videoStartMs);
-  if (clustered.length < 20) {
-    throw new UserInputError("GPS5 timestamps do not contain a stable video-start clock.");
-  }
-  const videoStartMs = clustered[Math.floor(clustered.length / 2)].videoStartMs;
-  const times = clustered
-    .map(
-      (sample): VideoTimeSample => ({
-        timestampMs: videoStartMs + sample.ctsMs,
-        videoSeconds: sample.ctsMs / 1000
-      })
-    )
-    .sort((left, right) => left.timestampMs - right.timestampMs);
-  return times;
+  return selectGps5Times(samples);
 };
 
 export const mapToVideoSecond = (

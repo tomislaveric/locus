@@ -56,7 +56,7 @@ async function poll(token, button) {
       setTimeout(() => poll(token, button), 1500);
     } else if (job.state === "awaiting_selection") {
       showPassages(token, job.events);
-      status.textContent = "Select the Coin passages to include.";
+      status.textContent = `${synchronizationMessage(job.synchronization)} Select the Coin passages to include.`;
       button.disabled = false;
     } else if (job.state === "rendering") {
       status.textContent = "Rendering selected clips...";
@@ -67,6 +67,14 @@ async function poll(token, button) {
       button.disabled = false;
     } else {
       throw new Error(job.error);
+    }
+
+    function synchronizationMessage(synchronization) {
+      if (!synchronization) return "";
+      const counts = `${synchronization.availableEvents ?? 0} available, ${synchronization.unavailableEvents ?? 0} outside video.`;
+      return synchronization.warnings?.length
+        ? `Synchronization ${synchronization.confidence}: ${synchronization.warnings.join(" ")} ${counts}`
+        : `Synchronization ${synchronization.confidence}: ${counts}`;
     }
   } catch (error) {
     status.textContent = `Error: ${error.message}`;

@@ -16,6 +16,8 @@ Single-container POC for generating a short GoPro clip with animated Coin Collec
   Coin passages and combine them into one chronological highlight video.
 - [Robust sync](features/robust-sync/README.md) — validate the existing FIT/GPS5
   synchronization against manually verified reference events.
+- [Synchronization diagnostics](features/synchronization-diagnostics/README.md)
+  — make FIT/GPS5 synchronization failures explicit and operationally visible.
 
 ## Verified POC result
 
@@ -111,6 +113,20 @@ HUD behavior can be configured with `HUD_ENABLED`, `MINIMAP_ENABLED`,
 `EVENT_FEED_DURATION_SECONDS`, `EVENT_FEED_MAX_ITEMS`, and `HUD_FRAME_RATE`.
 Set `SHOW_LEGACY_COIN_OVERLAY=true` to restore the previous centered Coin effect
 with its audio behavior; it is disabled by default.
+
+## Synchronization diagnostics
+
+Synchronization uses UTC epoch milliseconds throughout. The job status includes a
+compact `synchronization` summary with confidence, warnings, overlap, and
+available/outside-video passage counts. A valid FIT/GPS5 overlap is required
+before highlights are mapped; passages outside the video are classified as
+`EVENT_OUTSIDE_VIDEO` and are not rendered.
+
+Processing stops with an actionable code rather than guessing timing when it
+finds `NO_GPMD_TRACK`, `UNSUPPORTED_VIDEO_METADATA`, `NO_VALID_VIDEO_CLOCK`,
+`INVALID_FIT_TIMESTAMPS`, or `NO_OVERLAPPING_TIME_RANGE`. Set
+`FIT_SAMPLE_GAP_WARNING_SECONDS` (default `30`) to report long FIT sample gaps
+without reconstructing missing track data.
 
 ## Operations
 

@@ -6,6 +6,8 @@ import { parseFitTrack } from "./fit.js";
 import { detectCoinPassage } from "./geometry.js";
 import { extractGps5Times, mapToVideoSecond, videoStartMilliseconds } from "./gpmf.js";
 import { gpmfStreamIndex, probeDuration } from "./video.js";
+import { assessSynchronization, withEventAvailability, type SynchronizationSummary } from "./synchronization.js";
+import { config } from "./config.js";
 
 export interface SyncReferenceEvent {
   coinId: string;
@@ -40,6 +42,7 @@ export interface SyncFixtureResult {
   durationSeconds: number;
   videoStartMs: number;
   events: SyncEventResult[];
+  synchronization: SynchronizationSummary;
 }
 
 const videoStartToleranceSeconds = 1.5;
@@ -202,7 +205,13 @@ export const validateSyncFixture = async (
       streamIndex,
       timeoutMs
     );
-    const videoStartMs = dependencies.videoStartMilliseconds(samples);
+    const assessment = assessSynchronization(
+      track,
+      samples,
+      durationSeconds,
+      config.fitSampleGapWarningSeconds
+    );
+    const videoStartMs = assessment.videoStartMs;
     const videoStartUtc = new Date(videoStartMs).toISOString();
     const expectedVideoStartMs = fixture.expectedVideoStartUtc === undefined
       ? undefined
@@ -214,6 +223,7 @@ export const validateSyncFixture = async (
       videoStartErrorSeconds > videoStartToleranceSeconds
       ? `Video start differs from expected ${fixture.expectedVideoStartUtc} by ${videoStartErrorSeconds.toFixed(3)} seconds.`
       : undefined;
+    const detectedTimestamps: number[] = [];
     const events = fixture.events.map((reference) => {
       const coin = fixture.coins.find((candidate) => candidate.id === reference.coinId)!;
       const timestampMs = dependencies.detectCoinPassage(track, coin);
@@ -229,6 +239,7 @@ export const validateSyncFixture = async (
           diagnostic: [videoStartDiagnostic, "No outside-to-inside FIT crossing was detected."].filter(Boolean).join(" ")
         };
       }
+      detectedTimestamps.push(timestampMs);
       const actualVideoSecond = dependencies.mapToVideoSecond(timestampMs, samples);
       const absoluteErrorSeconds = Math.abs(actualVideoSecond - reference.expectedVideoSecond);
       const inVideo = actualVideoSecond >= 0 && actualVideoSecond <= durationSeconds;
@@ -244,11 +255,17 @@ export const validateSyncFixture = async (
         fitEventUtc: new Date(timestampMs).toISOString(),
         diagnostic: [
           videoStartDiagnostic,
-          inVideo ? undefined : `Mapped event is outside the ${durationSeconds.toFixed(3)} second video duration.`
+          inVideo ? undefined : "EVENT_OUTSIDE_VIDEO: mapped event is outside the video time range."
         ].filter(Boolean).join(" ") || undefined
       };
     });
-    return { fixture, durationSeconds, videoStartMs, events };
+    return {
+      fixture,
+      durationSeconds,
+      videoStartMs,
+      events,
+      synchronization: withEventAvailability(assessment, detectedTimestamps)
+    };
   } finally {
     await rm(metadataDirectory, { recursive: true, force: true });
   }
