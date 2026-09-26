@@ -1,9 +1,9 @@
 import { access, mkdtemp, readFile, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import type { Coin, TrackPoint, VideoTimeSample } from "./domain.js";
+import type { Collectible, TrackPoint, VideoTimeSample } from "./domain.js";
 import { parseFitTrack } from "./fit.js";
-import { detectCoinPassage } from "./geometry.js";
+import { detectCollectiblePassage } from "./geometry.js";
 import { extractGps5Times, mapToVideoSecond, videoStartMilliseconds } from "./gpmf.js";
 import { gpmfStreamIndex, probeDuration } from "./video.js";
 import { assessSynchronization, withEventAvailability, type SynchronizationSummary } from "./synchronization.js";
@@ -19,7 +19,7 @@ export interface SyncFixture {
   name: string;
   fit: string;
   video: string;
-  coins: Coin[];
+  coins: Collectible[];
   events: SyncReferenceEvent[];
   expectedVideoStartUtc?: string;
 }
@@ -49,7 +49,7 @@ const videoStartToleranceSeconds = 1.5;
 
 export interface SyncValidationDependencies {
   parseFitTrack: (file: string) => Promise<TrackPoint[]>;
-  detectCoinPassage: (points: TrackPoint[], coin: Coin) => number | undefined;
+  detectCoinPassage: (points: TrackPoint[], coin: Collectible) => number | undefined;
   gpmfStreamIndex: (file: string, timeoutMs: number) => Promise<number>;
   extractGps5Times: (
     file: string,
@@ -64,7 +64,7 @@ export interface SyncValidationDependencies {
 
 const defaults: SyncValidationDependencies = {
   parseFitTrack,
-  detectCoinPassage,
+  detectCoinPassage: detectCollectiblePassage,
   gpmfStreamIndex,
   extractGps5Times,
   probeDuration,
@@ -78,7 +78,7 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 const isFiniteNumber = (value: unknown): value is number =>
   typeof value === "number" && Number.isFinite(value);
 
-const parseCoin = (value: unknown, fixturePath: string): Coin => {
+const parseCoin = (value: unknown, fixturePath: string): Collectible => {
   if (!isRecord(value) ||
     typeof value.id !== "string" ||
     !["latitude", "longitude", "radius_m", "value"].every((key) => isFiniteNumber(value[key]))) {
@@ -88,14 +88,16 @@ const parseCoin = (value: unknown, fixturePath: string): Coin => {
   const longitude = value.longitude as number;
   const radius = value.radius_m as number;
   const coinValue = value.value as number;
-  if (!value.id || latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180 || radius < 5) {
-    throw new Error(`${fixturePath}: every coin needs a nonempty ID, valid coordinates, and radius_m of at least 5.`);
+  if (!value.id || latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180 || radius <= 0 || coinValue < 0) {
+    throw new Error(`${fixturePath}: every coin needs a nonempty ID, valid coordinates, positive radius_m, and nonnegative value.`);
   }
   return {
     id: value.id as string,
+    name: value.id as string,
+    type: "coin",
     latitude,
     longitude,
-    radius_m: radius,
+    radiusMeters: radius,
     value: coinValue
   };
 };

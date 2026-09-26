@@ -3,7 +3,7 @@ import { detectCoinPassage, detectFirstCoinPassages } from "./geometry.js";
 
 describe("detectCoinPassage", () => {
   const longitudeAtEquator = (meters: number): number => meters / 111_195;
-  const coin = { id: "coin", latitude: 0, longitude: 0, radius_m: 10, value: 100 };
+  const coin = { id: "coin", name: "Coin", type: "coin" as const, latitude: 0, longitude: 0, radiusMeters: 10, value: 100 };
 
   it("reports a crossing exactly on a FIT sample", () => {
     expect(detectCoinPassage(
@@ -59,7 +59,7 @@ describe("detectCoinPassage", () => {
         { latitude: 48, longitude: 11.0005, timestampMs: 1_000 },
         { latitude: 48, longitude: 11.0001, timestampMs: 2_000 }
       ],
-      { id: "coin", latitude: 48, longitude: 11.0001, radius_m: 20, value: 100 }
+      { id: "coin", name: "Coin", type: "coin", latitude: 48, longitude: 11.0001, radiusMeters: 20, value: 100 }
     );
     expect(passage).toBeGreaterThan(1_000);
     expect(passage).toBeLessThan(2_000);
@@ -76,12 +76,12 @@ describe("detectCoinPassage", () => {
         { latitude: 48, longitude: 11.0015, timestampMs: 6_000 }
       ],
       [
-        { id: "second", latitude: 48, longitude: 11.0011, radius_m: 20, value: 100 },
-        { id: "first", latitude: 48, longitude: 11.0001, radius_m: 20, value: 200 }
+        { id: "second", name: "Second", type: "coin", latitude: 48, longitude: 11.0011, radiusMeters: 20, value: 100 },
+        { id: "first", name: "First", type: "coin", latitude: 48, longitude: 11.0001, radiusMeters: 20, value: 200 }
       ]
     );
 
-    expect(passages.map((passage) => passage.coin.id)).toEqual(["first", "second"]);
+    expect(passages.map((passage) => passage.collectible.id)).toEqual(["first", "second"]);
     expect(passages[0].timestampMs).toBeLessThan(passages[1].timestampMs);
   });
 
@@ -92,7 +92,7 @@ describe("detectCoinPassage", () => {
         { latitude: 48, longitude: 11.0005, timestampMs: 2_000 },
         { latitude: 48, longitude: 11.0001, timestampMs: 3_000 }
       ],
-      { id: "coin", latitude: 48, longitude: 11.0001, radius_m: 20, value: 100 }
+      { id: "coin", name: "Coin", type: "coin", latitude: 48, longitude: 11.0001, radiusMeters: 20, value: 100 }
     );
 
     expect(passage).toBeGreaterThan(2_000);

@@ -1,38 +1,77 @@
 import { readFile } from "node:fs/promises";
-import type { Coin } from "./domain.js";
+import type { Collectible, CollectibleRarity, CollectibleType } from "./domain.js";
 import { UserInputError } from "./errors.js";
 
-export const readCoins = async (file: string): Promise<Coin[]> => {
+export const readCollectibles = async (file: string): Promise<Collectible[]> => {
   let parsed: unknown;
   try {
     parsed = JSON.parse(await readFile(file, "utf8"));
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    throw new UserInputError(`Coin configuration could not be read: ${message}`);
+    throw new UserInputError(`Collectible configuration could not be read: ${message}`);
   }
   if (!Array.isArray(parsed) || parsed.length === 0) {
-    throw new UserInputError("Coin configuration must be a nonempty list of coins.");
+    throw new UserInputError("Collectible configuration must be a nonempty list.");
   }
-  if (!parsed.every(isCoin)) {
-    throw new UserInputError("Every coin must contain id, latitude, longitude, radius_m, and value.");
+  const collectibles = parsed.map(normalizeCollectible);
+  const ids = new Set(collectibles.map((collectible) => collectible.id));
+  if (ids.size !== collectibles.length) {
+    throw new UserInputError("Collectible configuration contains duplicate ids.");
   }
-  if (parsed.some((coin) => coin.radius_m < 5)) {
-    throw new UserInputError("Every coin radius_m must be at least 5.");
-  }
-  const ids = new Set(parsed.map((coin) => coin.id));
-  if (ids.size !== parsed.length) {
-    throw new UserInputError("Coin configuration contains duplicate ids.");
-  }
-  return parsed;
+  return collectibles;
 };
 
-const isCoin = (value: unknown): value is Coin => {
-  if (typeof value !== "object" || value === null) return false;
+/** @deprecated Use readCollectibles. This preserves the COINS_FILE compatibility boundary. */
+export const readCoins = readCollectibles;
+
+const types: readonly CollectibleType[] = ["coin", "landmark"];
+const rarities: readonly CollectibleRarity[] = ["common", "rare", "epic"];
+const isFiniteNumber = (value: unknown): value is number => typeof value === "number" && Number.isFinite(value);
+
+const normalizeCollectible = (value: unknown, index: number): Collectible => {
+  const label = `Collectible at index ${index}`;
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    throw new UserInputError(`${label} must be an object.`);
+  }
   const candidate = value as Record<string, unknown>;
-  return (
-    typeof candidate.id === "string" &&
-    ["latitude", "longitude", "radius_m", "value"].every(
-      (key) => typeof candidate[key] === "number" && Number.isFinite(candidate[key])
-    )
-  );
+  if (typeof candidate.id !== "string" || candidate.id.trim() === "") {
+    throw new UserInputError(`${label} must have a nonblank id.`);
+  }
+  if (!isFiniteNumber(candidate.latitude) || candidate.latitude < -90 || candidate.latitude > 90 ||
+    !isFiniteNumber(candidate.longitude) || candidate.longitude < -180 || candidate.longitude > 180) {
+    throw new UserInputError(`${label} must have valid finite latitude and longitude.`);
+  }
+  if (!isFiniteNumber(candidate.radius_m) || candidate.radius_m <= 0) {
+    throw new UserInputError(`${label} radius_m must be a positive finite number.`);
+  }
+  if (!isFiniteNumber(candidate.value) || candidate.value < 0) {
+    throw new UserInputError(`${label} value must be a nonnegative finite number.`);
+  }
+  const name = candidate.name ?? candidate.id;
+  if (typeof name !== "string" || name.trim() === "") {
+    throw new UserInputError(`${label} name must be a nonblank string.`);
+  }
+  const type = candidate.type ?? "coin";
+  if (typeof type !== "string" || !types.includes(type as CollectibleType)) {
+    throw new UserInputError(`${label} type must be one of: ${types.join(", ")}.`);
+  }
+  if (candidate.rarity !== undefined &&
+    (typeof candidate.rarity !== "string" || !rarities.includes(candidate.rarity as CollectibleRarity))) {
+    throw new UserInputError(`${label} rarity must be one of: ${rarities.join(", ")}.`);
+  }
+  if (candidate.description !== undefined &&
+    (typeof candidate.description !== "string" || candidate.description.trim() === "")) {
+    throw new UserInputError(`${label} description must be a nonblank string when provided.`);
+  }
+  return {
+    id: candidate.id,
+    name,
+    type: type as CollectibleType,
+    latitude: candidate.latitude,
+    longitude: candidate.longitude,
+    radiusMeters: candidate.radius_m,
+    value: candidate.value,
+    ...(candidate.rarity === undefined ? {} : { rarity: candidate.rarity as CollectibleRarity }),
+    ...(candidate.description === undefined ? {} : { description: candidate.description })
+  };
 };

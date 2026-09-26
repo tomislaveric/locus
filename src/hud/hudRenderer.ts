@@ -89,11 +89,11 @@ const drawMap = (
   }
   if (settings.nextItemEnabled && state.next) {
     text(canvas, "NEXT", 10, mapSize + 17, 2, [160, 190, 215, 255]);
-    text(canvas, `${Math.round(state.next.distanceMeters)}M +${state.next.event.value}`, 10, mapSize + 35, 3, [255, 255, 255, 255]);
+    text(canvas, `${state.next.event.collectible.name} ${Math.round(state.next.distanceMeters)}M +${state.next.event.value}`, 10, mapSize + 35, 2, [255, 255, 255, 255]);
   }
   if (state.feedback) {
     const alpha = Math.round(255 * (1 - (time - state.feedback.videoSecond)));
-    text(canvas, `+${state.feedback.value}`, width - 72, 8, 3, [255, 220, 80, Math.max(0, alpha)]);
+    text(canvas, `${state.feedback.collectible.name} +${state.feedback.value}`, 8, 8, 2, [255, 220, 80, Math.max(0, alpha)]);
   }
   return canvas;
 };
@@ -106,7 +106,8 @@ const drawFeed = (width: number, height: number, timeline: HudTimeline, time: nu
     const alpha = Math.round(220 * (1 - age / settings.eventFeedDurationSeconds));
     const y = 8 + index * 30;
     fillRect(canvas, 0, y, width, 25, [10, 18, 30, Math.max(0, alpha)]);
-    text(canvas, `COIN +${event.value}`, 8, y + 6, 2, [255, 230, 120, Math.max(0, alpha)]);
+    const rarity = event.collectible.rarity ? ` ${event.collectible.rarity}` : "";
+    text(canvas, `${event.collectible.name}${rarity} +${event.value}`, 8, y + 6, 2, [255, 230, 120, Math.max(0, alpha)]);
   }
   return canvas;
 };

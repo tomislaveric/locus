@@ -11,10 +11,10 @@ describe("HUD timeline", () => {
         { latitude: 48, longitude: 11, timestampMs: 1_000 },
         { latitude: 48.001, longitude: 11, timestampMs: 2_000 }
       ],
-      [{ id: "coin", latitude: 48.001, longitude: 11, radius_m: 5, value: 100 }],
+      [{ id: "coin", name: "Coin", type: "coin", latitude: 48.001, longitude: 11, radiusMeters: 5, value: 100 }],
       [
-        { id: "later", type: "coin", value: 200, latitude: 48.001, longitude: 11, activityTimestamp: 1_900.25, videoSecond: 9 },
-        { id: "first", type: "coin", value: 100, latitude: 48, longitude: 11, activityTimestamp: 1_100.5, videoSecond: 1 }
+        { id: "later", sourceId: "later", type: "collectible_collected", collectible: { name: "Later", type: "landmark" }, value: 200, latitude: 48.001, longitude: 11, activityTimestamp: 1_900.25, videoSecond: 9 },
+        { id: "first", sourceId: "first", type: "collectible_collected", collectible: { name: "First", type: "coin", rarity: "rare" }, value: 100, latitude: 48, longitude: 11, activityTimestamp: 1_100.5, videoSecond: 1 }
       ],
       [
         { timestampMs: 1_000, videoSeconds: 0 },
@@ -24,8 +24,8 @@ describe("HUD timeline", () => {
     );
 
     expect(timeline.events).toEqual([
-      { id: "first", type: "coin", value: 100, latitude: 48, longitude: 11, activityTimestamp: 1_100.5, videoSecond: 1 },
-      { id: "later", type: "coin", value: 200, latitude: 48.001, longitude: 11, activityTimestamp: 1_900.25, videoSecond: 9 }
+      { id: "first", sourceId: "first", type: "collectible_collected", collectible: { name: "First", type: "coin", rarity: "rare" }, value: 100, latitude: 48, longitude: 11, activityTimestamp: 1_100.5, videoSecond: 1 },
+      { id: "later", sourceId: "later", type: "collectible_collected", collectible: { name: "Later", type: "landmark" }, value: 200, latitude: 48.001, longitude: 11, activityTimestamp: 1_900.25, videoSecond: 9 }
     ]);
   });
 
@@ -40,7 +40,7 @@ describe("HUD timeline", () => {
           { latitude: 48, longitude: 11, videoSecond: 0 },
           { latitude: 48.001, longitude: 11, videoSecond: 1 }
         ],
-        coins: [],
+        collectibles: [],
         events: [{ id: "coin", type: "coin", value: 100, latitude: 48, longitude: 11, videoSecond: 1 }]
       })
     );

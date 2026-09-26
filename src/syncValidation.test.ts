@@ -6,7 +6,7 @@ const fixture: SyncFixture = {
   name: "test-ride",
   fit: "track.fit",
   video: "ride.mp4",
-  coins: [{ id: "coin-a", latitude: 0, longitude: 0, radius_m: 5, value: 100 }],
+  coins: [{ id: "coin-a", name: "Coin A", type: "coin", latitude: 0, longitude: 0, radiusMeters: 5, value: 100 }],
   events: [{ coinId: "coin-a", expectedVideoSecond: 10.5 }]
 };
 

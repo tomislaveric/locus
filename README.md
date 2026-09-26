@@ -27,6 +27,9 @@ Single-container POC for turning a FIT ride into collectible game events and an 
   synchronization against manually verified reference events.
 - [Synchronization diagnostics](features/synchronization-diagnostics/README.md)
   — make FIT/GPS5 synchronization failures explicit and operationally visible.
+- [World Collectible Domain Model V1](features/world-collectible-domain-model-v1/README.md)
+  — normalize legacy Coin configuration into reusable world Collectibles with
+  canonical event relationships and shared replay/HUD presentation metadata.
 
 ## Verified POC result
 
@@ -87,22 +90,29 @@ docker run --rm -p 3000:3000 \
 - **FIT:** Must contain at least two time-stamped GPS trackpoints.
 - **MP4 (optional):** To generate highlights, use an original GoPro chapter copied directly from the camera. QuickTime trimming, re-encoding, or export removes the required `gpmd` GPMF metadata track.
 - **Telemetry:** This POC supports **GPS5** only. The correct GoPro chapter must cover the FIT coin-passage time.
-- **Coins:** `coins.json` contains a nonempty list of Coins with unique `id`,
-  `latitude`, `longitude`, `radius_m`, and `value` fields. The minimum `radius_m`
-  is **5 m**. The file is read at the start of every job, so coordinate changes do
-  not require rebuilding the image.
+- **Collectibles:** `coins.json` remains the default compatibility filename and
+  contains a nonempty list of unique Collectibles. Legacy entries with `id`,
+  `latitude`, `longitude`, `radius_m`, and `value` normalize to a `coin` named
+  after its ID. Rich entries may additionally set a nonblank `name`, `type`
+  (`coin` or `landmark`), optional `rarity` (`common`, `rare`, or `epic`), and
+  optional nonblank `description`. Coordinates must be finite and in range,
+  `radius_m` must be positive, and `value` must be finite and nonnegative. The
+  file is read at the start of every job, so coordinate changes do not require
+  rebuilding the image.
 
 The app derives the event in three steps:
 
 ```text
-coin coordinates → FIT track crossing time → GPS5-clock-aligned video second
+Collectible coordinates → FIT track crossing time → GPS5-clock-aligned video second
 ```
 
-Each detected Coin is represented downstream as a typed `GameEvent` containing
-its Coin ID, type, value, coordinates, unrounded FIT entry-crossing
-`activityTimestamp`, and millisecond-rounded `videoSecond`. The app lists the
-first detected passage for each configured Coin. Select the passages to include,
-then download one chronological highlight video. Each event uses a
+Each detected Collectible is represented downstream as a
+`collectible_collected` `GameEvent` containing canonical `sourceId`, compact
+event-time name/type/optional-rarity presentation metadata, value, coordinates,
+unrounded FIT entry-crossing `activityTimestamp`, and millisecond-rounded
+`videoSecond`. Its `id` remains a temporary compatibility alias for `sourceId`.
+The app lists the first detected passage for each configured Collectible. Select
+the passages to include, then download one chronological highlight video. Each event uses a
 three-second-before/-after window; overlapping or adjacent windows are merged.
 Before rendering, the pure `planHighlights` API creates this deterministic
 manifest from selected events: it ignores out-of-video events, deduplicates IDs,
@@ -159,5 +169,7 @@ resources, at most 20 Coins and 120 seconds of merged output can be selected; se
 - `POST /api/jobs` multipart fields: required `fit`, optional `video`
 - `GET /api/jobs/:token`
 - `GET /api/jobs/:token/activity`
-- `POST /api/jobs/:token/render` JSON body: `{ "coinIds": ["coin-a", "coin-b"] }`
+- `POST /api/jobs/:token/render` JSON body:
+  `{ "sourceIds": ["collectible-a", "collectible-b"] }`. The legacy
+  `{ "coinIds": [...] }` field remains accepted temporarily as an alias.
 - `GET /api/jobs/:token/download`

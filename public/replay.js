@@ -21,13 +21,13 @@ const routeBounds = (route) => ({
   maxLongitude: Math.max(...route.map((point) => point.longitude))
 });
 
-const nearRoute = (coin, bounds) => {
+const nearRoute = (collectible, bounds) => {
   const latitudePadding = Math.max((bounds.maxLatitude - bounds.minLatitude) * 0.2, 0.001);
   const longitudePadding = Math.max((bounds.maxLongitude - bounds.minLongitude) * 0.2, 0.001);
-  return coin.latitude >= bounds.minLatitude - latitudePadding &&
-    coin.latitude <= bounds.maxLatitude + latitudePadding &&
-    coin.longitude >= bounds.minLongitude - longitudePadding &&
-    coin.longitude <= bounds.maxLongitude + longitudePadding;
+  return collectible.latitude >= bounds.minLatitude - latitudePadding &&
+    collectible.latitude <= bounds.maxLatitude + latitudePadding &&
+    collectible.longitude >= bounds.minLongitude - longitudePadding &&
+    collectible.longitude <= bounds.maxLongitude + longitudePadding;
 };
 
 const project = (point, bounds, canvas) => {
@@ -56,7 +56,7 @@ export const mountReplay = ({ canvas, activity, activityResult, feed }) => {
     const progress = Math.min(1, elapsed / duration);
     const timestamp = activity.startedAt + (activity.endedAt - activity.startedAt) * progress;
     const collected = activityResult.events.filter((event) => event.activityTimestamp <= timestamp);
-    const collectedIds = new Set(collected.map((event) => event.id));
+    const collectedSourceIds = new Set(collected.map((event) => event.sourceId));
     context.clearRect(0, 0, canvas.width, canvas.height);
     context.strokeStyle = "#43506b";
     context.lineWidth = 3;
@@ -75,16 +75,16 @@ export const mountReplay = ({ canvas, activity, activityResult, feed }) => {
       else context.lineTo(position.x, position.y);
     });
     context.stroke();
-    for (const coin of activityResult.collectibles.filter((coin) => nearRoute(coin, bounds))) {
-      const position = project(coin, bounds, canvas);
-      context.fillStyle = collectedIds.has(coin.id) ? "#7ee787" : "#ffd83d";
+    for (const collectible of activityResult.collectibles.filter((collectible) => nearRoute(collectible, bounds))) {
+      const position = project(collectible, bounds, canvas);
+      context.fillStyle = collectedSourceIds.has(collectible.id) ? "#7ee787" : "#ffd83d";
       context.beginPath();
       context.arc(position.x, position.y, 6, 0, Math.PI * 2);
       context.fill();
     }
-    for (const event of activityResult.events.filter((event) => !activityResult.collectibles.some((coin) => coin.id === event.id))) {
+    for (const event of activityResult.events.filter((event) => !activityResult.collectibles.some((collectible) => collectible.id === event.sourceId))) {
       const position = project(event, bounds, canvas);
-      context.fillStyle = collectedIds.has(event.id) ? "#7ee787" : "#ffd83d";
+      context.fillStyle = collectedSourceIds.has(event.sourceId) ? "#7ee787" : "#ffd83d";
       context.fillRect(position.x - 5, position.y - 5, 10, 10);
     }
     const rider = project(interpolatePosition(route, timestamp), bounds, canvas);
@@ -98,7 +98,8 @@ export const mountReplay = ({ canvas, activity, activityResult, feed }) => {
     context.fillText(`Score ${score}/${activityResult.totalPoints}`, 12, 20);
     feed.replaceChildren(...collected.slice().reverse().map((event) => {
       const item = document.createElement("li");
-      item.textContent = `${event.id}: +${event.value} XP`;
+      const rarity = event.collectible.rarity ? ` (${event.collectible.rarity})` : "";
+      item.textContent = `${event.collectible.name}${rarity}: +${event.value} XP`;
       return item;
     }));
   };

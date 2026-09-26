@@ -121,9 +121,9 @@ export const buildClipIntervals = (events: MappedGameEvent[], duration: number):
   const eventsById = new Map<string, MappedGameEvent>();
   for (const event of [...events].sort((left, right) => {
     if (left.videoSecond !== right.videoSecond) return left.videoSecond - right.videoSecond;
-    return left.id < right.id ? -1 : left.id > right.id ? 1 : 0;
+    return left.sourceId < right.sourceId ? -1 : left.sourceId > right.sourceId ? 1 : 0;
   })) {
-    if (!eventsById.has(event.id)) eventsById.set(event.id, event);
+    if (!eventsById.has(event.sourceId)) eventsById.set(event.sourceId, event);
   }
   return planHighlights(events, {
     preRollSeconds: HIGHLIGHT_PRE_ROLL_SECONDS,
