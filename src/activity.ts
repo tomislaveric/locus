@@ -21,7 +21,8 @@ export const deriveActivity = (id: string, route: TrackPoint[]): Activity => {
 };
 
 export const deriveActivityResult = (activity: Activity, collectibles: Collectible[]): ActivityResult => {
-  const events: GameEvent[] = detectFirstCollectiblePassages(activity.route, collectibles).map((passage) => ({
+  const passages = detectFirstCollectiblePassages(activity.route, collectibles);
+  const events: GameEvent[] = passages.map((passage) => ({
     id: passage.collectible.id,
     sourceId: passage.collectible.id,
     type: "collectible_collected",

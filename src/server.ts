@@ -17,6 +17,7 @@ import {
 } from "./synchronization.js";
 import { createHudTimeline, loadHudTimeline, saveHudTimeline } from "./hud/timeline.js";
 import { buildClipIntervals, gpmfStreamIndex, probeDuration, renderSelectedClips } from "./video.js";
+import { getRelevantCollectibles } from "./worldQuery.js";
 
 interface UploadRequest extends Request {
   job?: Job;
@@ -101,9 +102,14 @@ const processDetection = async (directory: string, job: Job, hasVideo: boolean):
     const fit = path.join(directory, "track.fit");
     const track = await parseFitTrack(fit);
     const activity = deriveActivity(job.token, track);
-    const activityResult = deriveActivityResult(activity, collectibles);
+    const relevantCollectibles = getRelevantCollectibles(collectibles, track, config.worldQueryPaddingMeters);
+    const activityResult = deriveActivityResult(activity, relevantCollectibles);
     job.activity = activity;
     job.activityResult = activityResult;
+    job.world = {
+      totalCollectibles: collectibles.length,
+      relevantCollectibles: relevantCollectibles.length
+    };
     job.resultMode = hasVideo ? "video" : "activity";
 
     if (!hasVideo) {
@@ -145,7 +151,7 @@ const processDetection = async (directory: string, job: Job, hasVideo: boolean):
     const allEvents = mappedEvents.sort((left, right) => left.videoSecond - right.videoSecond);
     await saveHudTimeline(
       path.join(directory, "hud-timeline.json"),
-      createHudTimeline(track, collectibles, allEvents, samples, sourceDuration)
+      createHudTimeline(track, activityResult.collectibles, allEvents, samples, sourceDuration)
     );
     job.state = "awaiting_selection";
     job.sourceDuration = sourceDuration;
@@ -295,6 +301,7 @@ app.get("/api/jobs/:token", async (request, response) => {
       events: job.mappedEvents,
       render: job.render,
       synchronization: job.synchronization,
+      world: job.world,
       downloadUrl: job.state === "succeeded" && job.outputFile ? `/api/jobs/${job.token}/download` : undefined
     });
   } catch (error) {

@@ -30,6 +30,9 @@ Single-container POC for turning a FIT ride into collectible game events and an 
 - [World Collectible Domain Model V1](features/world-collectible-domain-model-v1/README.md)
   — normalize legacy Coin configuration into reusable world Collectibles with
   canonical event relationships and shared replay/HUD presentation metadata.
+- [Route-Relevant World Query V1](features/route-relevant-world-query-v1/README.md)
+  — cheaply limit the configured world to the padded geographic region around an
+  activity route before existing precise collectible detection and presentation.
 
 ## Verified POC result
 
@@ -56,6 +59,15 @@ Open `http://localhost:3000`. The default limits allow uploads up to 6 GiB and
 processing for up to 15 minutes so that original multi-gigabyte GoPro chapters can
 be processed. Override these values with `MAX_UPLOAD_BYTES` and
 `PROCESS_TIMEOUT_MS` when necessary.
+
+`WORLD_QUERY_PADDING_METERS` (default `500`) expands the FIT route's geographic
+bounds before configured Collectibles are selected. The server uses that compact
+subset for precise passage detection, activity replay, and the optional HUD
+timeline; precise geodesic crossing behavior is unchanged. Job status includes
+only the `world.totalCollectibles` and `world.relevantCollectibles` counts, not
+route or Collectible coordinates. A Collectible's configured collection radius
+is included in its coarse query extent so the boundary cannot exclude a passage
+that precise detection would otherwise find.
 
 ## Synchronization validation
 

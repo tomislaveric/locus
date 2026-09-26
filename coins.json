@@ -1,44 +1,32 @@
 [
   {
-    "id": "reference-coin",
-    "latitude": 49.01435,
-    "longitude": 8.39826,
-    "radius_m": 5,
-    "value": 100
+    "id": "test-a-near-route",
+    "name": "Test A - near route",
+    "type": "coin",
+    "latitude": 49.037319123170775,
+    "longitude": 8.390135488290847,
+    "radius_m": 15,
+    "value": 10,
+    "description": "Placed about 8 m from raw-data/straede.fit."
   },
   {
-    "id": "reference-coin6",
-    "latitude": 49.01422,
-    "longitude": 8.3984,
-    "radius_m": 5,
-    "value": 100
+    "id": "test-b-parallel-route",
+    "name": "Test B - parallel route",
+    "type": "coin",
+    "latitude": 49.03611449887123,
+    "longitude": 8.389488859425505,
+    "radius_m": 15,
+    "value": 20,
+    "description": "Placed about 149 m from raw-data/straede.fit."
   },
   {
-    "id": "reference-coin2",
-    "latitude": 49.01382,
-    "longitude": 8.40753,
-    "radius_m": 5,
-    "value": 100
-  },
-  {
-    "id": "reference-coin3",
-    "latitude": 49.01383,
-    "longitude": 8.40738,
-    "radius_m": 5,
-    "value": 100
-  },
-  {
-    "id": "reference-coin4",
-    "latitude": 49.01373,
-    "longitude": 8.408,
-    "radius_m": 5,
-    "value": 100
-  },
-  {
-    "id": "reference-coin5",
-    "latitude": 49.01377,
-    "longitude": 8.40814,
-    "radius_m": 5,
-    "value": 100
+    "id": "test-c-distant-route",
+    "name": "Test C - distant route",
+    "type": "coin",
+    "latitude": 49.027206953575266,
+    "longitude": 8.384708420589588,
+    "radius_m": 15,
+    "value": 30,
+    "description": "Placed about 775 m from raw-data/straede.fit."
   }
 ]

@@ -78,6 +78,11 @@ export interface HudTimeline {
   events: MappedGameEvent[];
 }
 
+export interface WorldQueryDiagnostics {
+  totalCollectibles: number;
+  relevantCollectibles: number;
+}
+
 export type JobState = "processing" | "awaiting_selection" | "rendering" | "succeeded" | "failed";
 
 export interface Job {
@@ -94,4 +99,5 @@ export interface Job {
   outputFile?: string;
   render?: import("./video.js").RenderSummary;
   synchronization?: import("./synchronization.js").SynchronizationSummary;
+  world?: WorldQueryDiagnostics;
 }
