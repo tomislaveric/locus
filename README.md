@@ -12,6 +12,9 @@ Single-container POC for generating a short GoPro clip with animated Coin Collec
   game-event timing into a deterministic render manifest before media rendering.
 - [HUD](features/hud/README.md) — replace physical-scene Coin visuals with a
   compact, camera-independent route and event overlay.
+- [Job lifecycle operational robustness](features/job-lifecycle-operational-robustness/README.md)
+  — make local processing jobs lifecycle-safe, isolated, recoverable, and
+  retention-aware.
 - [Multi Clip creation](features/multi-clip-creation/README.md) — select detected
   Coin passages and combine them into one chronological highlight video.
 - [Renderer resilience output validation](features/renderer-resilience-output-validation/README.md)
