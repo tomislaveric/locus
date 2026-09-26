@@ -51,4 +51,5 @@ export interface Job {
   sourceDuration?: number;
   events?: GameEvent[];
   outputFile?: string;
+  synchronization?: import("./synchronization.js").SynchronizationSummary;
 }

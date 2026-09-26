@@ -11,7 +11,10 @@ const fixture: SyncFixture = {
 };
 
 const dependencies = (actualVideoSecond: number): SyncValidationDependencies => ({
-  parseFitTrack: async () => [{ latitude: 0, longitude: 0, timestampMs: 1_010_500 }],
+  parseFitTrack: async () => [
+    { latitude: 0, longitude: 0, timestampMs: 1_000_000 },
+    { latitude: 0, longitude: 0, timestampMs: 1_010_500 }
+  ],
   detectCoinPassage: () => 1_010_500,
   gpmfStreamIndex: async () => 2,
   extractGps5Times: async () => [{ timestampMs: 1_000_000, videoSeconds: 0 }],
@@ -42,7 +45,7 @@ describe("validateSyncFixture", () => {
     const result = await validateSyncFixture(fixture, "/media", 1_000, dependencies(21));
     expect(result.events[0]).toMatchObject({
       passed: false,
-      diagnostic: "Mapped event is outside the 20.000 second video duration."
+      diagnostic: "EVENT_OUTSIDE_VIDEO: mapped event is outside the video time range."
     });
   });
 

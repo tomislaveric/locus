@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import FitParser from "fit-file-parser";
 import type { TrackPoint } from "./domain.js";
 import { UserInputError } from "./errors.js";
+import { synchronizationFailure } from "./synchronization.js";
 
 interface FitRecord {
   position_lat?: number;
@@ -13,18 +14,8 @@ interface FitData {
   records?: FitRecord[];
 }
 
-export const parseFitTrack = async (file: string): Promise<TrackPoint[]> => {
-  const source = await readFile(file);
-  const parser = new FitParser({ force: true, speedUnit: "m/s", lengthUnit: "m" });
-  let data: FitData;
-  try {
-    data = await parser.parseAsync(source);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    throw new UserInputError(`FIT parsing failed: ${message}`);
-  }
-
-  const points = (data.records ?? [])
+export const usableFitTrackPoints = (records: FitRecord[]): TrackPoint[] => {
+  const points = records
     .map((record): TrackPoint | undefined => {
       if (
         typeof record.position_lat !== "number" ||
@@ -44,8 +35,20 @@ export const parseFitTrack = async (file: string): Promise<TrackPoint[]> => {
     .filter((point): point is TrackPoint => point !== undefined)
     .sort((left, right) => left.timestampMs - right.timestampMs);
 
-  if (points.length < 2) {
-    throw new UserInputError("FIT file has fewer than two GPS trackpoints.");
-  }
+  if (points.length < 2) throw synchronizationFailure("INVALID_FIT_TIMESTAMPS");
   return points;
+};
+
+export const parseFitTrack = async (file: string): Promise<TrackPoint[]> => {
+  const source = await readFile(file);
+  const parser = new FitParser({ force: true, speedUnit: "m/s", lengthUnit: "m" });
+  let data: FitData;
+  try {
+    data = await parser.parseAsync(source);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new UserInputError(`FIT parsing failed: ${message}`);
+  }
+
+  return usableFitTrackPoints(data.records ?? []);
 };

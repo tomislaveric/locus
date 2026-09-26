@@ -45,7 +45,9 @@ const main = async (): Promise<void> => {
     console.log(`Ride: ${fixture.name}`);
     let events: SyncEventResult[];
     try {
-      events = (await validateSyncFixture(fixture, mediaDirectory, timeoutMs)).events;
+      const result = await validateSyncFixture(fixture, mediaDirectory, timeoutMs);
+      events = result.events;
+      if (debug) console.log(`  synchronization=${JSON.stringify(result.synchronization)}`);
     } catch (error) {
       events = fixtureFailureResults(fixture, error);
     }

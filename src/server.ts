@@ -10,6 +10,11 @@ import { UserInputError } from "./errors.js";
 import { parseFitTrack } from "./fit.js";
 import { detectFirstCoinPassages } from "./geometry.js";
 import { extractGps5Times, mapToVideoSecond } from "./gpmf.js";
+import {
+  assessSynchronization,
+  withEventAvailability,
+  SynchronizationError
+} from "./synchronization.js";
 import { createHudTimeline, loadHudTimeline, saveHudTimeline } from "./hud/timeline.js";
 import { buildClipIntervals, gpmfStreamIndex, probeDuration, renderSelectedClips } from "./video.js";
 
@@ -102,6 +107,12 @@ const processDetection = async (directory: string, job: Job): Promise<void> => {
       streamIndex,
       config.processTimeoutMs
     );
+    const assessment = assessSynchronization(
+      track,
+      samples,
+      sourceDuration,
+      config.fitSampleGapWarningSeconds
+    );
     const events: GameEvent[] = [];
     for (const passage of passages) {
       const videoSecond = mapToVideoSecond(passage.timestampMs, samples);
@@ -117,6 +128,7 @@ const processDetection = async (directory: string, job: Job): Promise<void> => {
       });
     }
     if (events.length === 0) {
+      job.synchronization = withEventAvailability(assessment, passages.map((passage) => passage.timestampMs));
       throw new UserInputError("No configured coin passage maps to a time within the video.");
     }
     const allEvents = events.sort((left, right) => left.videoSecond - right.videoSecond);
@@ -127,9 +139,13 @@ const processDetection = async (directory: string, job: Job): Promise<void> => {
     job.state = "awaiting_selection";
     job.sourceDuration = sourceDuration;
     job.events = allEvents;
+    job.synchronization = withEventAvailability(assessment, passages.map((passage) => passage.timestampMs));
   } catch (error) {
     job.state = "failed";
     job.error = error instanceof Error ? error.message : "Unexpected processing failure.";
+    if (error instanceof SynchronizationError) {
+      job.synchronization = error.summary;
+    }
     console.error(`Job ${job.token} failed:`, error);
   } finally {
     try {
@@ -261,6 +277,7 @@ app.get("/api/jobs/:token", async (request, response) => {
       state: job.state,
       error: job.error,
       events: job.events,
+      synchronization: job.synchronization,
       downloadUrl: job.state === "succeeded" ? `/api/jobs/${job.token}/download` : undefined
     });
   } catch (error) {
