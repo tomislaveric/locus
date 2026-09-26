@@ -1,5 +1,7 @@
 const replayDurationSeconds = (duration) => Math.min(30, Math.max(12, duration / 120));
 
+const replayCollectibles = (activityResult) => activityResult.collectibles;
+
 const interpolatePosition = (route, timestampMs) => {
   const afterIndex = route.findIndex((point) => point.timestampMs >= timestampMs);
   if (afterIndex <= 0) return route[0];
@@ -20,15 +22,6 @@ const routeBounds = (route) => ({
   minLongitude: Math.min(...route.map((point) => point.longitude)),
   maxLongitude: Math.max(...route.map((point) => point.longitude))
 });
-
-const nearRoute = (collectible, bounds) => {
-  const latitudePadding = Math.max((bounds.maxLatitude - bounds.minLatitude) * 0.2, 0.001);
-  const longitudePadding = Math.max((bounds.maxLongitude - bounds.minLongitude) * 0.2, 0.001);
-  return collectible.latitude >= bounds.minLatitude - latitudePadding &&
-    collectible.latitude <= bounds.maxLatitude + latitudePadding &&
-    collectible.longitude >= bounds.minLongitude - longitudePadding &&
-    collectible.longitude <= bounds.maxLongitude + longitudePadding;
-};
 
 const project = (point, bounds, canvas) => {
   const padding = 24;
@@ -75,7 +68,7 @@ export const mountReplay = ({ canvas, activity, activityResult, feed }) => {
       else context.lineTo(position.x, position.y);
     });
     context.stroke();
-    for (const collectible of activityResult.collectibles.filter((collectible) => nearRoute(collectible, bounds))) {
+    for (const collectible of replayCollectibles(activityResult)) {
       const position = project(collectible, bounds, canvas);
       context.fillStyle = collectedSourceIds.has(collectible.id) ? "#7ee787" : "#ffd83d";
       context.beginPath();
@@ -124,4 +117,4 @@ export const mountReplay = ({ canvas, activity, activityResult, feed }) => {
   return { play: () => { if (frame === undefined && elapsed < duration) frame = requestAnimationFrame(play); }, pause, restart };
 };
 
-export { interpolatePosition, replayDurationSeconds };
+export { interpolatePosition, replayCollectibles, replayDurationSeconds };

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { interpolatePosition, replayDurationSeconds } from "./replay.js";
+import { interpolatePosition, replayCollectibles, replayDurationSeconds } from "./replay.js";
 
 describe("activity replay", () => {
   it.each([
@@ -16,5 +16,13 @@ describe("activity replay", () => {
       { latitude: 0, longitude: 0, timestampMs: 1_000 },
       { latitude: 10, longitude: 20, timestampMs: 3_000 }
     ], 2_000)).toEqual({ latitude: 5, longitude: 10, timestampMs: 2_000 });
+  });
+
+  it("renders only the server-provided collectible subset", () => {
+    const near = { id: "near" };
+    const omittedFarAway = { id: "far-away" };
+
+    expect(replayCollectibles({ collectibles: [near] })).toEqual([near]);
+    expect(replayCollectibles({ collectibles: [near] })).not.toContain(omittedFarAway);
   });
 });

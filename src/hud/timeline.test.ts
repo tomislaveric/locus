@@ -47,4 +47,23 @@ describe("HUD timeline", () => {
 
     await expect(loadHudTimeline(file)).rejects.toThrow("HUD timeline could not be loaded");
   });
+
+  it("serializes the supplied relevant collectible subset unchanged", () => {
+    const relevant = [{ id: "near", name: "Near", type: "coin" as const, latitude: 48, longitude: 11, radiusMeters: 5, value: 100 }];
+    const timeline = createHudTimeline(
+      [
+        { latitude: 48, longitude: 11, timestampMs: 1_000 },
+        { latitude: 48.001, longitude: 11, timestampMs: 2_000 }
+      ],
+      relevant,
+      [],
+      [
+        { timestampMs: 1_000, videoSeconds: 0 },
+        { timestampMs: 2_000, videoSeconds: 10 }
+      ],
+      10
+    );
+
+    expect(timeline.collectibles).toBe(relevant);
+  });
 });

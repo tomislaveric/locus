@@ -27,4 +27,14 @@ describe("activity derivation", () => {
     const result = deriveActivityResult(deriveActivity("ride", route), []);
     expect(result).toMatchObject({ collectedCount: 0, totalPoints: 0, events: [] });
   });
+
+  it("uses the relevant presentation subset and retains each collected source", () => {
+    const near = { id: "near", name: "Near", type: "coin" as const, latitude: 0, longitude: 0.00095, radiusMeters: 10, value: 10 };
+    const relevantCollectibles = [near];
+    const result = deriveActivityResult(deriveActivity("ride", route), relevantCollectibles);
+
+    expect(result.collectibles).toBe(relevantCollectibles);
+    expect(result.collectibles).toEqual([near]);
+    expect(result.events.every((event) => result.collectibles.some((item) => item.id === event.sourceId))).toBe(true);
+  });
 });
