@@ -5,7 +5,7 @@ import path from "node:path";
 import multer from "multer";
 import { readCoins } from "./coin.js";
 import { config } from "./config.js";
-import type { DetectedCoinPassage, HudTimeline, Job } from "./domain.js";
+import type { GameEvent, HudTimeline, Job } from "./domain.js";
 import { UserInputError } from "./errors.js";
 import { parseFitTrack } from "./fit.js";
 import { detectFirstCoinPassages } from "./geometry.js";
@@ -102,29 +102,31 @@ const processDetection = async (directory: string, job: Job): Promise<void> => {
       streamIndex,
       config.processTimeoutMs
     );
-    const mappedPassages: DetectedCoinPassage[] = [];
+    const events: GameEvent[] = [];
     for (const passage of passages) {
       const videoSecond = mapToVideoSecond(passage.timestampMs, samples);
       if (videoSecond < 0 || videoSecond > sourceDuration) continue;
-      mappedPassages.push({
-        coinId: passage.coin.id,
+      events.push({
+        id: passage.coin.id,
+        type: "coin",
         value: passage.coin.value,
         latitude: passage.coin.latitude,
         longitude: passage.coin.longitude,
+        activityTimestamp: passage.timestampMs,
         videoSecond: Number(videoSecond.toFixed(3))
       });
     }
-    if (mappedPassages.length === 0) {
+    if (events.length === 0) {
       throw new UserInputError("No configured coin passage maps to a time within the video.");
     }
-    const allPassages = mappedPassages.sort((left, right) => left.videoSecond - right.videoSecond);
+    const allEvents = events.sort((left, right) => left.videoSecond - right.videoSecond);
     await saveHudTimeline(
       path.join(directory, "hud-timeline.json"),
-      createHudTimeline(track, coins, allPassages, samples, sourceDuration)
+      createHudTimeline(track, coins, allEvents, samples, sourceDuration)
     );
     job.state = "awaiting_selection";
     job.sourceDuration = sourceDuration;
-    job.passages = allPassages;
+    job.events = allEvents;
   } catch (error) {
     job.state = "failed";
     job.error = error instanceof Error ? error.message : "Unexpected processing failure.";
@@ -141,7 +143,7 @@ const processDetection = async (directory: string, job: Job): Promise<void> => {
 const renderSelection = async (
   directory: string,
   job: Job,
-  passages: DetectedCoinPassage[]
+  events: GameEvent[]
 ): Promise<void> => {
   try {
     if (job.sourceDuration === undefined) throw new UserInputError("Job has no source video duration.");
@@ -152,7 +154,7 @@ const renderSelection = async (
     await renderSelectedClips(
       path.join(directory, "video.mp4"),
       path.join(directory, outputFile),
-      passages,
+      events,
       job.sourceDuration,
       directory,
       config.processTimeoutMs,
@@ -173,7 +175,7 @@ const renderSelection = async (
   }
 };
 
-const selectedPassages = (job: Job, value: unknown): DetectedCoinPassage[] => {
+const selectedEvents = (job: Job, value: unknown): GameEvent[] => {
   if (!Array.isArray(value) || value.length === 0 || !value.every((id) => typeof id === "string")) {
     throw new UserInputError("Select at least one detected coin id.");
   }
@@ -182,12 +184,12 @@ const selectedPassages = (job: Job, value: unknown): DetectedCoinPassage[] => {
   }
   const ids = new Set(value);
   if (ids.size !== value.length) throw new UserInputError("Selected coin ids must be unique.");
-  const knownPassages = new Map((job.passages ?? []).map((passage) => [passage.coinId, passage]));
-  const passages = value.map((id) => knownPassages.get(id));
-  if (passages.some((passage) => passage === undefined)) {
+  const knownEvents = new Map((job.events ?? []).map((event) => [event.id, event]));
+  const events = value.map((id) => knownEvents.get(id));
+  if (events.some((event) => event === undefined)) {
     throw new UserInputError("Selection contains an unknown detected coin.");
   }
-  return (passages as DetectedCoinPassage[]).sort(
+  return (events as GameEvent[]).sort(
     (left, right) => left.videoSecond - right.videoSecond
   );
 };
@@ -258,7 +260,7 @@ app.get("/api/jobs/:token", async (request, response) => {
       token: job.token,
       state: job.state,
       error: job.error,
-      passages: job.passages,
+      events: job.events,
       downloadUrl: job.state === "succeeded" ? `/api/jobs/${job.token}/download` : undefined
     });
   } catch (error) {
@@ -277,9 +279,9 @@ app.post("/api/jobs/:token/render", async (request, response) => {
       response.status(429).json({ error: "The renderer is busy. Try again after the current job finishes." });
       return;
     }
-    const passages = selectedPassages(job, request.body?.coinIds);
+    const events = selectedEvents(job, request.body?.coinIds);
     if (job.sourceDuration === undefined) throw new UserInputError("Job has no source video duration.");
-    const totalDuration = buildClipIntervals(passages, job.sourceDuration).reduce(
+    const totalDuration = buildClipIntervals(events, job.sourceDuration).reduce(
       (total, interval) => total + interval.end - interval.start,
       0
     );
@@ -296,7 +298,7 @@ app.post("/api/jobs/:token/render", async (request, response) => {
       busy = false;
       throw error;
     }
-    void renderSelection(directory, job, passages);
+    void renderSelection(directory, job, events);
     response.status(202).json({ token: job.token, state: job.state });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Could not render the selected clips.";

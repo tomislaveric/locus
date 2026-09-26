@@ -1,5 +1,5 @@
 import { readFile, writeFile } from "node:fs/promises";
-import type { Coin, DetectedCoinPassage, HudTimeline, TrackPoint, VideoTimeSample } from "../domain.js";
+import type { Coin, GameEvent, HudTimeline, TrackPoint, VideoTimeSample } from "../domain.js";
 import { mapToVideoSecond } from "../gpmf.js";
 import { UserInputError } from "../errors.js";
 
@@ -16,16 +16,18 @@ const isCoin = (value: unknown): boolean =>
 
 const isEvent = (value: unknown): boolean =>
   isRecord(value) &&
-  typeof value.coinId === "string" &&
+  typeof value.id === "string" &&
+  value.type === "coin" &&
   isFiniteNumber(value.value) &&
   isFiniteNumber(value.latitude) &&
   isFiniteNumber(value.longitude) &&
+  isFiniteNumber(value.activityTimestamp) &&
   isFiniteNumber(value.videoSecond);
 
 export const createHudTimeline = (
   track: TrackPoint[],
   coins: Coin[],
-  events: DetectedCoinPassage[],
+  events: GameEvent[],
   samples: VideoTimeSample[],
   duration: number
 ): HudTimeline => ({

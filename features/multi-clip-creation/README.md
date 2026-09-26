@@ -16,6 +16,9 @@ selected passages.
   no eligible passage remains after video-time mapping.
 - Detected passages are shown in chronological order with Coin metadata and the
   mapped video second.
+- Each detected passage is persisted as a typed `GameEvent`, retaining the Coin
+  ID, type, value, coordinates, interpolated FIT entry `activityTimestamp`, and
+  mapped `videoSecond`.
 - Rendering begins only after the user sends a nonempty selection of detected Coin
   IDs.
 - The selected passages produce one chronological MP4. Clip windows span three
@@ -48,9 +51,9 @@ selected passages.
 
 1. Update `coins.json`, `coins.json.example`, `src/coin.ts`, and domain types for
    a uniquely identified Coin list with strict per-entry validation.
-2. Extend passage detection to find the first interpolated FIT crossing for every
-   Coin, map each valid crossing to video time, sort the resulting events, and
-   persist them in the job.
+2. Extend passage detection to find the first interpolated FIT entry crossing for
+   every Coin, map each valid crossing to video time, sort the resulting
+   `GameEvent` records, and persist them in the job.
 3. Split the server lifecycle into detection and selection-driven rendering. Expose
    the awaiting-selection state and candidate list in status responses, and add a
    validated render endpoint with atomic lock reservation and conflict handling.
@@ -67,6 +70,8 @@ selected passages.
 - A valid Coin list with unique IDs loads; empty lists, invalid entries, and
   duplicate IDs fail clearly.
 - Each configured Coin contributes no more than its first valid, in-video passage.
+- Every persisted candidate is a complete `GameEvent`, including its Coin ID,
+  type, coordinates, unrounded activity timestamp, and mapped video second.
 - The user can select any nonempty subset of detected passages and obtain one
   playable combined MP4 in chronological order.
 - Overlapping or adjacent clip windows occur once in the output, and every selected

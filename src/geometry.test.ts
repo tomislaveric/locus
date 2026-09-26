@@ -33,4 +33,18 @@ describe("detectCoinPassage", () => {
     expect(passages.map((passage) => passage.coin.id)).toEqual(["first", "second"]);
     expect(passages[0].timestampMs).toBeLessThan(passages[1].timestampMs);
   });
+
+  it("uses the first entry crossing rather than an exit crossing", () => {
+    const passage = detectCoinPassage(
+      [
+        { latitude: 48, longitude: 11.0001, timestampMs: 1_000 },
+        { latitude: 48, longitude: 11.0005, timestampMs: 2_000 },
+        { latitude: 48, longitude: 11.0001, timestampMs: 3_000 }
+      ],
+      { id: "coin", latitude: 48, longitude: 11.0001, radius_m: 20, value: 100 }
+    );
+
+    expect(passage).toBeGreaterThan(2_000);
+    expect(passage).toBeLessThan(3_000);
+  });
 });

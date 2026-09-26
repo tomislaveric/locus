@@ -14,8 +14,8 @@ const timeline: HudTimeline = {
     { id: "second", latitude: 48.0015, longitude: 11, radius_m: 5, value: 200 }
   ],
   events: [
-    { coinId: "first", latitude: 48.0005, longitude: 11, value: 100, videoSecond: 5 },
-    { coinId: "second", latitude: 48.0015, longitude: 11, value: 200, videoSecond: 15 }
+    { id: "first", type: "coin", latitude: 48.0005, longitude: 11, value: 100, activityTimestamp: 5_000, videoSecond: 5 },
+    { id: "second", type: "coin", latitude: 48.0015, longitude: 11, value: 200, activityTimestamp: 15_000, videoSecond: 15 }
   ]
 };
 
@@ -35,19 +35,19 @@ describe("HUD state", () => {
     expect(segmentState.riderPoint.y).toBeLessThan(0);
     expect(segmentState.riderDirection.y).toBeLessThan(0);
     const before = deriveHudState(timeline, 4, 150, 4, 3, { start: 0, end: 10 });
-    expect(before.next?.event.coinId).toBe("first");
+    expect(before.next?.event.id).toBe("first");
     expect(before.items).toHaveLength(1);
     expect(before.items[0].x).toBeCloseTo(0);
 
     const after = deriveHudState(timeline, 5.5, 150, 4, 3, { start: 0, end: 10 });
-    expect(after.next?.event.coinId).toBe("second");
+    expect(after.next?.event.id).toBe("second");
     expect(after.items).toEqual([]);
-    expect(after.feedback?.coinId).toBe("first");
-    expect(after.recentEvents.map((event) => event.coinId)).toEqual(["first"]);
+    expect(after.feedback?.id).toBe("first");
+    expect(after.recentEvents.map((event) => event.id)).toEqual(["first"]);
   });
 
   it("caps and expires recent events", () => {
-    expect(deriveHudState(timeline, 17.9, 150, 3, 1).recentEvents.map((event) => event.coinId)).toEqual(["second"]);
+    expect(deriveHudState(timeline, 17.9, 150, 3, 1).recentEvents.map((event) => event.id)).toEqual(["second"]);
     expect(deriveHudState(timeline, 20, 150, 3, 3).recentEvents).toEqual([]);
   });
 });

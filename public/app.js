@@ -55,7 +55,7 @@ async function poll(token, button) {
       status.textContent = "Processing telemetry...";
       setTimeout(() => poll(token, button), 1500);
     } else if (job.state === "awaiting_selection") {
-      showPassages(token, job.passages);
+      showPassages(token, job.events);
       status.textContent = "Select the Coin passages to include.";
       button.disabled = false;
     } else if (job.state === "rendering") {
@@ -74,17 +74,17 @@ async function poll(token, button) {
   }
 }
 
-function showPassages(token, passages) {
+function showPassages(token, events) {
   passagesForm.dataset.token = token;
   passageList.replaceChildren();
-  for (const passage of passages) {
+  for (const event of events) {
     const label = document.createElement("label");
     const checkbox = document.createElement("input");
     checkbox.type = "checkbox";
     checkbox.name = "coinId";
-    checkbox.value = passage.coinId;
+    checkbox.value = event.id;
     checkbox.checked = true;
-    label.append(checkbox, `${passage.coinId} (+${passage.value} XP) at ${passage.videoSecond.toFixed(3)} s`);
+    label.append(checkbox, `${event.id} (+${event.value} XP) at ${event.videoSecond.toFixed(3)} s`);
     passageList.append(label);
   }
   passagesForm.hidden = false;

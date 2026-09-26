@@ -31,7 +31,7 @@ export const detectCoinPassage = (
     const beforeInside = beforeDistance <= coin.radius_m;
     const afterInside = afterDistance <= coin.radius_m;
 
-    if (beforeInside === afterInside) continue;
+    if (beforeInside || !afterInside) continue;
 
     const distanceChange = afterDistance - beforeDistance;
     const fraction =

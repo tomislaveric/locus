@@ -5,16 +5,16 @@ describe("buildClipIntervals", () => {
   it("clamps windows before merging overlapping passages", () => {
     const intervals = buildClipIntervals(
       [
-        { coinId: "start", value: 100, latitude: 0, longitude: 0, videoSecond: 0.5 },
-        { coinId: "overlap", value: 200, latitude: 0, longitude: 0, videoSecond: 4 },
-        { coinId: "separate", value: 300, latitude: 0, longitude: 0, videoSecond: 15 }
+        { id: "start", type: "coin", value: 100, latitude: 0, longitude: 0, activityTimestamp: 500, videoSecond: 0.5 },
+        { id: "overlap", type: "coin", value: 200, latitude: 0, longitude: 0, activityTimestamp: 4_000, videoSecond: 4 },
+        { id: "separate", type: "coin", value: 300, latitude: 0, longitude: 0, activityTimestamp: 15_000, videoSecond: 15 }
       ],
       20
     );
 
     expect(intervals).toHaveLength(2);
-    expect(intervals[0]).toMatchObject({ start: 0, end: 7, passages: [{ coinId: "start" }, { coinId: "overlap" }] });
-    expect(intervals[1]).toMatchObject({ start: 12, end: 18, passages: [{ coinId: "separate" }] });
+    expect(intervals[0]).toMatchObject({ start: 0, end: 7, events: [{ id: "start" }, { id: "overlap" }] });
+    expect(intervals[1]).toMatchObject({ start: 12, end: 18, events: [{ id: "separate" }] });
   });
 
   describe("HUD segment planning", () => {
@@ -47,9 +47,9 @@ describe("Coin effect planning", () => {
       {
         start: 10,
         end: 16,
-        passages: [
-          { coinId: "one", value: 123, latitude: 0, longitude: 0, videoSecond: 12 },
-          { coinId: "two", value: 456, latitude: 0, longitude: 0, videoSecond: 12.1 }
+        events: [
+          { id: "one", type: "coin", value: 123, latitude: 0, longitude: 0, activityTimestamp: 12_000, videoSecond: 12 },
+          { id: "two", type: "coin", value: 456, latitude: 0, longitude: 0, activityTimestamp: 12_100, videoSecond: 12.1 }
         ]
       },
       false

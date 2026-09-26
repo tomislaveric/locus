@@ -9,7 +9,7 @@ import {
 } from "./coin-effect.js";
 import { runCommand } from "./commands.js";
 import { config } from "./config.js";
-import type { DetectedCoinPassage, HudTimeline } from "./domain.js";
+import type { GameEvent, HudTimeline } from "./domain.js";
 import { UserInputError } from "./errors.js";
 import { renderHudFrames } from "./hud/hudRenderer.js";
 
@@ -25,7 +25,7 @@ interface ProbeResult {
 export interface ClipInterval {
   start: number;
   end: number;
-  passages: DetectedCoinPassage[];
+  events: GameEvent[];
 }
 
 export const probeDuration = async (file: string, timeoutMs: number): Promise<number> => {
@@ -62,19 +62,19 @@ export const probeVideoSize = async (file: string, timeoutMs: number): Promise<{
   return { width, height };
 };
 
-export const buildClipIntervals = (passages: DetectedCoinPassage[], duration: number): ClipInterval[] => {
+export const buildClipIntervals = (events: GameEvent[], duration: number): ClipInterval[] => {
   const clipDuration = Math.min(6, duration);
-  const windows = [...passages]
+  const windows = [...events]
     .sort((left, right) => left.videoSecond - right.videoSecond)
-    .map((passage) => {
-      const start = Math.max(0, Math.min(passage.videoSecond - 3, duration - clipDuration));
-      return { start, end: start + clipDuration, passages: [passage] };
+    .map((event) => {
+      const start = Math.max(0, Math.min(event.videoSecond - 3, duration - clipDuration));
+      return { start, end: start + clipDuration, events: [event] };
     });
   return windows.reduce<ClipInterval[]>((intervals, window) => {
     const previous = intervals.at(-1);
     if (previous && window.start <= previous.end) {
       previous.end = Math.max(previous.end, window.end);
-      previous.passages.push(...window.passages);
+      previous.events.push(...window.events);
     } else intervals.push(window);
     return intervals;
   }, []);
@@ -147,7 +147,7 @@ export const buildSegmentFilter = (
   const clipDuration = interval.end - interval.start;
   let videoLabel = "[0:v]";
   const filters: string[] = [];
-  const effects = interval.passages.map((passage) => planCoinEffect(passage.videoSecond - interval.start, clipDuration));
+  const effects = interval.events.map((event) => planCoinEffect(event.videoSecond - interval.start, clipDuration));
 
   for (const [index, effect] of effects.entries()) {
     const source = 1 + index * 3;
@@ -211,13 +211,13 @@ export const buildHudSegmentFilter = (
 export const renderSelectedClips = async (
   input: string,
   output: string,
-  passages: DetectedCoinPassage[],
+  events: GameEvent[],
   duration: number,
   workDirectory: string,
   timeoutMs: number,
   hudTimeline?: HudTimeline
 ): Promise<void> => {
-  const intervals = buildClipIntervals(passages, duration);
+  const intervals = buildClipIntervals(events, duration);
   if (intervals.length === 0) throw new UserInputError("Select at least one detected coin.");
   const audioPresent = await hasAudio(input, timeoutMs);
   const videoSize = hudTimeline && config.hudEnabled && !config.showLegacyCoinOverlay
@@ -229,7 +229,7 @@ export const renderSelectedClips = async (
     const useLegacy = !useHud && config.showLegacyCoinOverlay;
     const assets = useLegacy
       ? await Promise.all(
-          interval.passages.map((passage, index) => createCoinEffectAssets(path.join(workDirectory, `effect-${intervalIndex}-${index}`), passage.value))
+          interval.events.map((event, index) => createCoinEffectAssets(path.join(workDirectory, `effect-${intervalIndex}-${index}`), event.value))
         )
       : [];
     const inputArgs = ["-ss", seconds(interval.start), "-i", input];
