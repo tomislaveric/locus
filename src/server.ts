@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import express, { type NextFunction, type Request, type Response } from "express";
-import { access, mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { access, mkdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import multer from "multer";
 import { deriveActivity, deriveActivityResult } from "./activity.js";
@@ -30,7 +30,10 @@ const jobFile = (directory: string): string => path.join(directory, "job.json");
 
 const saveJob = async (directory: string, job: Job): Promise<void> => {
   job.updatedAt = new Date().toISOString();
-  await writeFile(jobFile(directory), JSON.stringify(job, null, 2));
+  const file = jobFile(directory);
+  const temporaryFile = `${file}.tmp`;
+  await writeFile(temporaryFile, JSON.stringify(job, null, 2));
+  await rename(temporaryFile, file);
 };
 
 const validToken = (token: string): boolean => /^[a-f0-9]{48}$/.test(token);
