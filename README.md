@@ -7,6 +7,9 @@ Single-container POC for turning a FIT ride into collectible game events and an 
 - [Activity mode animated ride POC](features/activity-mode-animated-ride-poc/README.md)
   — make FIT activities and game events primary, with a FIT-only replay and
   optional GoPro highlights.
+- [Activity Replay Presentation / Game Feel V1](features/activity-replay-presentation-game-feel-v1/README.md)
+  — improve the dependency-free activity recap with collectible states, feedback,
+  readable score/events, next-item context, and completion presentation.
 - [Coin collection](features/coin-collection/README.md) — animate Coin pickups
   with a 2.5D Collect effect, reward, and generated audio Chime.
 - [GameEvent instead of Coin](features/gameevent-instead-of-coin/README.md) —
