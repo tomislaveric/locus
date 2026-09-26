@@ -17,6 +17,20 @@ describe("buildClipIntervals", () => {
     expect(intervals[1]).toMatchObject({ start: 12, end: 18, events: [{ id: "separate" }] });
   });
 
+  it("adapts planner segment IDs back to chronologically ordered events", () => {
+    const intervals = buildClipIntervals(
+      [
+        { id: "later", type: "coin", value: 100, latitude: 0, longitude: 0, activityTimestamp: 20_000, videoSecond: 20 },
+        { id: "first", type: "coin", value: 100, latitude: 0, longitude: 0, activityTimestamp: 18_000, videoSecond: 18 }
+      ],
+      30
+    );
+
+    expect(intervals).toEqual([
+      expect.objectContaining({ start: 15, end: 23, events: [expect.objectContaining({ id: "first" }), expect.objectContaining({ id: "later" })] })
+    ]);
+  });
+
   describe("HUD segment planning", () => {
     it("overlays compact HUD layers while preserving source audio", () => {
       const plan = buildHudSegmentFilter(6, true, { map: true, feed: true });

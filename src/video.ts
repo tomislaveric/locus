@@ -11,6 +11,7 @@ import { runCommand } from "./commands.js";
 import { config } from "./config.js";
 import type { GameEvent, HudTimeline } from "./domain.js";
 import { UserInputError } from "./errors.js";
+import { planHighlights } from "./highlightPlanner.js";
 import { renderHudFrames } from "./hud/hudRenderer.js";
 
 interface ProbeFormat {
@@ -27,6 +28,9 @@ export interface ClipInterval {
   end: number;
   events: GameEvent[];
 }
+
+export const HIGHLIGHT_PRE_ROLL_SECONDS = 3;
+export const HIGHLIGHT_POST_ROLL_SECONDS = 3;
 
 export const probeDuration = async (file: string, timeoutMs: number): Promise<number> => {
   const metadata = await inspectMedia(file, timeoutMs);
@@ -63,21 +67,22 @@ export const probeVideoSize = async (file: string, timeoutMs: number): Promise<{
 };
 
 export const buildClipIntervals = (events: GameEvent[], duration: number): ClipInterval[] => {
-  const clipDuration = Math.min(6, duration);
-  const windows = [...events]
-    .sort((left, right) => left.videoSecond - right.videoSecond)
-    .map((event) => {
-      const start = Math.max(0, Math.min(event.videoSecond - 3, duration - clipDuration));
-      return { start, end: start + clipDuration, events: [event] };
-    });
-  return windows.reduce<ClipInterval[]>((intervals, window) => {
-    const previous = intervals.at(-1);
-    if (previous && window.start <= previous.end) {
-      previous.end = Math.max(previous.end, window.end);
-      previous.events.push(...window.events);
-    } else intervals.push(window);
-    return intervals;
-  }, []);
+  const eventsById = new Map<string, GameEvent>();
+  for (const event of [...events].sort((left, right) => {
+    if (left.videoSecond !== right.videoSecond) return left.videoSecond - right.videoSecond;
+    return left.id < right.id ? -1 : left.id > right.id ? 1 : 0;
+  })) {
+    if (!eventsById.has(event.id)) eventsById.set(event.id, event);
+  }
+  return planHighlights(events, {
+    preRollSeconds: HIGHLIGHT_PRE_ROLL_SECONDS,
+    postRollSeconds: HIGHLIGHT_POST_ROLL_SECONDS,
+    videoDurationSeconds: duration
+  }).segments.map((segment) => ({
+    start: segment.startSecond,
+    end: segment.endSecond,
+    events: segment.eventIds.map((id) => eventsById.get(id)!)
+  }));
 };
 
 const inspectMedia = async (file: string, timeoutMs: number): Promise<ProbeResult> => {

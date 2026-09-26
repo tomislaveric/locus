@@ -8,6 +8,8 @@ Single-container POC for generating a short GoPro clip with animated Coin Collec
   with a 2.5D Collect effect, reward, and generated audio Chime.
 - [GameEvent instead of Coin](features/gameevent-instead-of-coin/README.md) —
   generalize downstream Coin-passage records into typed game events.
+- [Highlight planner](features/highlight-planner/README.md) — formalize selected
+  game-event timing into a deterministic render manifest before media rendering.
 - [HUD](features/hud/README.md) — replace physical-scene Coin visuals with a
   compact, camera-independent route and event overlay.
 - [Multi Clip creation](features/multi-clip-creation/README.md) — select detected
@@ -70,6 +72,12 @@ its Coin ID, type, value, coordinates, unrounded FIT entry-crossing
 first detected passage for each configured Coin. Select the passages to include,
 then download one chronological highlight video. Each event uses a
 three-second-before/-after window; overlapping or adjacent windows are merged.
+Before rendering, the pure `planHighlights` API creates this deterministic
+manifest from selected events: it ignores out-of-video events, deduplicates IDs,
+orders equal timestamps by ID, preserves fractional seconds, clamps windows to
+the source duration, and reports the merged source duration. The renderer then
+resolves each manifest event ID back to its selected `GameEvent` for HUD and
+legacy effect rendering.
 The default output adds a screen-space HUD: a fixed, heading-aligned map of the
 current clip segment where the rider moves toward the top and turns with the
 route. It includes nearby Coin markers, a subtle north compass, the next detected
