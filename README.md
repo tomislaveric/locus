@@ -14,6 +14,9 @@ Single-container POC for generating a short GoPro clip with animated Coin Collec
   compact, camera-independent route and event overlay.
 - [Multi Clip creation](features/multi-clip-creation/README.md) — select detected
   Coin passages and combine them into one chronological highlight video.
+- [Renderer resilience output validation](features/renderer-resilience-output-validation/README.md)
+  — harden highlight rendering with media inspection, timestamp-safe concat, and
+  final MP4 validation.
 - [Robust sync](features/robust-sync/README.md) — validate the existing FIT/GPS5
   synchronization against manually verified reference events.
 - [Synchronization diagnostics](features/synchronization-diagnostics/README.md)
@@ -106,7 +109,14 @@ current clip segment where the rider moves toward the top and turns with the
 route. It includes nearby Coin markers, a subtle north compass, the next detected
 Coin and its direct distance, and a brief collection feed. It uses only FIT/GPS
 timing and does not depend on camera pose, road geometry, or image analysis.
-Source audio is unchanged.
+Rendered clips always contain a 48 kHz stereo AAC audio track. Source audio is
+trimmed and preserved when present; sources without audio receive a generated
+silent track so segment concatenation remains safe. Before rendering, the source
+must expose a readable H.264 or HEVC video stream with valid dimensions and
+duration. The renderer rejects invalid highlight intervals, renders in plan order,
+cleans isolated temporary artifacts, and FFprobes the completed MP4. A job fails
+rather than exposing an unreadable output, missing video/audio stream, or output
+whose duration is outside the renderer's container/encoding tolerance.
 
 HUD behavior can be configured with `HUD_ENABLED`, `MINIMAP_ENABLED`,
 `EVENT_FEED_ENABLED`, `NEXT_ITEM_ENABLED`, `MAP_RANGE_METERS` (default `150`),

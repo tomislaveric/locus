@@ -1,5 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { buildClipIntervals, buildHudSegmentFilter, buildSegmentFilter, planCoinEffect } from "./video.js";
+import { mkdtemp, readdir, rm } from "node:fs/promises";
+import path from "node:path";
+import os from "node:os";
+import { runCommand } from "./commands.js";
+import {
+  buildClipIntervals,
+  buildHudSegmentFilter,
+  buildSegmentFilter,
+  normalizeMediaInfo,
+  planCoinEffect,
+  validateClipIntervals,
+  renderSelectedClips,
+  validateRenderedOutput
+} from "./video.js";
 
 describe("buildClipIntervals", () => {
   it("clamps windows before merging overlapping passages", () => {
@@ -15,6 +28,75 @@ describe("buildClipIntervals", () => {
     expect(intervals).toHaveLength(2);
     expect(intervals[0]).toMatchObject({ start: 0, end: 7, events: [{ id: "start" }, { id: "overlap" }] });
     expect(intervals[1]).toMatchObject({ start: 12, end: 18, events: [{ id: "separate" }] });
+  });
+
+  describe("renderer validation", () => {
+    const event = { id: "coin", type: "coin" as const, value: 1, latitude: 0, longitude: 0, activityTimestamp: 0, videoSecond: 2 };
+
+    it("normalizes supported source media and records optional audio", () => {
+      expect(normalizeMediaInfo({
+        format: { duration: "12.5" },
+        streams: [
+          { codec_type: "video", codec_name: "h264", width: 1920, height: 1080, r_frame_rate: "60000/1001", pix_fmt: "yuv420p" },
+          { codec_type: "audio", codec_name: "aac", sample_rate: "48000", channels: 2 }
+        ]
+      })).toEqual({
+        duration: 12.5,
+        width: 1920,
+        height: 1080,
+        videoCodec: "h264",
+        pixelFormat: "yuv420p",
+        frameRate: 60000 / 1001,
+        audio: { codec: "aac", sampleRate: 48000, channels: 2 }
+      });
+    });
+
+    it("renders audio-bearing and silent generated sources with validated AAC output and cleanup", async () => {
+      const directory = await mkdtemp(path.join(os.tmpdir(), "post-ride-render-"));
+      const event = { id: "coin", type: "coin" as const, value: 1, latitude: 0, longitude: 0, activityTimestamp: 0, videoSecond: 1 };
+      try {
+        for (const withAudio of [true, false]) {
+          const source = path.join(directory, withAudio ? "source-with-audio.mp4" : "source-silent.mp4");
+          const output = path.join(directory, withAudio ? "output-with-audio.mp4" : "output-silent.mp4");
+          const args = [
+            "-y",
+            "-f", "lavfi", "-i", "testsrc2=size=160x90:rate=30",
+            ...(withAudio ? ["-f", "lavfi", "-i", "sine=frequency=440:sample_rate=48000"] : []),
+            "-t", "2",
+            "-c:v", "libx264",
+            "-pix_fmt", "yuv420p",
+            ...(withAudio ? ["-c:a", "aac", "-shortest"] : ["-an"]),
+            source
+          ];
+          await runCommand("ffmpeg", args, 30_000);
+          const summary = await renderSelectedClips(source, output, [event], 2, directory, 30_000);
+          const validation = await validateRenderedOutput(output, summary.expectedDuration, 30_000);
+
+          expect(summary.segmentCount).toBe(1);
+          expect(validation).toMatchObject({ valid: true, hasVideo: true, hasAudio: true });
+        }
+        expect((await readdir(directory)).some((entry) => entry.startsWith("render-"))).toBe(false);
+      } finally {
+        await rm(directory, { recursive: true, force: true });
+      }
+    }, 120_000);
+
+    it("rejects unsupported source codecs before rendering", () => {
+      expect(() => normalizeMediaInfo({
+        format: { duration: "12" },
+        streams: [{ codec_type: "video", codec_name: "vp9", width: 1280, height: 720 }]
+      })).toThrow("Unsupported media");
+    });
+
+    it("rejects empty, malformed, unordered, and overlapping plans", () => {
+      expect(() => validateClipIntervals([], 10)).toThrow("select at least one");
+      expect(() => validateClipIntervals([{ start: 3, end: 3, events: [event] }], 10)).toThrow("invalid timestamps");
+      expect(() => validateClipIntervals([
+        { start: 4, end: 6, events: [event] },
+        { start: 3, end: 5, events: [event] }
+      ], 10)).toThrow("ordered and non-overlapping");
+      expect(() => validateClipIntervals([{ start: 0, end: 2, events: [{ ...event, id: "" }] }], 10)).toThrow("valid event IDs");
+    });
   });
 
   it("adapts planner segment IDs back to chronologically ordered events", () => {

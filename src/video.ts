@@ -1,4 +1,4 @@
-import { writeFile } from "node:fs/promises";
+import { mkdtemp, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import {
   createCoinEffectAssets,
@@ -17,11 +17,62 @@ import { renderHudFrames } from "./hud/hudRenderer.js";
 
 interface ProbeFormat {
   duration?: string;
+  start_time?: string;
 }
 
-interface ProbeResult {
+export interface ProbeStream {
+  index?: number;
+  codec_type?: string;
+  codec_name?: string;
+  codec_tag_string?: string;
+  width?: number;
+  height?: number;
+  pix_fmt?: string;
+  r_frame_rate?: string;
+  sample_rate?: string;
+  channels?: number;
+  start_time?: string;
+}
+
+export interface ProbeResult {
   format?: ProbeFormat;
-  streams?: Array<{ index?: number; codec_type?: string; codec_tag_string?: string; width?: number; height?: number }>;
+  streams?: ProbeStream[];
+}
+
+export interface MediaInfo {
+  duration: number;
+  width: number;
+  height: number;
+  videoCodec: string;
+  pixelFormat?: string;
+  frameRate?: number;
+  audio?: {
+    codec?: string;
+    sampleRate?: number;
+    channels?: number;
+  };
+}
+
+export interface RenderValidationResult {
+  valid: boolean;
+  expectedDuration: number;
+  actualDuration?: number;
+  durationError?: number;
+  hasVideo: boolean;
+  hasAudio: boolean;
+  warnings: string[];
+  errors: string[];
+}
+
+export interface RenderSummary {
+  status: "succeeded";
+  segmentCount: number;
+  expectedDuration: number;
+  actualDuration: number;
+  audioPresent: boolean;
+  warnings: string[];
+  elapsedMs: number;
+  speedRatio?: number;
 }
 
 export interface ClipInterval {
@@ -34,10 +85,9 @@ export const HIGHLIGHT_PRE_ROLL_SECONDS = 3;
 export const HIGHLIGHT_POST_ROLL_SECONDS = 3;
 
 export const probeDuration = async (file: string, timeoutMs: number): Promise<number> => {
-  const metadata = await inspectMedia(file, timeoutMs);
-  const duration = Number(metadata.format?.duration);
-  if (!Number.isFinite(duration) || duration < 4) throw new UserInputError("Video must be at least four seconds long.");
-  return duration;
+  const media = await inspectMediaInfo(file, timeoutMs);
+  if (media.duration < 4) throw new UserInputError("Video must be at least four seconds long.");
+  return media.duration;
 };
 
 export const gpmfStreamIndex = async (file: string, timeoutMs: number): Promise<number> => {
@@ -86,7 +136,7 @@ export const buildClipIntervals = (events: GameEvent[], duration: number): ClipI
   }));
 };
 
-const inspectMedia = async (file: string, timeoutMs: number): Promise<ProbeResult> => {
+export const inspectMedia = async (file: string, timeoutMs: number): Promise<ProbeResult> => {
   const output = await runCommand("ffprobe", ["-v", "error", "-show_streams", "-show_format", "-of", "json", file], timeoutMs);
   try {
     return JSON.parse(output) as ProbeResult;
@@ -95,9 +145,124 @@ const inspectMedia = async (file: string, timeoutMs: number): Promise<ProbeResul
   }
 };
 
-const hasAudio = async (file: string, timeoutMs: number): Promise<boolean> => {
+const positiveNumber = (value: string | undefined): number | undefined => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
+};
+
+const frameRate = (value: string | undefined): number | undefined => {
+  if (!value) return undefined;
+  const [numerator, denominator] = value.split("/").map(Number);
+  const rate = denominator > 0 ? numerator / denominator : NaN;
+  return Number.isFinite(rate) && rate > 0 ? rate : undefined;
+};
+
+export const normalizeMediaInfo = (metadata: ProbeResult): MediaInfo => {
+  const duration = positiveNumber(metadata.format?.duration);
+  const video = metadata.streams?.find((stream) => stream.codec_type === "video");
+  const width = video?.width;
+  const height = video?.height;
+  if (!duration || !video || typeof width !== "number" || typeof height !== "number" || !Number.isSafeInteger(width) || !Number.isSafeInteger(height) || width < 1 || height < 1) {
+    throw new UserInputError("Unsupported media: a readable video stream with duration and dimensions is required.");
+  }
+  if (!video.codec_name || !["h264", "hevc"].includes(video.codec_name)) {
+    throw new UserInputError("Unsupported media: only decodable H.264 or HEVC GoPro video is supported.");
+  }
+  const audio = metadata.streams?.find((stream) => stream.codec_type === "audio");
+  return {
+    duration,
+    width,
+    height,
+    videoCodec: video.codec_name,
+    pixelFormat: video.pix_fmt,
+    frameRate: frameRate(video.r_frame_rate),
+    audio: audio
+      ? { codec: audio.codec_name, sampleRate: positiveNumber(audio.sample_rate), channels: audio.channels }
+      : undefined
+  };
+};
+
+export const inspectMediaInfo = async (file: string, timeoutMs: number): Promise<MediaInfo> =>
+  normalizeMediaInfo(await inspectMedia(file, timeoutMs));
+
+export const validateClipIntervals = (intervals: readonly ClipInterval[], sourceDuration: number): void => {
+  if (!Number.isFinite(sourceDuration) || sourceDuration <= 0) {
+    throw new UserInputError("Invalid render plan: source duration must be positive.");
+  }
+  if (intervals.length === 0) throw new UserInputError("Invalid render plan: select at least one detected coin.");
+  const tolerance = 0.001;
+  let previousEnd = -Infinity;
+  for (const [index, interval] of intervals.entries()) {
+    if (!Number.isFinite(interval.start) || !Number.isFinite(interval.end) || interval.start < 0 || interval.end <= interval.start) {
+      throw new UserInputError(`Invalid render plan: segment ${index + 1} has invalid timestamps.`);
+    }
+    if (interval.end > sourceDuration + tolerance) {
+      throw new UserInputError(`Invalid render plan: segment ${index + 1} exceeds the source duration.`);
+    }
+    if (interval.start < previousEnd - tolerance) {
+      throw new UserInputError("Invalid render plan: segments must be ordered and non-overlapping.");
+    }
+    if (interval.events.length === 0 || interval.events.some((event) => !event.id.trim())) {
+      throw new UserInputError(`Invalid render plan: segment ${index + 1} has no valid event IDs.`);
+    }
+    previousEnd = interval.end;
+  }
+};
+
+const outputDurationTolerance = (expectedDuration: number): number => Math.max(0.5, expectedDuration * 0.02);
+
+const runRenderStage = async (stage: "Segment render" | "Concat", args: string[], timeoutMs: number): Promise<void> => {
+  try {
+    await runCommand("ffmpeg", args, timeoutMs);
+  } catch (error) {
+    console.error(`${stage} failed:`, error);
+    throw new UserInputError(`${stage} failed.`);
+  }
+};
+
+export const validateRenderedOutput = async (
+  file: string,
+  expectedDuration: number,
+  timeoutMs: number
+): Promise<RenderValidationResult> => {
+  const result: RenderValidationResult = {
+    valid: false,
+    expectedDuration,
+    hasVideo: false,
+    hasAudio: false,
+    warnings: [],
+    errors: []
+  };
+  const info = await stat(file);
+  if (!info.isFile() || info.size === 0) {
+    result.errors.push("Output file is empty.");
+    return result;
+  }
   const metadata = await inspectMedia(file, timeoutMs);
-  return metadata.streams?.some((stream) => stream.codec_type === "audio") ?? false;
+  const duration = positiveNumber(metadata.format?.duration);
+  const video = metadata.streams?.find((stream) => stream.codec_type === "video");
+  const audio = metadata.streams?.find((stream) => stream.codec_type === "audio");
+  const width = video?.width;
+  const height = video?.height;
+  result.hasVideo = Boolean(video);
+  result.hasAudio = Boolean(audio);
+  result.actualDuration = duration;
+  if (!video || typeof width !== "number" || typeof height !== "number" || !Number.isSafeInteger(width) || !Number.isSafeInteger(height) || width < 1 || height < 1) {
+    result.errors.push("Output has no readable video stream.");
+  }
+  if (!audio) result.errors.push("Output has no audio stream.");
+  if (!duration) {
+    result.errors.push("Output has no positive duration.");
+  } else {
+    result.durationError = Math.abs(duration - expectedDuration);
+    if (result.durationError > outputDurationTolerance(expectedDuration)) {
+      result.errors.push(`Output duration differs from the render plan by ${result.durationError.toFixed(3)} seconds.`);
+    }
+  }
+  const startTime = positiveNumber(metadata.format?.start_time);
+  if (startTime && startTime > 0.1) result.warnings.push(`Output timeline starts at ${startTime.toFixed(3)} seconds.`);
+  result.valid = result.errors.length === 0;
+  return result;
 };
 
 const concatListEntry = (file: string): string => `file '${file.replaceAll("'", "'\\''")}'`;
@@ -222,85 +387,123 @@ export const renderSelectedClips = async (
   workDirectory: string,
   timeoutMs: number,
   hudTimeline?: HudTimeline
-): Promise<void> => {
+): Promise<RenderSummary> => {
   const intervals = buildClipIntervals(events, duration);
-  if (intervals.length === 0) throw new UserInputError("Select at least one detected coin.");
-  const audioPresent = await hasAudio(input, timeoutMs);
+  let media: MediaInfo;
+  try {
+    media = await inspectMediaInfo(input, timeoutMs);
+  } catch (error) {
+    console.error("Source media inspection failed:", error);
+    throw new UserInputError("Unsupported media: the source could not be inspected.");
+  }
+  validateClipIntervals(intervals, media.duration);
+  const startedAt = Date.now();
+  const renderDirectory = await mkdtemp(path.join(workDirectory, "render-"));
+  const expectedDuration = intervals.reduce((total, interval) => total + interval.end - interval.start, 0);
+  const audioPresent = media.audio !== undefined;
   const videoSize = hudTimeline && config.hudEnabled && !config.showLegacyCoinOverlay
-    ? await probeVideoSize(input, timeoutMs)
+    ? { width: media.width, height: media.height }
     : undefined;
   const segmentFiles: string[] = [];
-  for (const [intervalIndex, interval] of intervals.entries()) {
-    const useHud = hudTimeline !== undefined && config.hudEnabled && !config.showLegacyCoinOverlay;
-    const useLegacy = !useHud && config.showLegacyCoinOverlay;
-    const assets = useLegacy
-      ? await Promise.all(
-          interval.events.map((event, index) => createCoinEffectAssets(path.join(workDirectory, `effect-${intervalIndex}-${index}`), event.value))
-        )
-      : [];
-    const inputArgs = ["-ss", seconds(interval.start), "-i", input];
-    let plan: { filter: string; videoOutput: string; audioOutput: string };
-    if (useHud) {
-      const frames = await renderHudFrames(
-        path.join(workDirectory, `hud-${intervalIndex}`),
-        interval.start,
-        interval.end,
-        videoSize!.width,
-        videoSize!.height,
-        hudTimeline!,
-        {
-          minimapEnabled: config.minimapEnabled,
-          eventFeedEnabled: config.eventFeedEnabled,
-          nextItemEnabled: config.nextItemEnabled,
-          mapRangeMeters: config.mapRangeMeters,
-          eventFeedDurationSeconds: config.eventFeedDurationSeconds,
-          eventFeedMaxItems: config.eventFeedMaxItems,
-          frameRate: config.hudFrameRate
-        }
+  try {
+    for (const [intervalIndex, interval] of intervals.entries()) {
+      const useHud = hudTimeline !== undefined && config.hudEnabled && !config.showLegacyCoinOverlay;
+      const useLegacy = !useHud && config.showLegacyCoinOverlay;
+      const assets = useLegacy
+        ? await Promise.all(
+            interval.events.map((event, index) => createCoinEffectAssets(path.join(renderDirectory, `effect-${intervalIndex}-${index}`), event.value))
+          )
+        : [];
+      const inputArgs = ["-ss", seconds(interval.start), "-i", input];
+      let plan: { filter: string; videoOutput: string; audioOutput: string };
+      if (useHud) {
+        const frames = await renderHudFrames(
+          path.join(renderDirectory, `hud-${intervalIndex}`),
+          interval.start,
+          interval.end,
+          videoSize!.width,
+          videoSize!.height,
+          hudTimeline!,
+          {
+            minimapEnabled: config.minimapEnabled,
+            eventFeedEnabled: config.eventFeedEnabled,
+            nextItemEnabled: config.nextItemEnabled,
+            mapRangeMeters: config.mapRangeMeters,
+            eventFeedDurationSeconds: config.eventFeedDurationSeconds,
+            eventFeedMaxItems: config.eventFeedMaxItems,
+            frameRate: config.hudFrameRate
+          }
+        );
+        if (frames.mapPattern) inputArgs.push("-framerate", String(config.hudFrameRate), "-start_number", "0", "-i", frames.mapPattern);
+        if (frames.feedPattern) inputArgs.push("-framerate", String(config.hudFrameRate), "-start_number", "0", "-i", frames.feedPattern);
+        plan = buildHudSegmentFilter(interval.end - interval.start, audioPresent, { map: Boolean(frames.mapPattern), feed: Boolean(frames.feedPattern) });
+      } else if (useLegacy) {
+        for (const asset of assets) inputArgs.push("-loop", "1", "-i", asset.coin, "-loop", "1", "-i", asset.burst, "-loop", "1", "-i", asset.reward);
+        plan = buildSegmentFilter(interval, audioPresent);
+      } else {
+        plan = buildHudSegmentFilter(interval.end - interval.start, audioPresent, { map: false, feed: false });
+      }
+      const segmentFile = path.join(renderDirectory, `segment-${intervalIndex}.mp4`);
+      await runRenderStage(
+        "Segment render",
+        [
+          "-y",
+          ...inputArgs,
+          "-t",
+          seconds(interval.end - interval.start),
+          "-filter_complex",
+          plan.filter,
+          "-map",
+          plan.videoOutput,
+          "-map",
+          plan.audioOutput,
+          "-c:v",
+          "libx264",
+          "-pix_fmt",
+          "yuv420p",
+          "-c:a",
+          "aac",
+          "-ar",
+          "48000",
+          "-ac",
+          "2",
+          "-movflags",
+          "+faststart",
+          segmentFile
+        ],
+        timeoutMs
       );
-      if (frames.mapPattern) inputArgs.push("-framerate", String(config.hudFrameRate), "-start_number", "0", "-i", frames.mapPattern);
-      if (frames.feedPattern) inputArgs.push("-framerate", String(config.hudFrameRate), "-start_number", "0", "-i", frames.feedPattern);
-      plan = buildHudSegmentFilter(interval.end - interval.start, audioPresent, { map: Boolean(frames.mapPattern), feed: Boolean(frames.feedPattern) });
-    } else if (useLegacy) {
-      for (const asset of assets) inputArgs.push("-loop", "1", "-i", asset.coin, "-loop", "1", "-i", asset.burst, "-loop", "1", "-i", asset.reward);
-      plan = buildSegmentFilter(interval, audioPresent);
-    } else {
-      plan = buildHudSegmentFilter(interval.end - interval.start, audioPresent, { map: false, feed: false });
+      segmentFiles.push(segmentFile);
     }
-    const segmentFile = path.join(workDirectory, `segment-${intervalIndex}.mp4`);
-    await runCommand(
-      "ffmpeg",
-      [
-        "-y",
-        ...inputArgs,
-        "-t",
-        seconds(interval.end - interval.start),
-        "-filter_complex",
-        plan.filter,
-        "-map",
-        plan.videoOutput,
-        "-map",
-        plan.audioOutput,
-        "-c:v",
-        "libx264",
-        "-pix_fmt",
-        "yuv420p",
-        "-c:a",
-        "aac",
-        "-ar",
-        "48000",
-        "-ac",
-        "2",
-        "-movflags",
-        "+faststart",
-        segmentFile
-      ],
+    const listFile = path.join(renderDirectory, "segments.txt");
+    await writeFile(listFile, `${segmentFiles.map(concatListEntry).join("\n")}\n`);
+    await runRenderStage(
+      "Concat",
+      ["-y", "-fflags", "+genpts", "-f", "concat", "-safe", "0", "-i", listFile, "-c", "copy", "-avoid_negative_ts", "make_zero", "-movflags", "+faststart", output],
       timeoutMs
     );
-    segmentFiles.push(segmentFile);
+    let validation: RenderValidationResult;
+    try {
+      validation = await validateRenderedOutput(output, expectedDuration, timeoutMs);
+    } catch (error) {
+      console.error("Output validation probe failed:", error);
+      throw new UserInputError("Output validation failed: the completed file could not be inspected.");
+    }
+    if (!validation.valid) {
+      throw new UserInputError(`Output validation failed: ${validation.errors.join(" ")}`);
+    }
+    const elapsedMs = Date.now() - startedAt;
+    return {
+      status: "succeeded",
+      segmentCount: intervals.length,
+      expectedDuration,
+      actualDuration: validation.actualDuration!,
+      audioPresent,
+      warnings: validation.warnings,
+      elapsedMs,
+      speedRatio: elapsedMs > 0 ? expectedDuration / (elapsedMs / 1000) : undefined
+    };
+  } finally {
+    await rm(renderDirectory, { recursive: true, force: true });
   }
-  const listFile = path.join(workDirectory, "segments.txt");
-  await writeFile(listFile, `${segmentFiles.map(concatListEntry).join("\n")}\n`);
-  await runCommand("ffmpeg", ["-y", "-f", "concat", "-safe", "0", "-i", listFile, "-c", "copy", "-movflags", "+faststart", output], timeoutMs);
-  await probeDuration(output, timeoutMs);
 };

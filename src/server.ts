@@ -167,7 +167,7 @@ const renderSelection = async (
       ? await loadHudTimeline(path.join(directory, "hud-timeline.json"))
       : undefined;
     const outputFile = "clip.mp4";
-    await renderSelectedClips(
+    job.render = await renderSelectedClips(
       path.join(directory, "video.mp4"),
       path.join(directory, outputFile),
       events,
@@ -277,6 +277,7 @@ app.get("/api/jobs/:token", async (request, response) => {
       state: job.state,
       error: job.error,
       events: job.events,
+      render: job.render,
       synchronization: job.synchronization,
       downloadUrl: job.state === "succeeded" ? `/api/jobs/${job.token}/download` : undefined
     });
