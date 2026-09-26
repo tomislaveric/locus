@@ -1,9 +1,12 @@
 # Post-ride AR POC
 
-Single-container POC for generating a short GoPro clip with animated Coin Collect effects. Upload one FIT file and one original GPS5 GoPro MP4; the app detects a configured location in the FIT track, maps that event onto the video timeline, renders the clip, and provides it for download.
+Single-container POC for turning a FIT ride into collectible game events and an optional GoPro highlight video. The approved Activity Mode milestone adds FIT-only activity results and an animated route replay while preserving the existing GPS5 GoPro rendering flow.
 
 ## Features
 
+- [Activity mode animated ride POC](features/activity-mode-animated-ride-poc/README.md)
+  — make FIT activities and game events primary, with a FIT-only replay and
+  optional GoPro highlights.
 - [Coin collection](features/coin-collection/README.md) — animate Coin pickups
   with a 2.5D Collect effect, reward, and generated audio Chime.
 - [GameEvent instead of Coin](features/gameevent-instead-of-coin/README.md) —
@@ -82,7 +85,7 @@ docker run --rm -p 3000:3000 \
 ## Input requirements
 
 - **FIT:** Must contain at least two time-stamped GPS trackpoints.
-- **MP4:** Use an original GoPro chapter copied directly from the camera. QuickTime trimming, re-encoding, or export removes the required `gpmd` GPMF metadata track.
+- **MP4 (optional):** To generate highlights, use an original GoPro chapter copied directly from the camera. QuickTime trimming, re-encoding, or export removes the required `gpmd` GPMF metadata track.
 - **Telemetry:** This POC supports **GPS5** only. The correct GoPro chapter must cover the FIT coin-passage time.
 - **Coins:** `coins.json` contains a nonempty list of Coins with unique `id`,
   `latitude`, `longitude`, `radius_m`, and `value` fields. The minimum `radius_m`
@@ -153,7 +156,8 @@ resources, at most 20 Coins and 120 seconds of merged output can be selected; se
 
 ## API
 
-- `POST /api/jobs` multipart fields: `fit`, `video`
+- `POST /api/jobs` multipart fields: required `fit`, optional `video`
 - `GET /api/jobs/:token`
+- `GET /api/jobs/:token/activity`
 - `POST /api/jobs/:token/render` JSON body: `{ "coinIds": ["coin-a", "coin-b"] }`
 - `GET /api/jobs/:token/download`

@@ -9,7 +9,7 @@ import {
 } from "./coin-effect.js";
 import { runCommand } from "./commands.js";
 import { config } from "./config.js";
-import type { GameEvent, HudTimeline } from "./domain.js";
+import type { HudTimeline, MappedGameEvent } from "./domain.js";
 import { UserInputError } from "./errors.js";
 import { synchronizationFailure } from "./synchronization.js";
 import { planHighlights } from "./highlightPlanner.js";
@@ -78,7 +78,7 @@ export interface RenderSummary {
 export interface ClipInterval {
   start: number;
   end: number;
-  events: GameEvent[];
+  events: MappedGameEvent[];
 }
 
 export const HIGHLIGHT_PRE_ROLL_SECONDS = 3;
@@ -117,8 +117,8 @@ export const probeVideoSize = async (file: string, timeoutMs: number): Promise<{
   return { width, height };
 };
 
-export const buildClipIntervals = (events: GameEvent[], duration: number): ClipInterval[] => {
-  const eventsById = new Map<string, GameEvent>();
+export const buildClipIntervals = (events: MappedGameEvent[], duration: number): ClipInterval[] => {
+  const eventsById = new Map<string, MappedGameEvent>();
   for (const event of [...events].sort((left, right) => {
     if (left.videoSecond !== right.videoSecond) return left.videoSecond - right.videoSecond;
     return left.id < right.id ? -1 : left.id > right.id ? 1 : 0;
@@ -382,7 +382,7 @@ export const buildHudSegmentFilter = (
 export const renderSelectedClips = async (
   input: string,
   output: string,
-  events: GameEvent[],
+  events: MappedGameEvent[],
   duration: number,
   workDirectory: string,
   timeoutMs: number,

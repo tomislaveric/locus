@@ -24,7 +24,31 @@ export interface GameEvent {
   latitude: number;
   longitude: number;
   activityTimestamp: number;
+  videoSecond?: number;
+}
+
+export interface MappedGameEvent extends GameEvent {
   videoSecond: number;
+}
+
+export interface Activity {
+  id: string;
+  source: "fit";
+  startedAt: number;
+  endedAt: number;
+  route: TrackPoint[];
+  distance?: number;
+  duration?: number;
+}
+
+export interface ActivityResult {
+  activityId: string;
+  distance?: number;
+  duration?: number;
+  collectedCount: number;
+  totalPoints: number;
+  collectibles: Coin[];
+  events: GameEvent[];
 }
 
 export interface HudTrackSample {
@@ -37,7 +61,7 @@ export interface HudTimeline {
   version: 1;
   track: HudTrackSample[];
   coins: Coin[];
-  events: GameEvent[];
+  events: MappedGameEvent[];
 }
 
 export type JobState = "processing" | "awaiting_selection" | "rendering" | "succeeded" | "failed";
@@ -49,7 +73,10 @@ export interface Job {
   updatedAt: string;
   error?: string;
   sourceDuration?: number;
-  events?: GameEvent[];
+  resultMode?: "activity" | "video";
+  activity?: Activity;
+  activityResult?: ActivityResult;
+  mappedEvents?: MappedGameEvent[];
   outputFile?: string;
   render?: import("./video.js").RenderSummary;
   synchronization?: import("./synchronization.js").SynchronizationSummary;

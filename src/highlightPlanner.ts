@@ -1,4 +1,4 @@
-import type { GameEvent } from "./domain.js";
+import type { MappedGameEvent } from "./domain.js";
 import { UserInputError } from "./errors.js";
 
 export interface HighlightPlannerOptions {
@@ -18,7 +18,7 @@ export interface HighlightPlan {
   totalDurationSeconds: number;
 }
 
-const eventOrder = (left: GameEvent, right: GameEvent): number => {
+const eventOrder = (left: MappedGameEvent, right: MappedGameEvent): number => {
   if (left.videoSecond !== right.videoSecond) return left.videoSecond - right.videoSecond;
   return left.id < right.id ? -1 : left.id > right.id ? 1 : 0;
 };
@@ -38,12 +38,15 @@ const validateOptions = (options: HighlightPlannerOptions): void => {
   }
 };
 
-export const planHighlights = (selectedEvents: readonly GameEvent[], options: HighlightPlannerOptions): HighlightPlan => {
+export const planHighlights = (selectedEvents: readonly MappedGameEvent[], options: HighlightPlannerOptions): HighlightPlan => {
   validateOptions(options);
+  if (selectedEvents.some((event) => !Number.isFinite(event.videoSecond))) {
+    throw new UserInputError("Selected events must have finite video timestamps.");
+  }
 
   const eventIds = new Set<string>();
   const uniqueEvents = [...selectedEvents]
-    .filter((event) => Number.isFinite(event.videoSecond) && event.videoSecond >= 0 && event.videoSecond <= options.videoDurationSeconds)
+    .filter((event) => event.videoSecond >= 0 && event.videoSecond <= options.videoDurationSeconds)
     .sort(eventOrder)
     .filter((event) => {
       if (eventIds.has(event.id)) return false;
