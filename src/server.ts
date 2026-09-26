@@ -3,9 +3,10 @@ import express, { type NextFunction, type Request, type Response } from "express
 import { access, mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import multer from "multer";
+import { deriveActivity, deriveActivityResult } from "./activity.js";
 import { readCoins } from "./coin.js";
 import { config } from "./config.js";
-import type { GameEvent, HudTimeline, Job } from "./domain.js";
+import type { HudTimeline, Job, MappedGameEvent } from "./domain.js";
 import { UserInputError } from "./errors.js";
 import { parseFitTrack } from "./fit.js";
 import { detectFirstCoinPassages } from "./geometry.js";
@@ -92,15 +93,25 @@ const cleanupReservation = async (request: UploadRequest): Promise<void> => {
   if (request.jobDir) await rm(request.jobDir, { recursive: true, force: true });
 };
 
-const processDetection = async (directory: string, job: Job): Promise<void> => {
+const processDetection = async (directory: string, job: Job, hasVideo: boolean): Promise<void> => {
   try {
     const coins = await readCoins(config.coinsFile);
-    const video = path.join(directory, "video.mp4");
     const fit = path.join(directory, "track.fit");
+    const track = await parseFitTrack(fit);
+    const activity = deriveActivity(job.token, track);
+    const activityResult = deriveActivityResult(activity, coins);
+    job.activity = activity;
+    job.activityResult = activityResult;
+    job.resultMode = hasVideo ? "video" : "activity";
+
+    if (!hasVideo) {
+      job.state = "succeeded";
+      return;
+    }
+
+    const video = path.join(directory, "video.mp4");
     const sourceDuration = await probeDuration(video, config.processTimeoutMs);
     const streamIndex = await gpmfStreamIndex(video, config.processTimeoutMs);
-    const track = await parseFitTrack(fit);
-    const passages = detectFirstCoinPassages(track, coins);
     const samples = await extractGps5Times(
       video,
       path.join(directory, "metadata.gpmf"),
@@ -113,33 +124,34 @@ const processDetection = async (directory: string, job: Job): Promise<void> => {
       sourceDuration,
       config.fitSampleGapWarningSeconds
     );
-    const events: GameEvent[] = [];
-    for (const passage of passages) {
-      const videoSecond = mapToVideoSecond(passage.timestampMs, samples);
+    const mappedEvents: MappedGameEvent[] = [];
+    for (const event of activityResult.events) {
+      const videoSecond = mapToVideoSecond(event.activityTimestamp, samples);
       if (videoSecond < 0 || videoSecond > sourceDuration) continue;
-      events.push({
-        id: passage.coin.id,
-        type: "coin",
-        value: passage.coin.value,
-        latitude: passage.coin.latitude,
-        longitude: passage.coin.longitude,
-        activityTimestamp: passage.timestampMs,
+      mappedEvents.push({
+        ...event,
         videoSecond: Number(videoSecond.toFixed(3))
       });
     }
-    if (events.length === 0) {
-      job.synchronization = withEventAvailability(assessment, passages.map((passage) => passage.timestampMs));
+    if (mappedEvents.length === 0) {
+      job.synchronization = withEventAvailability(
+        assessment,
+        activityResult.events.map((event) => event.activityTimestamp)
+      );
       throw new UserInputError("No configured coin passage maps to a time within the video.");
     }
-    const allEvents = events.sort((left, right) => left.videoSecond - right.videoSecond);
+    const allEvents = mappedEvents.sort((left, right) => left.videoSecond - right.videoSecond);
     await saveHudTimeline(
       path.join(directory, "hud-timeline.json"),
       createHudTimeline(track, coins, allEvents, samples, sourceDuration)
     );
     job.state = "awaiting_selection";
     job.sourceDuration = sourceDuration;
-    job.events = allEvents;
-    job.synchronization = withEventAvailability(assessment, passages.map((passage) => passage.timestampMs));
+    job.mappedEvents = allEvents;
+    job.synchronization = withEventAvailability(
+      assessment,
+      activityResult.events.map((event) => event.activityTimestamp)
+    );
   } catch (error) {
     job.state = "failed";
     job.error = error instanceof Error ? error.message : "Unexpected processing failure.";
@@ -159,7 +171,7 @@ const processDetection = async (directory: string, job: Job): Promise<void> => {
 const renderSelection = async (
   directory: string,
   job: Job,
-  events: GameEvent[]
+  events: MappedGameEvent[]
 ): Promise<void> => {
   try {
     if (job.sourceDuration === undefined) throw new UserInputError("Job has no source video duration.");
@@ -191,7 +203,7 @@ const renderSelection = async (
   }
 };
 
-const selectedEvents = (job: Job, value: unknown): GameEvent[] => {
+const selectedEvents = (job: Job, value: unknown): MappedGameEvent[] => {
   if (!Array.isArray(value) || value.length === 0 || !value.every((id) => typeof id === "string")) {
     throw new UserInputError("Select at least one detected coin id.");
   }
@@ -200,12 +212,12 @@ const selectedEvents = (job: Job, value: unknown): GameEvent[] => {
   }
   const ids = new Set(value);
   if (ids.size !== value.length) throw new UserInputError("Selected coin ids must be unique.");
-  const knownEvents = new Map((job.events ?? []).map((event) => [event.id, event]));
+  const knownEvents = new Map((job.mappedEvents ?? []).map((event) => [event.id, event]));
   const events = value.map((id) => knownEvents.get(id));
   if (events.some((event) => event === undefined)) {
     throw new UserInputError("Selection contains an unknown detected coin.");
   }
-  return (events as GameEvent[]).sort(
+  return (events as MappedGameEvent[]).sort(
     (left, right) => left.videoSecond - right.videoSecond
   );
 };
@@ -258,12 +270,12 @@ app.post(
   upload.fields([{ name: "fit", maxCount: 1 }, { name: "video", maxCount: 1 }]),
   async (request: UploadRequest, response, next) => {
     const files = request.files as Record<string, Express.Multer.File[]> | undefined;
-    if (!request.job || !request.jobDir || !files?.fit?.[0] || !files?.video?.[0]) {
+    if (!request.job || !request.jobDir || !files?.fit?.[0]) {
       await cleanupReservation(request);
-      response.status(400).json({ error: "Both one FIT file and one MP4 file are required." });
+      response.status(400).json({ error: "One FIT file is required." });
       return;
     }
-    void processDetection(request.jobDir, request.job);
+    void processDetection(request.jobDir, request.job, Boolean(files.video?.[0]));
     response.status(202).json({ token: request.job.token });
     next();
   }
@@ -276,13 +288,28 @@ app.get("/api/jobs/:token", async (request, response) => {
       token: job.token,
       state: job.state,
       error: job.error,
-      events: job.events,
+      resultMode: job.resultMode,
+      activityReady: Boolean(job.activity && job.activityResult),
+      events: job.mappedEvents,
       render: job.render,
       synchronization: job.synchronization,
-      downloadUrl: job.state === "succeeded" ? `/api/jobs/${job.token}/download` : undefined
+      downloadUrl: job.state === "succeeded" && job.outputFile ? `/api/jobs/${job.token}/download` : undefined
     });
   } catch (error) {
     response.status(404).json({ error: error instanceof Error ? error.message : "Unknown job." });
+  }
+});
+
+app.get("/api/jobs/:token/activity", async (request, response) => {
+  try {
+    const { job } = await loadJob(request.params.token);
+    if (!job.activity || !job.activityResult || job.state === "processing") {
+      response.status(409).json({ error: "Activity results are not ready." });
+      return;
+    }
+    response.json({ activity: job.activity, activityResult: job.activityResult });
+  } catch (error) {
+    response.status(404).json({ error: error instanceof Error ? error.message : "Activity unavailable." });
   }
 });
 

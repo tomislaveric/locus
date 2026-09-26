@@ -1,5 +1,5 @@
 import { readFile, writeFile } from "node:fs/promises";
-import type { Coin, GameEvent, HudTimeline, TrackPoint, VideoTimeSample } from "../domain.js";
+import type { Coin, HudTimeline, MappedGameEvent, TrackPoint, VideoTimeSample } from "../domain.js";
 import { mapToVideoSecond } from "../gpmf.js";
 import { UserInputError } from "../errors.js";
 
@@ -27,7 +27,7 @@ const isEvent = (value: unknown): boolean =>
 export const createHudTimeline = (
   track: TrackPoint[],
   coins: Coin[],
-  events: GameEvent[],
+  events: MappedGameEvent[],
   samples: VideoTimeSample[],
   duration: number
 ): HudTimeline => ({

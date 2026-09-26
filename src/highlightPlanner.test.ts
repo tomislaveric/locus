@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import type { GameEvent } from "./domain.js";
+import type { MappedGameEvent } from "./domain.js";
 import { planHighlights } from "./highlightPlanner.js";
 
-const event = (id: string, videoSecond: number): GameEvent => ({
+const event = (id: string, videoSecond: number): MappedGameEvent => ({
   id,
   type: "coin",
   value: 100,

@@ -1,4 +1,4 @@
-import type { GameEvent, HudTimeline, HudTrackSample } from "../domain.js";
+import type { HudTimeline, HudTrackSample, MappedGameEvent } from "../domain.js";
 import { distanceMeters } from "../geometry.js";
 
 export interface LocalPoint {
@@ -12,9 +12,9 @@ export interface HudState {
   northDirection: LocalPoint;
   route: LocalPoint[];
   items: LocalPoint[];
-  next?: { event: GameEvent; distanceMeters: number };
-  feedback?: GameEvent;
-  recentEvents: GameEvent[];
+  next?: { event: MappedGameEvent; distanceMeters: number };
+  feedback?: MappedGameEvent;
+  recentEvents: MappedGameEvent[];
 }
 
 const degrees = Math.PI / 180;
