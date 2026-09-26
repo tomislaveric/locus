@@ -19,6 +19,33 @@ export const distanceMeters = (
   return 2 * earthRadiusM * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 };
 
+export const minimumRouteDistanceMeters = (
+  points: TrackPoint[],
+  collectible: Pick<Collectible, "latitude" | "longitude">
+): number => {
+  if (points.length === 0) return Number.POSITIVE_INFINITY;
+  const radians = Math.PI / 180;
+  const toLocal = (point: Pick<TrackPoint, "latitude" | "longitude">) => ({
+    x: (point.longitude - collectible.longitude) * radians * earthRadiusM * Math.cos(collectible.latitude * radians),
+    y: (point.latitude - collectible.latitude) * radians * earthRadiusM
+  });
+  const pointDistance = (point: Pick<TrackPoint, "latitude" | "longitude">) =>
+    distanceMeters(point.latitude, point.longitude, collectible.latitude, collectible.longitude);
+  let minimumDistance = pointDistance(points[0]);
+  for (let index = 1; index < points.length; index += 1) {
+    const before = toLocal(points[index - 1]);
+    const after = toLocal(points[index]);
+    const deltaX = after.x - before.x;
+    const deltaY = after.y - before.y;
+    const lengthSquared = deltaX ** 2 + deltaY ** 2;
+    const projection = lengthSquared === 0 ? 0 : Math.max(0, Math.min(1, -(before.x * deltaX + before.y * deltaY) / lengthSquared));
+    const closestX = before.x + deltaX * projection;
+    const closestY = before.y + deltaY * projection;
+    minimumDistance = Math.min(minimumDistance, Math.hypot(closestX, closestY));
+  }
+  return minimumDistance;
+};
+
 export const detectCollectiblePassage = (
   points: TrackPoint[],
   collectible: Collectible

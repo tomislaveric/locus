@@ -41,6 +41,14 @@ export interface GameEvent {
   videoSecond?: number;
 }
 
+export interface NearMissCollectible {
+  collectibleId: string;
+  name: string;
+  value: number;
+  rarity?: CollectibleRarity;
+  minimumDistanceMeters: number;
+}
+
 export interface MappedGameEvent extends GameEvent {
   videoSecond: number;
 }
@@ -63,6 +71,7 @@ export interface ActivityResult {
   totalPoints: number;
   collectibles: Collectible[];
   events: GameEvent[];
+  nearMisses: NearMissCollectible[];
 }
 
 export interface HudTrackSample {

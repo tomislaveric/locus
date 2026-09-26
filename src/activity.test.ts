@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { deriveActivity, deriveActivityResult } from "./activity.js";
+import { deriveActivity, deriveActivityResult, MAX_NEAR_MISSES, NEAR_MISS_THRESHOLD_METERS } from "./activity.js";
 
 const route = [
   { latitude: 0, longitude: 0, timestampMs: 1_000 },
@@ -36,5 +36,46 @@ describe("activity derivation", () => {
     expect(result.collectibles).toBe(relevantCollectibles);
     expect(result.collectibles).toEqual([near]);
     expect(result.events.every((event) => result.collectibles.some((item) => item.id === event.sourceId))).toBe(true);
+  });
+
+  it("derives bounded, distance-sorted near misses without changing collected results", () => {
+    const metersToLatitude = (meters: number) => meters / 6_371_000 * 180 / Math.PI;
+    const collected = { id: "collected", name: "Collected", type: "coin" as const, latitude: 0, longitude: 0.00095, radiusMeters: 10, value: 10 };
+    const atFiftyMeters = { id: "fifty", name: "Fifty", type: "coin" as const, latitude: metersToLatitude(50), longitude: 0.001, radiusMeters: 1, value: 20 };
+    const atThreshold = { id: "threshold", name: "Threshold", type: "landmark" as const, latitude: metersToLatitude(NEAR_MISS_THRESHOLD_METERS), longitude: 0.001, radiusMeters: 1, value: 30 };
+    const beyondThreshold = { id: "beyond", name: "Beyond", type: "coin" as const, latitude: metersToLatitude(101), longitude: 0.001, radiusMeters: 1, value: 40 };
+    const extraNearMisses = Array.from({ length: 5 }, (_, index) => ({
+      id: `extra-${index}`,
+      name: `Extra ${index}`,
+      type: "coin" as const,
+      latitude: metersToLatitude(55 + index * 5),
+      longitude: 0.001,
+      radiusMeters: 1,
+      value: 1
+    }));
+
+    const result = deriveActivityResult(deriveActivity("ride", route), [
+      collected,
+      atFiftyMeters,
+      atThreshold,
+      beyondThreshold,
+      ...extraNearMisses
+    ]);
+
+    expect(result).toMatchObject({ collectedCount: 1, totalPoints: 10 });
+    expect(result.nearMisses).toHaveLength(MAX_NEAR_MISSES);
+    expect(result.nearMisses.map((nearMiss) => nearMiss.collectibleId)).toEqual([
+      "fifty",
+      "extra-0",
+      "extra-1",
+      "extra-2",
+      "extra-3"
+    ]);
+    expect(result.nearMisses.some((nearMiss) => nearMiss.collectibleId === "collected")).toBe(false);
+    expect(result.nearMisses.some((nearMiss) => nearMiss.collectibleId === "beyond")).toBe(false);
+    expect(result.nearMisses.find((nearMiss) => nearMiss.collectibleId === "fifty")?.minimumDistanceMeters).toBeCloseTo(50, 3);
+    expect(
+      deriveActivityResult(deriveActivity("ride", route), [atThreshold]).nearMisses
+    ).toMatchObject([{ collectibleId: "threshold" }]);
   });
 });

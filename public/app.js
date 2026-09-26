@@ -62,7 +62,19 @@ async function showActivity(token) {
   document.querySelector("#activity-stats").textContent =
     `${distance} · ${duration} · ${result.collectedCount} collected · ${result.totalPoints} XP`;
   const replay = mountReplay({
-    canvas: document.querySelector("#replay"), activity: body.activity, activityResult: result, feed: document.querySelector("#activity-feed")
+    canvas: document.querySelector("#replay"),
+    activity: body.activity,
+    activityResult: result,
+    ui: {
+      score: document.querySelector("#replay-score"),
+      count: document.querySelector("#replay-count"),
+      feedback: document.querySelector("#replay-feedback"),
+      next: document.querySelector("#replay-next"),
+      completion: document.querySelector("#replay-completion"),
+      feed: document.querySelector("#activity-feed"),
+      nearMisses: document.querySelector("#near-misses"),
+      nearMissList: document.querySelector("#near-miss-list")
+    }
   });
   document.querySelector("#replay-play").onclick = replay.play;
   document.querySelector("#replay-pause").onclick = replay.pause;
