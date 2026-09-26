@@ -4,12 +4,11 @@ import { access, mkdir, readFile, rename, rm, stat, writeFile } from "node:fs/pr
 import path from "node:path";
 import multer from "multer";
 import { deriveActivity, deriveActivityResult } from "./activity.js";
-import { readCoins } from "./coin.js";
+import { readCollectibles } from "./coin.js";
 import { config } from "./config.js";
 import type { HudTimeline, Job, MappedGameEvent } from "./domain.js";
 import { UserInputError } from "./errors.js";
 import { parseFitTrack } from "./fit.js";
-import { detectFirstCoinPassages } from "./geometry.js";
 import { extractGps5Times, mapToVideoSecond } from "./gpmf.js";
 import {
   assessSynchronization,
@@ -98,11 +97,11 @@ const cleanupReservation = async (request: UploadRequest): Promise<void> => {
 
 const processDetection = async (directory: string, job: Job, hasVideo: boolean): Promise<void> => {
   try {
-    const coins = await readCoins(config.coinsFile);
+    const collectibles = await readCollectibles(config.coinsFile);
     const fit = path.join(directory, "track.fit");
     const track = await parseFitTrack(fit);
     const activity = deriveActivity(job.token, track);
-    const activityResult = deriveActivityResult(activity, coins);
+    const activityResult = deriveActivityResult(activity, collectibles);
     job.activity = activity;
     job.activityResult = activityResult;
     job.resultMode = hasVideo ? "video" : "activity";
@@ -146,7 +145,7 @@ const processDetection = async (directory: string, job: Job, hasVideo: boolean):
     const allEvents = mappedEvents.sort((left, right) => left.videoSecond - right.videoSecond);
     await saveHudTimeline(
       path.join(directory, "hud-timeline.json"),
-      createHudTimeline(track, coins, allEvents, samples, sourceDuration)
+      createHudTimeline(track, collectibles, allEvents, samples, sourceDuration)
     );
     job.state = "awaiting_selection";
     job.sourceDuration = sourceDuration;
@@ -208,17 +207,17 @@ const renderSelection = async (
 
 const selectedEvents = (job: Job, value: unknown): MappedGameEvent[] => {
   if (!Array.isArray(value) || value.length === 0 || !value.every((id) => typeof id === "string")) {
-    throw new UserInputError("Select at least one detected coin id.");
+    throw new UserInputError("Select at least one detected collectible id.");
   }
   if (value.length > config.maxSelectedCoins) {
-    throw new UserInputError(`Select no more than ${config.maxSelectedCoins} coins.`);
+    throw new UserInputError(`Select no more than ${config.maxSelectedCoins} collectibles.`);
   }
   const ids = new Set(value);
-  if (ids.size !== value.length) throw new UserInputError("Selected coin ids must be unique.");
-  const knownEvents = new Map((job.mappedEvents ?? []).map((event) => [event.id, event]));
+  if (ids.size !== value.length) throw new UserInputError("Selected collectible ids must be unique.");
+  const knownEvents = new Map((job.mappedEvents ?? []).map((event) => [event.sourceId, event]));
   const events = value.map((id) => knownEvents.get(id));
   if (events.some((event) => event === undefined)) {
-    throw new UserInputError("Selection contains an unknown detected coin.");
+    throw new UserInputError("Selection contains an unknown detected collectible.");
   }
   return (events as MappedGameEvent[]).sort(
     (left, right) => left.videoSecond - right.videoSecond
@@ -327,7 +326,7 @@ app.post("/api/jobs/:token/render", async (request, response) => {
       response.status(429).json({ error: "The renderer is busy. Try again after the current job finishes." });
       return;
     }
-    const events = selectedEvents(job, request.body?.coinIds);
+    const events = selectedEvents(job, request.body?.sourceIds ?? request.body?.coinIds);
     if (job.sourceDuration === undefined) throw new UserInputError("Job has no source video duration.");
     const totalDuration = buildClipIntervals(events, job.sourceDuration).reduce(
       (total, interval) => total + interval.end - interval.start,

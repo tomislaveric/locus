@@ -4,7 +4,9 @@ import { planHighlights } from "./highlightPlanner.js";
 
 const event = (id: string, videoSecond: number): MappedGameEvent => ({
   id,
-  type: "coin",
+  sourceId: id,
+  type: "collectible_collected",
+  collectible: { name: id, type: "coin" },
   value: 100,
   latitude: 0,
   longitude: 0,

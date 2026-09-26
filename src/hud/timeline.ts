@@ -1,23 +1,34 @@
 import { readFile, writeFile } from "node:fs/promises";
-import type { Coin, HudTimeline, MappedGameEvent, TrackPoint, VideoTimeSample } from "../domain.js";
+import type { Collectible, HudTimeline, MappedGameEvent, TrackPoint, VideoTimeSample } from "../domain.js";
 import { mapToVideoSecond } from "../gpmf.js";
 import { UserInputError } from "../errors.js";
 
 const isFiniteNumber = (value: unknown): value is number => typeof value === "number" && Number.isFinite(value);
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null;
+const isRarity = (value: unknown): boolean => value === "common" || value === "rare" || value === "epic";
+const isCollectibleType = (value: unknown): boolean => value === "coin" || value === "landmark";
 
-const isCoin = (value: unknown): boolean =>
+const isCollectible = (value: unknown): boolean =>
   isRecord(value) &&
-  typeof value.id === "string" &&
-  isFiniteNumber(value.latitude) &&
-  isFiniteNumber(value.longitude) &&
-  isFiniteNumber(value.radius_m) &&
-  isFiniteNumber(value.value);
+  typeof value.id === "string" && value.id.trim() !== "" &&
+  typeof value.name === "string" && value.name.trim() !== "" &&
+  isCollectibleType(value.type) &&
+  isFiniteNumber(value.latitude) && value.latitude >= -90 && value.latitude <= 90 &&
+  isFiniteNumber(value.longitude) && value.longitude >= -180 && value.longitude <= 180 &&
+  isFiniteNumber(value.radiusMeters) && value.radiusMeters > 0 &&
+  isFiniteNumber(value.value) && value.value >= 0 &&
+  (value.rarity === undefined || isRarity(value.rarity)) &&
+  (value.description === undefined || (typeof value.description === "string" && value.description.trim() !== ""));
 
 const isEvent = (value: unknown): boolean =>
   isRecord(value) &&
-  typeof value.id === "string" &&
-  value.type === "coin" &&
+  typeof value.id === "string" && value.id.trim() !== "" &&
+  value.type === "collectible_collected" &&
+  typeof value.sourceId === "string" && value.sourceId === value.id &&
+  isRecord(value.collectible) &&
+  typeof value.collectible.name === "string" && value.collectible.name.trim() !== "" &&
+  isCollectibleType(value.collectible.type) &&
+  (value.collectible.rarity === undefined || isRarity(value.collectible.rarity)) &&
   isFiniteNumber(value.value) &&
   isFiniteNumber(value.latitude) &&
   isFiniteNumber(value.longitude) &&
@@ -26,7 +37,7 @@ const isEvent = (value: unknown): boolean =>
 
 export const createHudTimeline = (
   track: TrackPoint[],
-  coins: Coin[],
+  collectibles: Collectible[],
   events: MappedGameEvent[],
   samples: VideoTimeSample[],
   duration: number
@@ -40,7 +51,7 @@ export const createHudTimeline = (
     }))
     .filter((point) => point.videoSecond >= 0 && point.videoSecond <= duration)
     .sort((left, right) => left.videoSecond - right.videoSecond),
-  coins,
+  collectibles,
   events: [...events].sort((left, right) => left.videoSecond - right.videoSecond)
 });
 
@@ -52,8 +63,8 @@ const isTimeline = (value: unknown): value is HudTimeline => {
     Array.isArray(timeline.track) &&
     timeline.track.length >= 2 &&
     timeline.track.every((point) => isFiniteNumber(point.latitude) && isFiniteNumber(point.longitude) && isFiniteNumber(point.videoSecond)) &&
-    Array.isArray(timeline.coins) &&
-    timeline.coins.every(isCoin) &&
+    Array.isArray(timeline.collectibles) &&
+    timeline.collectibles.every(isCollectible) &&
     Array.isArray(timeline.events) &&
     timeline.events.every(isEvent)
   );

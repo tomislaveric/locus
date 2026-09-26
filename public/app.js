@@ -29,16 +29,16 @@ form.addEventListener("submit", async (event) => {
 passagesForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   const button = passagesForm.querySelector("button");
-  const coinIds = [...passageList.querySelectorAll("input:checked")].map((input) => input.value);
-  if (coinIds.length === 0) {
-    status.textContent = "Select at least one Coin passage.";
+  const sourceIds = [...passageList.querySelectorAll("input:checked")].map((input) => input.value);
+  if (sourceIds.length === 0) {
+    status.textContent = "Select at least one collectible passage.";
     return;
   }
   button.disabled = true;
   status.textContent = "Rendering selected clips...";
   try {
     const response = await fetch(`/api/jobs/${passagesForm.dataset.token}/render`, {
-      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ coinIds })
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sourceIds })
     });
     const body = await response.json();
     if (!response.ok) throw new Error(body.error);
@@ -81,7 +81,7 @@ async function poll(token, button) {
     } else if (job.state === "awaiting_selection") {
       await showActivity(token);
       showPassages(token, job.events);
-      status.textContent = `${synchronizationMessage(job.synchronization)} Select the Coin passages to include.`;
+      status.textContent = `${synchronizationMessage(job.synchronization)} Select the collectible passages to include.`;
       button.disabled = false;
     } else if (job.state === "rendering") {
       status.textContent = "Rendering selected clips...";
@@ -123,10 +123,11 @@ function showPassages(token, events) {
     const label = document.createElement("label");
     const checkbox = document.createElement("input");
     checkbox.type = "checkbox";
-    checkbox.name = "coinId";
-    checkbox.value = event.id;
+    checkbox.name = "sourceId";
+    checkbox.value = event.sourceId;
     checkbox.checked = true;
-    label.append(checkbox, `${event.id} (+${event.value} XP) at ${event.videoSecond.toFixed(3)} s`);
+    const rarity = event.collectible.rarity ? ` (${event.collectible.rarity})` : "";
+    label.append(checkbox, `${event.collectible.name}${rarity} (+${event.value} XP) at ${event.videoSecond.toFixed(3)} s`);
     passageList.append(label);
   }
   passagesForm.hidden = false;

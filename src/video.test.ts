@@ -18,9 +18,9 @@ describe("buildClipIntervals", () => {
   it("clamps windows before merging overlapping passages", () => {
     const intervals = buildClipIntervals(
       [
-        { id: "start", type: "coin", value: 100, latitude: 0, longitude: 0, activityTimestamp: 500, videoSecond: 0.5 },
-        { id: "overlap", type: "coin", value: 200, latitude: 0, longitude: 0, activityTimestamp: 4_000, videoSecond: 4 },
-        { id: "separate", type: "coin", value: 300, latitude: 0, longitude: 0, activityTimestamp: 15_000, videoSecond: 15 }
+        { id: "start", sourceId: "start", type: "collectible_collected" as const, collectible: { name: "start", type: "coin" as const }, value: 100, latitude: 0, longitude: 0, activityTimestamp: 500, videoSecond: 0.5 },
+        { id: "overlap", sourceId: "overlap", type: "collectible_collected" as const, collectible: { name: "overlap", type: "coin" as const }, value: 200, latitude: 0, longitude: 0, activityTimestamp: 4_000, videoSecond: 4 },
+        { id: "separate", sourceId: "separate", type: "collectible_collected" as const, collectible: { name: "separate", type: "coin" as const }, value: 300, latitude: 0, longitude: 0, activityTimestamp: 15_000, videoSecond: 15 }
       ],
       20
     );
@@ -31,7 +31,7 @@ describe("buildClipIntervals", () => {
   });
 
   describe("renderer validation", () => {
-    const event = { id: "coin", type: "coin" as const, value: 1, latitude: 0, longitude: 0, activityTimestamp: 0, videoSecond: 2 };
+    const event = { id: "coin", sourceId: "coin", type: "collectible_collected" as const, collectible: { name: "coin", type: "coin" as const }, value: 1, latitude: 0, longitude: 0, activityTimestamp: 0, videoSecond: 2 };
 
     it("normalizes supported source media and records optional audio", () => {
       expect(normalizeMediaInfo({
@@ -53,7 +53,7 @@ describe("buildClipIntervals", () => {
 
     it("renders audio-bearing and silent generated sources with validated AAC output and cleanup", async () => {
       const directory = await mkdtemp(path.join(os.tmpdir(), "post-ride-render-"));
-      const event = { id: "coin", type: "coin" as const, value: 1, latitude: 0, longitude: 0, activityTimestamp: 0, videoSecond: 1 };
+      const event = { id: "coin", sourceId: "coin", type: "collectible_collected" as const, collectible: { name: "coin", type: "coin" as const }, value: 1, latitude: 0, longitude: 0, activityTimestamp: 0, videoSecond: 1 };
       try {
         for (const withAudio of [true, false]) {
           const source = path.join(directory, withAudio ? "source-with-audio.mp4" : "source-silent.mp4");
@@ -102,8 +102,8 @@ describe("buildClipIntervals", () => {
   it("adapts planner segment IDs back to chronologically ordered events", () => {
     const intervals = buildClipIntervals(
       [
-        { id: "later", type: "coin", value: 100, latitude: 0, longitude: 0, activityTimestamp: 20_000, videoSecond: 20 },
-        { id: "first", type: "coin", value: 100, latitude: 0, longitude: 0, activityTimestamp: 18_000, videoSecond: 18 }
+        { id: "later", sourceId: "later", type: "collectible_collected" as const, collectible: { name: "later", type: "coin" as const }, value: 100, latitude: 0, longitude: 0, activityTimestamp: 20_000, videoSecond: 20 },
+        { id: "first", sourceId: "first", type: "collectible_collected" as const, collectible: { name: "first", type: "coin" as const }, value: 100, latitude: 0, longitude: 0, activityTimestamp: 18_000, videoSecond: 18 }
       ],
       30
     );
@@ -144,8 +144,8 @@ describe("Coin effect planning", () => {
         start: 10,
         end: 16,
         events: [
-          { id: "one", type: "coin", value: 123, latitude: 0, longitude: 0, activityTimestamp: 12_000, videoSecond: 12 },
-          { id: "two", type: "coin", value: 456, latitude: 0, longitude: 0, activityTimestamp: 12_100, videoSecond: 12.1 }
+          { id: "one", sourceId: "one", type: "collectible_collected" as const, collectible: { name: "one", type: "coin" as const }, value: 123, latitude: 0, longitude: 0, activityTimestamp: 12_000, videoSecond: 12 },
+          { id: "two", sourceId: "two", type: "collectible_collected" as const, collectible: { name: "two", type: "coin" as const }, value: 456, latitude: 0, longitude: 0, activityTimestamp: 12_100, videoSecond: 12.1 }
         ]
       },
       false

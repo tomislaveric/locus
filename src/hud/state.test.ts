@@ -9,13 +9,13 @@ const timeline: HudTimeline = {
     { latitude: 48.001, longitude: 11, videoSecond: 10 },
     { latitude: 48.002, longitude: 11, videoSecond: 20 }
   ],
-  coins: [
-    { id: "first", latitude: 48.0005, longitude: 11, radius_m: 5, value: 100 },
-    { id: "second", latitude: 48.0015, longitude: 11, radius_m: 5, value: 200 }
+  collectibles: [
+    { id: "first", name: "First", type: "coin", latitude: 48.0005, longitude: 11, radiusMeters: 5, value: 100 },
+    { id: "second", name: "Second", type: "coin", latitude: 48.0015, longitude: 11, radiusMeters: 5, value: 200 }
   ],
   events: [
-    { id: "first", type: "coin", latitude: 48.0005, longitude: 11, value: 100, activityTimestamp: 5_000, videoSecond: 5 },
-    { id: "second", type: "coin", latitude: 48.0015, longitude: 11, value: 200, activityTimestamp: 15_000, videoSecond: 15 }
+    { id: "first", sourceId: "first", type: "collectible_collected", collectible: { name: "first", type: "coin" }, latitude: 48.0005, longitude: 11, value: 100, activityTimestamp: 5_000, videoSecond: 5 },
+    { id: "second", sourceId: "second", type: "collectible_collected", collectible: { name: "second", type: "coin" }, latitude: 48.0015, longitude: 11, value: 200, activityTimestamp: 15_000, videoSecond: 15 }
   ]
 };
 

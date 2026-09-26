@@ -1,5 +1,5 @@
-import type { Activity, ActivityResult, Coin, GameEvent, TrackPoint } from "./domain.js";
-import { distanceMeters, detectFirstCoinPassages } from "./geometry.js";
+import type { Activity, ActivityResult, Collectible, GameEvent, TrackPoint } from "./domain.js";
+import { distanceMeters, detectFirstCollectiblePassages } from "./geometry.js";
 
 export const deriveActivity = (id: string, route: TrackPoint[]): Activity => {
   const distance = route.slice(1).reduce(
@@ -20,13 +20,19 @@ export const deriveActivity = (id: string, route: TrackPoint[]): Activity => {
   };
 };
 
-export const deriveActivityResult = (activity: Activity, coins: Coin[]): ActivityResult => {
-  const events: GameEvent[] = detectFirstCoinPassages(activity.route, coins).map((passage) => ({
-    id: passage.coin.id,
-    type: "coin",
-    value: passage.coin.value,
-    latitude: passage.coin.latitude,
-    longitude: passage.coin.longitude,
+export const deriveActivityResult = (activity: Activity, collectibles: Collectible[]): ActivityResult => {
+  const events: GameEvent[] = detectFirstCollectiblePassages(activity.route, collectibles).map((passage) => ({
+    id: passage.collectible.id,
+    sourceId: passage.collectible.id,
+    type: "collectible_collected",
+    collectible: {
+      name: passage.collectible.name,
+      type: passage.collectible.type,
+      ...(passage.collectible.rarity === undefined ? {} : { rarity: passage.collectible.rarity })
+    },
+    value: passage.collectible.value,
+    latitude: passage.collectible.latitude,
+    longitude: passage.collectible.longitude,
     activityTimestamp: passage.timestampMs
   }));
   return {
@@ -35,7 +41,7 @@ export const deriveActivityResult = (activity: Activity, coins: Coin[]): Activit
     duration: activity.duration,
     collectedCount: events.length,
     totalPoints: events.reduce((total, event) => total + event.value, 0),
-    collectibles: coins,
+    collectibles,
     events
   };
 };

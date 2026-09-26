@@ -11,14 +11,15 @@ describe("activity derivation", () => {
   it("derives route measurements and canonical timestamp-ordered events", () => {
     const activity = deriveActivity("ride", route);
     const result = deriveActivityResult(activity, [
-      { id: "later", latitude: 0, longitude: 0.00195, radius_m: 10, value: 20 },
-      { id: "first", latitude: 0, longitude: 0.00095, radius_m: 10, value: 10 }
+      { id: "later", name: "Later", type: "landmark", latitude: 0, longitude: 0.00195, radiusMeters: 10, value: 20 },
+      { id: "first", name: "First", type: "coin", latitude: 0, longitude: 0.00095, radiusMeters: 10, value: 10 }
     ]);
 
     expect(activity).toMatchObject({ id: "ride", source: "fit", startedAt: 1_000, endedAt: 121_000, duration: 120 });
     expect(activity.distance).toBeGreaterThan(200);
     expect(result).toMatchObject({ activityId: "ride", collectedCount: 2, totalPoints: 30 });
-    expect(result.events.map((event) => event.id)).toEqual(["first", "later"]);
+    expect(result.events.map((event) => event.sourceId)).toEqual(["first", "later"]);
+    expect(result.events.map((event) => event.collectible.name)).toEqual(["First", "Later"]);
     expect(result.events.every((event) => event.videoSecond === undefined)).toBe(true);
   });
 

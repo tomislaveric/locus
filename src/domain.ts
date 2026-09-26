@@ -1,9 +1,16 @@
-export interface Coin {
+export type CollectibleType = "coin" | "landmark";
+export type CollectibleRarity = "common" | "rare" | "epic";
+
+export interface Collectible {
   id: string;
+  name: string;
+  type: CollectibleType;
   latitude: number;
   longitude: number;
-  radius_m: number;
+  radiusMeters: number;
   value: number;
+  rarity?: CollectibleRarity;
+  description?: string;
 }
 
 export interface TrackPoint {
@@ -18,8 +25,15 @@ export interface VideoTimeSample {
 }
 
 export interface GameEvent {
+  /** @deprecated Compatibility alias for sourceId. */
   id: string;
-  type: "coin";
+  type: "collectible_collected";
+  sourceId: string;
+  collectible: {
+    name: string;
+    type: CollectibleType;
+    rarity?: CollectibleRarity;
+  };
   value: number;
   latitude: number;
   longitude: number;
@@ -47,7 +61,7 @@ export interface ActivityResult {
   duration?: number;
   collectedCount: number;
   totalPoints: number;
-  collectibles: Coin[];
+  collectibles: Collectible[];
   events: GameEvent[];
 }
 
@@ -60,7 +74,7 @@ export interface HudTrackSample {
 export interface HudTimeline {
   version: 1;
   track: HudTrackSample[];
-  coins: Coin[];
+  collectibles: Collectible[];
   events: MappedGameEvent[];
 }
 
