@@ -42,7 +42,7 @@ output format remain unchanged.
 1. Add a Coin-effect module that creates transparent Coin, burst/glow, and
    `+{value}` layers and defines the three-second approach, 0.25-second collect,
    and 0.95-second reward phases.
-2. Refactor `renderSelectedClips` in `src/video.ts` to animate per-passage
+2. Refactor `renderSelectedClips` in `src/video.ts` to animate per-`GameEvent`
    layers with verified per-frame scale, alpha, and centered-position expressions.
    Clamp effects to clip bounds and give all parallel filter branches unique
    labels.

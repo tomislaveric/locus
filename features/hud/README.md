@@ -52,7 +52,9 @@ cadence, or heart rate.
 Detection will reuse the parsed FIT track, Coin list, and existing GPMF timing
 samples to create a private render-only HUD timeline after detection succeeds. The
 timeline holds source-video-timed track samples, configured Coins, and all mapped
-collection events without changing the public job/status payload.
+`GameEvent` collection events. The job/status payload exposes the same `events`
+for browser selection, while the HUD timeline retains every detected event for
+collection state and the event feed.
 
 At rendering time, a HUD state is derived from each source-video frame time:
 

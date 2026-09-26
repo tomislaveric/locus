@@ -6,6 +6,8 @@ Single-container POC for generating a short GoPro clip with animated Coin Collec
 
 - [Coin collection](features/coin-collection/README.md) — animate Coin pickups
   with a 2.5D Collect effect, reward, and generated audio Chime.
+- [GameEvent instead of Coin](features/gameevent-instead-of-coin/README.md) —
+  generalize downstream Coin-passage records into typed game events.
 - [HUD](features/hud/README.md) — replace physical-scene Coin visuals with a
   compact, camera-independent route and event overlay.
 - [Multi Clip creation](features/multi-clip-creation/README.md) — select detected
@@ -62,15 +64,18 @@ The app derives the event in three steps:
 coin coordinates → FIT track crossing time → GPS5-clock-aligned video second
 ```
 
-The app lists the first detected passage for each configured Coin. Select the
-passages to include, then download one chronological highlight video. Each event
-uses a three-second-before/-after window; overlapping or adjacent windows are
-merged. The default output adds a screen-space HUD: a fixed, heading-aligned map
-of the current clip segment where the rider moves toward the top and turns with
-the route. It includes nearby Coin markers, a subtle north compass, the next
-detected Coin and its direct distance, and a brief collection feed. It uses only
-FIT/GPS timing and does not depend on camera pose, road geometry, or image
-analysis. Source audio is unchanged.
+Each detected Coin is represented downstream as a typed `GameEvent` containing
+its Coin ID, type, value, coordinates, unrounded FIT entry-crossing
+`activityTimestamp`, and millisecond-rounded `videoSecond`. The app lists the
+first detected passage for each configured Coin. Select the passages to include,
+then download one chronological highlight video. Each event uses a
+three-second-before/-after window; overlapping or adjacent windows are merged.
+The default output adds a screen-space HUD: a fixed, heading-aligned map of the
+current clip segment where the rider moves toward the top and turns with the
+route. It includes nearby Coin markers, a subtle north compass, the next detected
+Coin and its direct distance, and a brief collection feed. It uses only FIT/GPS
+timing and does not depend on camera pose, road geometry, or image analysis.
+Source audio is unchanged.
 
 HUD behavior can be configured with `HUD_ENABLED`, `MINIMAP_ENABLED`,
 `EVENT_FEED_ENABLED`, `NEXT_ITEM_ENABLED`, `MAP_RANGE_METERS` (default `150`),
