@@ -91,6 +91,31 @@ export interface ProgressionResult {
   levelsGained: number;
 }
 
+export interface ActivityHistoryItem {
+  id: string;
+  startedAt: string;
+  distanceMeters?: number;
+  durationSeconds?: number;
+  xpEarned: number;
+  collectedCount: number;
+  hasVideo: boolean;
+}
+
+export interface PersistedActivity extends ActivityHistoryItem {
+  events: PersistedActivityEvent[];
+}
+
+export interface PersistedActivityEvent {
+  id: string;
+  sourceId: string;
+  type: GameEvent["type"];
+  collectible: GameEvent["collectible"];
+  value: number;
+  latitude: number;
+  longitude: number;
+  activityTimestamp: number;
+}
+
 export interface HudTrackSample {
   latitude: number;
   longitude: number;

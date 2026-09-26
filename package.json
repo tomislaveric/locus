@@ -8,18 +8,22 @@
     "start": "node dist/server.js",
     "dev": "tsx watch src/server.ts",
     "test": "vitest run",
-    "test:sync": "tsx src/runSyncValidation.ts"
+    "test:sync": "tsx src/runSyncValidation.ts",
+    "migrate": "tsx src/persistence/migrate.ts",
+    "test:persistence": "TEST_DATABASE_URL=${TEST_DATABASE_URL:?TEST_DATABASE_URL is required} vitest run src/persistence/activityRepository.test.ts"
   },
   "dependencies": {
     "express": "^4.21.2",
     "fit-file-parser": "^2.3.3",
     "gopro-telemetry": "^1.2.11",
-    "multer": "^2.4.0"
+    "multer": "^2.4.0",
+    "pg": "^8.23.0"
   },
   "devDependencies": {
     "@types/express": "^5.0.1",
     "@types/multer": "^1.4.12",
     "@types/node": "^22.13.4",
+    "@types/pg": "^8.23.1",
     "tsx": "^4.19.3",
     "typescript": "^5.7.3",
     "vitest": "^3.0.5"

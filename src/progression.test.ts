@@ -27,19 +27,9 @@ describe("progression", () => {
   it("handles large totals and applies single and multiple level transitions", () => {
     expect(getLevelForXp(1_000_000_000)).toBeGreaterThan(4_000);
     expect(applyActivityXp(99, 1)).toMatchObject({
-      previousTotalXp: 99,
-      xpEarned: 1,
-      newTotalXp: 100,
-      previousLevel: 1,
-      newLevel: 2,
-      levelsGained: 1
+      previousTotalXp: 99, xpEarned: 1, newTotalXp: 100, previousLevel: 1, newLevel: 2, levelsGained: 1
     });
-    expect(applyActivityXp(0, 600)).toMatchObject({
-      newTotalXp: 600,
-      previousLevel: 1,
-      newLevel: 4,
-      levelsGained: 3
-    });
+    expect(applyActivityXp(0, 600)).toMatchObject({ newTotalXp: 600, previousLevel: 1, newLevel: 4, levelsGained: 3 });
   });
 
   it("rejects invalid progression inputs", () => {

@@ -16,6 +16,9 @@ import {
   SynchronizationError
 } from "./synchronization.js";
 import { createHudTimeline, loadHudTimeline, saveHudTimeline } from "./hud/timeline.js";
+import { ActivityRepository } from "./persistence/activityRepository.js";
+import { createDatabasePool } from "./persistence/database.js";
+import { migrate } from "./persistence/migrate.js";
 import { buildClipIntervals, gpmfStreamIndex, probeDuration, renderSelectedClips } from "./video.js";
 import { getRelevantCollectibles } from "./worldQuery.js";
 
@@ -25,6 +28,16 @@ interface UploadRequest extends Request {
 }
 
 let busy = false;
+
+if (!config.databaseUrl) throw new Error("DATABASE_URL is required.");
+const databasePool = createDatabasePool(config.databaseUrl);
+await migrate(databasePool);
+const activityRepository = new ActivityRepository(
+  databasePool,
+  config.defaultPlayerId,
+  config.defaultPlayerName
+);
+await activityRepository.initializeDefaultPlayer();
 
 const jobFile = (directory: string): string => path.join(directory, "job.json");
 
@@ -96,7 +109,12 @@ const cleanupReservation = async (request: UploadRequest): Promise<void> => {
   if (request.jobDir) await rm(request.jobDir, { recursive: true, force: true });
 };
 
-const processDetection = async (directory: string, job: Job, hasVideo: boolean): Promise<void> => {
+const processDetection = async (
+  directory: string,
+  job: Job,
+  hasVideo: boolean,
+  repository: ActivityRepository
+): Promise<void> => {
   try {
     const collectibles = await readCollectibles(config.coinsFile);
     const fit = path.join(directory, "track.fit");
@@ -111,6 +129,7 @@ const processDetection = async (directory: string, job: Job, hasVideo: boolean):
       relevantCollectibles: relevantCollectibles.length
     };
     job.resultMode = hasVideo ? "video" : "activity";
+    await repository.persistCompletedActivity(activity, activityResult);
 
     if (!hasVideo) {
       job.state = "succeeded";
@@ -179,7 +198,8 @@ const processDetection = async (directory: string, job: Job, hasVideo: boolean):
 const renderSelection = async (
   directory: string,
   job: Job,
-  events: MappedGameEvent[]
+  events: MappedGameEvent[],
+  repository: ActivityRepository
 ): Promise<void> => {
   try {
     if (job.sourceDuration === undefined) throw new UserInputError("Job has no source video duration.");
@@ -196,6 +216,7 @@ const renderSelection = async (
       config.processTimeoutMs,
       hudTimeline
     );
+    await repository.markActivityHasVideo(job.token);
     job.state = "succeeded";
     job.outputFile = outputFile;
   } catch (error) {
@@ -269,6 +290,9 @@ await cleanExpiredJobs();
 setInterval(() => void cleanExpiredJobs(), Math.min(config.jobTtlMs, 60_000)).unref();
 
 const app = express();
+app.get("/shared/progression.js", (_request, response) => {
+  response.sendFile(path.resolve("dist/progression.js"));
+});
 app.use(express.static(path.resolve("public")));
 app.use(express.json({ limit: "16kb" }));
 
@@ -283,11 +307,40 @@ app.post(
       response.status(400).json({ error: "One FIT file is required." });
       return;
     }
-    void processDetection(request.jobDir, request.job, Boolean(files.video?.[0]));
+    void processDetection(request.jobDir, request.job, Boolean(files.video?.[0]), activityRepository);
     response.status(202).json({ token: request.job.token });
     next();
   }
 );
+
+app.get("/api/activities", async (_request, response, next) => {
+  try {
+    response.json(await activityRepository.listActivities());
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/api/activities/:id", async (request, response, next) => {
+  try {
+    const activity = await activityRepository.getActivity(request.params.id);
+    if (!activity) {
+      response.status(404).json({ error: "Activity not found." });
+      return;
+    }
+    response.json(activity);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/api/player/progress", async (_request, response, next) => {
+  try {
+    response.json(await activityRepository.getProgress());
+  } catch (error) {
+    next(error);
+  }
+});
 
 app.get("/api/jobs/:token", async (request, response) => {
   try {
@@ -352,7 +405,7 @@ app.post("/api/jobs/:token/render", async (request, response) => {
       busy = false;
       throw error;
     }
-    void renderSelection(directory, job, events);
+    void renderSelection(directory, job, events, activityRepository);
     response.status(202).json({ token: job.token, state: job.state });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Could not render the selected clips.";

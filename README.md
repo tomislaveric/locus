@@ -23,6 +23,9 @@ Single-container POC for turning a FIT ride into collectible game events and an 
   retention-aware.
 - [Multi Clip creation](features/multi-clip-creation/README.md) — select detected
   Coin passages and combine them into one chronological highlight video.
+- [Persistent activities player state v1](features/persistent-activities-player-state-v1/README.md)
+  — persist compact activity/event history and single-player XP in PostgreSQL
+  with transaction-safe exactly-once progression.
 - [Progression V1](features/progression-v1/README.md) — make each completed ride
   contribute XP toward a derived player level without adding persistence or rewards.
 - [Renderer resilience output validation](features/renderer-resilience-output-validation/README.md)
@@ -51,11 +54,15 @@ The GoPro's **GPS clock** is used for synchronization. A camera position fix is 
 
 ## Run locally
 
-Requirements: Node.js 22+ and FFmpeg/FFprobe with H.264 (`libx264`) support.
+Requirements: Node.js 22+, PostgreSQL 16+, and FFmpeg/FFprobe with H.264
+(`libx264`) support.
 
 ```bash
 cp coins.json.example coins.json
 npm install
+docker compose up -d postgres
+export DATABASE_URL=postgresql://post_ride_ar:post_ride_ar@localhost:5432/post_ride_ar
+npm run migrate
 npm run build
 npm start
 ```
@@ -64,6 +71,10 @@ Open `http://localhost:3000`. The default limits allow uploads up to 6 GiB and
 processing for up to 15 minutes so that original multi-gigabyte GoPro chapters can
 be processed. Override these values with `MAX_UPLOAD_BYTES` and
 `PROCESS_TIMEOUT_MS` when necessary.
+
+The server automatically reads an optional project-root `.env`. Copy
+`.env.example` when not using the Compose defaults; environment variables supplied
+by the process still take precedence.
 
 `WORLD_QUERY_PADDING_METERS` (default `500`) expands the FIT route's geographic
 bounds before configured Collectibles are selected. The server uses that compact
@@ -98,8 +109,21 @@ printing. Pass `-- --debug` to show diagnostics for passing events too.
 ```bash
 docker build -t post-ride-ar .
 docker run --rm -p 3000:3000 \
+  -e DATABASE_URL=postgresql://post_ride_ar:post_ride_ar@host.docker.internal:5432/post_ride_ar \
   -v "$PWD/coins.json:/data/coins.json:ro" \
   post-ride-ar
+```
+
+`DATABASE_URL` is required and is supplied at runtime; the image does not
+contain database credentials. `DEFAULT_PLAYER_ID` defaults to the reserved
+UUID `00000000-0000-4000-8000-000000000001` and identifies the single local
+player. `DEFAULT_PLAYER_NAME` defaults to `Local player`. Migrations are
+ledger-backed and safe to run on every deployment with `npm run migrate`.
+
+For isolated persistence tests, provide a disposable database:
+
+```bash
+TEST_DATABASE_URL=postgresql://post_ride_ar:post_ride_ar@localhost:5432/post_ride_ar_test npm run test:persistence
 ```
 
 ## Input requirements
@@ -181,6 +205,13 @@ resources, at most 20 Coins and 120 seconds of merged output can be selected; se
 `MAX_SELECTED_COINS`, `MAX_OUTPUT_DURATION_SECONDS`, `SELECTION_TTL_MS`, or
 `JOB_TTL_MS` to override the defaults.
 
+Job JSON, uploads, telemetry artifacts, generated HUD files, and rendered video
+remain transient and follow these TTLs. PostgreSQL retains only compact completed
+activity summaries, event-time collectible snapshots, video availability, and the
+default player's total XP. A valid FIT activity is committed before optional video
+synchronization or rendering, so later video failure does not remove its history
+or XP.
+
 ## API
 
 - `POST /api/jobs` multipart fields: required `fit`, optional `video`
@@ -190,3 +221,10 @@ resources, at most 20 Coins and 120 seconds of merged output can be selected; se
   `{ "sourceIds": ["collectible-a", "collectible-b"] }`. The legacy
   `{ "coinIds": [...] }` field remains accepted temporarily as an alias.
 - `GET /api/jobs/:token/download`
+- `GET /api/activities` returns the default player's completed activities,
+  newest first, with compact summary fields.
+- `GET /api/activities/:id` returns one persisted activity and its ordered
+  event-time collectible snapshots.
+- `GET /api/player/progress` returns durable `totalXp` and the derived level
+  curve values `level`, `currentLevelXp`, `nextLevelXp`, and
+  `progressToNextLevel`.

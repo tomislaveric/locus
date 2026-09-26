@@ -1,21 +1,23 @@
+import type { PlayerProgress, ProgressionResult } from "./domain.js";
+
 const XP_PER_LEVEL = 100;
 
-const assertNonNegativeFinite = (value, name) => {
+const assertNonNegativeFinite = (value: number, name: string): void => {
   if (!Number.isFinite(value) || value < 0) {
     throw new RangeError(`${name} must be a finite, non-negative number.`);
   }
 };
 
-const getLevelThreshold = (level) => XP_PER_LEVEL * (level - 1) * level / 2;
+const getLevelThreshold = (level: number): number => XP_PER_LEVEL * (level - 1) * level / 2;
 
-export const getXpRequiredForLevel = (level) => {
+export const getXpRequiredForLevel = (level: number): number => {
   if (!Number.isSafeInteger(level) || level < 1) {
     throw new RangeError("level must be a positive safe integer.");
   }
   return XP_PER_LEVEL * level;
 };
 
-export const getLevelForXp = (totalXp) => {
+export const getLevelForXp = (totalXp: number): number => {
   assertNonNegativeFinite(totalXp, "totalXp");
   let level = Math.max(1, Math.floor((1 + Math.sqrt(1 + 8 * totalXp / XP_PER_LEVEL)) / 2));
   while (getLevelThreshold(level + 1) <= totalXp) level += 1;
@@ -23,7 +25,7 @@ export const getLevelForXp = (totalXp) => {
   return level;
 };
 
-export const getLevelProgress = (totalXp) => {
+export const getLevelProgress = (totalXp: number): PlayerProgress => {
   assertNonNegativeFinite(totalXp, "totalXp");
   const level = getLevelForXp(totalXp);
   const currentLevelXp = totalXp - getLevelThreshold(level);
@@ -37,7 +39,7 @@ export const getLevelProgress = (totalXp) => {
   };
 };
 
-export const applyActivityXp = (previousTotalXp, xpEarned) => {
+export const applyActivityXp = (previousTotalXp: number, xpEarned: number): ProgressionResult => {
   assertNonNegativeFinite(previousTotalXp, "previousTotalXp");
   assertNonNegativeFinite(xpEarned, "xpEarned");
   const newTotalXp = previousTotalXp + xpEarned;

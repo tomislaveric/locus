@@ -1,4 +1,8 @@
+import { existsSync } from "node:fs";
 import path from "node:path";
+
+const envFile = path.resolve(".env");
+if (existsSync(envFile)) process.loadEnvFile(envFile);
 
 const integerEnv = (name: string, fallback: number): number => {
   const value = process.env[name];
@@ -26,6 +30,14 @@ const booleanEnv = (name: string, fallback: boolean): boolean => {
   throw new Error(`${name} must be true or false.`);
 };
 
+const uuidEnv = (name: string, fallback: string): string => {
+  const value = process.env[name] ?? fallback;
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)) {
+    throw new Error(`${name} must be a UUID.`);
+  }
+  return value;
+};
+
 export const config = {
   port: integerEnv("PORT", 3000),
   dataDir: path.resolve(process.env.DATA_DIR ?? "./data/jobs"),
@@ -46,5 +58,8 @@ export const config = {
   hudFrameRate: integerEnv("HUD_FRAME_RATE", 10),
   showLegacyCoinOverlay: booleanEnv("SHOW_LEGACY_COIN_OVERLAY", false),
   fitSampleGapWarningSeconds: decimalEnv("FIT_SAMPLE_GAP_WARNING_SECONDS", 30),
-  worldQueryPaddingMeters: decimalEnv("WORLD_QUERY_PADDING_METERS", 500)
+  worldQueryPaddingMeters: decimalEnv("WORLD_QUERY_PADDING_METERS", 500),
+  databaseUrl: process.env.DATABASE_URL?.trim(),
+  defaultPlayerId: uuidEnv("DEFAULT_PLAYER_ID", "00000000-0000-4000-8000-000000000001"),
+  defaultPlayerName: process.env.DEFAULT_PLAYER_NAME?.trim() || "Local player"
 };

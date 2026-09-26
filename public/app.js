@@ -1,5 +1,5 @@
 import { mountReplay } from "./replay.js";
-import { applyActivityXp, getLevelProgress } from "./progression.js";
+import { applyActivityXp } from "/shared/progression.js";
 
 const form = document.querySelector("#upload");
 const status = document.querySelector("#status");
@@ -7,8 +7,6 @@ const passagesForm = document.querySelector("#passages");
 const passageList = document.querySelector("#passage-list");
 const activityResultSection = document.querySelector("#activity-result");
 let loadedActivityToken;
-let totalXp = 0;
-const progressionByJob = new Map();
 
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -54,20 +52,18 @@ passagesForm.addEventListener("submit", async (event) => {
 
 async function showActivity(token) {
   if (loadedActivityToken === token) {
-    renderProgression(progressionByJob.get(token));
     return;
   }
-  const response = await fetch(`/api/jobs/${token}/activity`);
+  const [response, progressResponse] = await Promise.all([
+    fetch(`/api/jobs/${token}/activity`),
+    fetch("/api/player/progress")
+  ]);
   const body = await response.json();
+  const progress = await progressResponse.json();
   if (!response.ok) throw new Error(body.error);
+  if (!progressResponse.ok) throw new Error(progress.error);
   loadedActivityToken = token;
   const result = body.activityResult;
-  let progression = progressionByJob.get(token);
-  if (!progression) {
-    progression = applyActivityXp(totalXp, result.totalPoints);
-    totalXp = progression.newTotalXp;
-    progressionByJob.set(token, progression);
-  }
   const unavailable = "Unavailable";
   const distance = result.distance === undefined ? unavailable : `${(result.distance / 1000).toFixed(2)} km`;
   const duration = result.duration === undefined ? unavailable : `${Math.round(result.duration / 60)} min`;
@@ -91,12 +87,11 @@ async function showActivity(token) {
   document.querySelector("#replay-play").onclick = replay.play;
   document.querySelector("#replay-pause").onclick = replay.pause;
   document.querySelector("#replay-restart").onclick = replay.restart;
-  renderProgression(progression);
+  renderProgression(applyActivityXp(Math.max(0, progress.totalXp - result.totalPoints), result.totalPoints), progress);
   activityResultSection.hidden = false;
 }
 
-function renderProgression(progression) {
-  const progress = getLevelProgress(progression.newTotalXp);
+function renderProgression(progression, progress) {
   const percent = Math.round(progress.progressToNextLevel * 100);
   document.querySelector("#progression-earned").textContent = `+${progression.xpEarned} XP`;
   document.querySelector("#progression-level").textContent = `LEVEL ${progress.level}`;
@@ -139,11 +134,11 @@ async function poll(token, button) {
         status.append(link);
       } else status.textContent = "Activity complete.";
       button.disabled = false;
-    } else if (job.activityReady) {
+    } else if (job.activityReady && job.resultMode === "video") {
       await showActivity(token);
       status.textContent = `Video processing failed: ${job.error}`;
       button.disabled = false;
-    } else throw new Error(job.error);
+    } else throw new Error(job.error ?? "Activity processing failed.");
   } catch (error) {
     status.textContent = `Error: ${error.message}`;
     button.disabled = false;
