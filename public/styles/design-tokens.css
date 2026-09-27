@@ -1,0 +1,20 @@
+:root {
+  --canvas-background: #0d0e10;
+  --sidebar-background: #0f1012;
+  --surface-background: #111318;
+  --surface-raised-background: #171a20;
+  --text-primary: #ede9e2;
+  --text-muted: #737880;
+  --text-subtle: #3c3f48;
+  --accent-yellow: #e8b80a;
+  --accent-yellow-bright: #f5c823;
+  --border-subtle: rgb(115 120 128 / 22%);
+  --font-display: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --font-mono: "DM Mono", "SFMono-Regular", Consolas, monospace;
+  --font-body: Inter, system-ui, sans-serif;
+  --sidebar-width: 220px;
+  --logo-region-height: 100px;
+  --nav-item-height: 42px;
+  --nav-inset: 12px;
+  --cta-height: 44px;
+}

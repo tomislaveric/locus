@@ -1,5 +1,8 @@
+import { mountAppShell } from "./components/app-shell.js";
 import { mountReplay } from "./replay.js";
 import { applyActivityXp } from "/shared/progression.js";
+
+mountAppShell(document.querySelector("#app"));
 
 const form = document.querySelector("#upload");
 const status = document.querySelector("#status");
