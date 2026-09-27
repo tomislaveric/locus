@@ -43,7 +43,13 @@ const result = (activityId: string, value = 25): ActivityResult => ({
     longitude: 12.5683,
     activityTimestamp: 1_790_090_187_586.4768
   }],
-  nearMisses: []
+  nearMisses: [{
+    collectibleId: "historic-near-miss",
+    name: "Historic Near Miss",
+    value: 10,
+    rarity: "epic",
+    minimumDistanceMeters: 73.25
+  }]
 });
 
 describePersistence("ActivityRepository", () => {

@@ -68,4 +68,27 @@ export const migrations: Migration[] = [{
         ADD COLUMN replay_snapshot JSONB
     `);
   }
+}, {
+  id: "004_activity_video_media",
+  async up(client) {
+    await client.query(`
+      CREATE TABLE activity_videos (
+        activity_id TEXT PRIMARY KEY REFERENCES activities(id) ON DELETE CASCADE,
+        media_id UUID NOT NULL UNIQUE,
+        source_filename TEXT NOT NULL CHECK (length(trim(source_filename)) > 0),
+        source_path TEXT NOT NULL,
+        state TEXT NOT NULL CHECK (state IN ('syncing', 'sync_failed', 'awaiting_selection', 'rendering', 'succeeded', 'render_failed')),
+        source_duration DOUBLE PRECISION CHECK (source_duration IS NULL OR source_duration >= 0),
+        synchronization JSONB,
+        mapped_events JSONB,
+        selected_source_ids JSONB,
+        render JSONB,
+        output_path TEXT,
+        output_filename TEXT,
+        error TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      );
+    `);
+  }
 }];

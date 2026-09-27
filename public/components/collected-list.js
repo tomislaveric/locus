@@ -1,16 +1,16 @@
-const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (character) => ({
+export const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (character) => ({
   "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
 })[character]);
 
 const canonicalRarities = new Set(["common", "rare", "epic"]);
 
+export const canonicalRarity = (rarity) => canonicalRarities.has(rarity) ? rarity : undefined;
+
 export const collectedEvents = (activity) => Array.isArray(activity.events)
   ? activity.events.filter((event) => event.type === "collectible_collected")
   : [];
 
-export const collectibleRarity = (event) => canonicalRarities.has(event.collectible?.rarity)
-  ? event.collectible.rarity
-  : undefined;
+export const collectibleRarity = (event) => canonicalRarity(event.collectible?.rarity);
 
 export const CollectibleIcon = (type, rarity) => {
   const asset = type === "landmark"

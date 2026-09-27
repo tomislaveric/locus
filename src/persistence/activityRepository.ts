@@ -4,6 +4,8 @@ import type {
   Activity,
   ActivityHistoryItem,
   ActivityResult,
+  ActivityVideo,
+  ActivityVideoState,
   PersistedActivity,
   PersistedActivityEvent,
   PlayerProgress,
@@ -35,6 +37,19 @@ interface EventRow {
   collectible_type: PersistedActivityEvent["collectible"]["type"];
 }
 
+interface VideoRow {
+  media_id: string;
+  source_filename: string;
+  state: ActivityVideoState;
+  source_duration: number | null;
+  synchronization: ActivityVideo["synchronization"] | null;
+  mapped_events: ActivityVideo["events"] | null;
+  selected_source_ids: string[] | null;
+  render: ActivityVideo["render"] | null;
+  output_path: string | null;
+  error: string | null;
+}
+
 const mapActivity = (row: ActivityRow): ActivityHistoryItem => ({
   id: row.id,
   startedAt: row.started_at.toISOString(),
@@ -64,6 +79,18 @@ const mapEvent = (row: EventRow): PersistedActivityEvent => ({
   latitude: row.latitude,
   longitude: row.longitude,
   activityTimestamp: Number(row.activity_timestamp)
+});
+
+const mapVideo = (row: VideoRow): ActivityVideo => ({
+  mediaId: row.media_id,
+  sourceFilename: row.source_filename,
+  state: row.state,
+  ...(row.source_duration === null ? {} : { sourceDuration: row.source_duration }),
+  ...(row.synchronization === null ? {} : { synchronization: row.synchronization }),
+  ...(row.mapped_events === null ? {} : { events: row.mapped_events }),
+  ...(row.selected_source_ids === null ? {} : { selectedSourceIds: row.selected_source_ids }),
+  ...(row.render === null ? {} : { render: row.render }),
+  ...(row.error === null ? {} : { error: row.error })
 });
 
 export class ActivityRepository {
@@ -191,6 +218,55 @@ export class ActivityRepository {
     if (result.rowCount !== 1) throw new Error("Persisted activity not found.");
   }
 
+  async createActivityVideo(activityId: string, mediaId: string, sourceFilename: string, sourcePath: string): Promise<ActivityVideo> {
+    const result = await this.pool.query<VideoRow>(
+      `INSERT INTO activity_videos (activity_id, media_id, source_filename, source_path, state)
+       SELECT id, $2, $3, $4, 'syncing' FROM activities WHERE id = $1 AND player_id = $5
+       ON CONFLICT (activity_id) DO NOTHING
+       RETURNING media_id, source_filename, state, source_duration, synchronization, mapped_events, selected_source_ids, render, output_path, error`,
+      [activityId, mediaId, sourceFilename, sourcePath, this.defaultPlayerId]
+    );
+    if (result.rowCount === 1) return mapVideo(result.rows[0]);
+    const activity = await this.getActivity(activityId);
+    if (!activity) throw new Error("Activity not found.");
+    if (activity.video) throw new Error("A video is already attached to this ride. Replacing it is not supported.");
+    throw new Error("Could not attach video.");
+  }
+
+  async updateActivityVideo(activityId: string, video: ActivityVideo, sourcePath?: string, outputPath?: string): Promise<void> {
+    const result = await this.pool.query(
+      `UPDATE activity_videos SET state = $2, source_duration = $3, synchronization = $4, mapped_events = $5,
+       selected_source_ids = $6, render = $7, output_path = COALESCE($8, output_path), error = $9, updated_at = now()
+       WHERE activity_id = $1`,
+      [activityId, video.state, video.sourceDuration ?? null, video.synchronization ? JSON.stringify(video.synchronization) : null,
+        video.events ? JSON.stringify(video.events) : null, video.selectedSourceIds ? JSON.stringify(video.selectedSourceIds) : null,
+        video.render ? JSON.stringify(video.render) : null, outputPath ?? sourcePath ?? null, video.error ?? null]
+    );
+    if (result.rowCount !== 1) throw new Error("Activity video not found.");
+  }
+
+  async getActivityVideoPaths(activityId: string): Promise<{ sourcePath: string; outputPath?: string } | undefined> {
+    const result = await this.pool.query<{ source_path: string; output_path: string | null }>(
+      "SELECT source_path, output_path FROM activity_videos WHERE activity_id = $1", [activityId]
+    );
+    if (result.rowCount !== 1) return undefined;
+    return { sourcePath: result.rows[0].source_path, ...(result.rows[0].output_path ? { outputPath: result.rows[0].output_path } : {}) };
+  }
+
+  async removeFailedActivityVideo(activityId: string): Promise<string | undefined> {
+    const result = await this.pool.query<{ source_path: string }>(
+      `DELETE FROM activity_videos AS video
+       USING activities
+       WHERE video.activity_id = activities.id
+         AND video.activity_id = $1
+         AND activities.player_id = $2
+         AND video.state = 'sync_failed'
+       RETURNING video.source_path`,
+      [activityId, this.defaultPlayerId]
+    );
+    return result.rows[0]?.source_path;
+  }
+
   private async getProgressWithClient(client: PoolClient): Promise<PlayerProgress> {
     const result = await client.query<{ total_xp: number }>(
       "SELECT total_xp FROM players WHERE id = $1",
@@ -213,10 +289,15 @@ export class ActivityRepository {
        FROM activity_events WHERE activity_id = $1 ORDER BY activity_timestamp, id`,
       [id]
     );
+    const video = await client.query<VideoRow>(
+      `SELECT media_id, source_filename, state, source_duration, synchronization, mapped_events, selected_source_ids, render, output_path, error
+       FROM activity_videos WHERE activity_id = $1`, [id]
+    );
     return {
       ...mapActivity(activityResult.rows[0]),
       events: events.rows.map(mapEvent),
-      ...(activityResult.rows[0].replay_snapshot === null ? {} : { replay: activityResult.rows[0].replay_snapshot })
+      ...(activityResult.rows[0].replay_snapshot === null ? {} : { replay: activityResult.rows[0].replay_snapshot }),
+      ...(video.rowCount === 1 ? { video: mapVideo(video.rows[0]) } : {})
     };
   }
 }

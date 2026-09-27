@@ -33,6 +33,10 @@ Single-container POC for turning a FIT ride into collectible game events and an 
   — add real persisted-ride detail and snapshot-backed historical replay while retaining the existing replay engine.
 - [Milestone 11.5 — Trailhunt Ride Detail Desktop / Collected](features/milestone-11-5-trailhunt-ride-detail-collected/README.md)
   — plan Figma-aligned persisted historical collectible detail within the shared Ride Detail surface.
+- [Milestone 11.6 — Trailhunt Ride Detail Desktop / Near Misses](features/milestone-11-6-trailhunt-ride-detail-desktop-near-misses/README.md)
+  — add Figma-aligned, snapshot-backed historical near-miss detail within the shared Ride Detail surface.
+- [Milestone 11.7 — Trailhunt Ride Detail Desktop / Video](features/milestone-11-7-ride-detail-desktop-video/README.md)
+  — add durable, activity-scoped late video attachment and Figma-aligned Ride Detail highlights without changing gameplay truth.
 - [Persistent activities player state v1](features/persistent-activities-player-state-v1/README.md)
   — persist compact activity/event history and single-player XP in PostgreSQL
   with transaction-safe exactly-once progression.

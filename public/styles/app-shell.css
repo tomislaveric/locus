@@ -326,7 +326,127 @@ button, input { font: inherit; }
 .ride-tabs button.is-active { background: #181b22; color: var(--text-primary); }
 .ride-tabs button:not(:disabled) { cursor: pointer; }
 .ride-tabs button:disabled { cursor: default; }
+.video-empty-state, .video-processing-state, .video-error-state, .video-selection {
+  background: var(--surface-background); border: 1px solid var(--border-faint); border-radius: var(--radius-card);
+  color: var(--text-muted); font-family: var(--font-display); margin-top: 16px; padding: 24px;
+}
+.video-empty-state > p, .video-processing-state > p, .video-error-state > p, .video-selection > p { color: var(--accent-yellow); font-size: 10px; letter-spacing: .2em; margin: 0; }
+.video-empty-state h2, .video-processing-state h2, .video-error-state h2, .video-selection h2 { color: var(--text-primary); font-size: 24px; margin: 8px 0; }
+.video-empty-state > span, .video-processing-state > span, .video-error-state > span, .video-selection > span { display: block; font-family: var(--font-mono); font-size: 12px; line-height: 1.5; }
+.video-empty-state form, .video-selection form { display: grid; gap: 12px; margin-top: 20px; }
+.video-error-state .video-attach-button { margin-top: 20px; }
+.video-attach-button, .video-download { background: var(--accent-yellow); border: 0; border-radius: 8px; color: #0b0c0f; cursor: pointer; font-family: var(--font-display); font-size: 12px; font-weight: 700; letter-spacing: .1em; padding: 12px 16px; text-decoration: none; width: fit-content; }
+.video-error-state { border-color: rgb(255 154 154 / 30%); }
+.video-selection ul, .video-event-list { display: grid; gap: 8px; list-style: none; margin: 0; padding: 0; }
+.video-selection li, .video-event-list li { align-items: center; background: var(--surface-background); border: 1px solid var(--border-faint); border-radius: 8px; display: flex; min-height: 46px; padding: 12px; }
+.video-selection label { display: flex; gap: 12px; width: 100%; }.video-selection em { color: var(--accent-yellow); font-family: var(--font-mono); font-size: 12px; font-style: normal; margin-left: auto; }
+.video-player { margin-top: 16px; }.video-player-frame { aspect-ratio: 794 / 445.75; background: linear-gradient(151deg, #111318, #0b0c0f); border: 1px solid var(--border-faint); border-radius: var(--radius-card); overflow: hidden; position: relative; }
+.video-player-frame video { height: 100%; object-fit: contain; width: 100%; }.video-rec, .video-duration { font-family: var(--font-mono); font-size: 10px; position: absolute; top: 16px; }.video-rec { color: var(--accent-yellow); left: 16px; }.video-duration { color: var(--text-muted); right: 16px; }
+.video-player-title { display: grid; gap: 2px; margin: 12px 0; text-align: center; }.video-player-title strong { color: var(--text-primary); font-family: var(--font-display); font-size: 14px; }.video-player-title span { color: var(--text-muted); font-family: var(--font-mono); font-size: 12px; }
+.video-download { display: inline-block; margin-bottom: 16px; }.video-event-list time { color: var(--accent-yellow); font-family: var(--font-mono); font-size: 12px; width: 48px; }.video-event-list i { background: var(--border-faint); height: 16px; margin-right: 12px; width: 1px; }.video-event-list strong { color: var(--text-primary); font-family: var(--font-display); font-size: 14px; }
 .collected-tab { margin-top: 20px; }
+.near-misses-tab { margin-top: 20px; }
+.almost-got-these-heading h2 {
+  color: var(--text-primary);
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 28px;
+  margin: 0;
+}
+.almost-got-these-heading p {
+  color: var(--text-muted);
+  font-family: var(--font-display);
+  font-size: 14px;
+  line-height: 20px;
+  margin: 4px 0 0;
+}
+.near-miss-list { display: grid; gap: 8px; list-style: none; margin: 20px 0 0; padding: 0; }
+.near-miss-card {
+  align-items: center;
+  background: rgb(255 255 255 / 2%);
+  border: 1px solid var(--border-faint);
+  border-radius: var(--radius-card);
+  display: flex;
+  gap: 16px;
+  height: 74px;
+  padding: 16px;
+}
+.near-miss-marker {
+  align-items: center;
+  border: 2px dashed rgb(115 120 128 / 38%);
+  border-radius: 50%;
+  display: flex;
+  flex: 0 0 40px;
+  height: 40px;
+  justify-content: center;
+  position: relative;
+  width: 40px;
+}
+.near-miss-marker.rarity-rare { border-color: rgb(77 157 224 / 38%); }
+.near-miss-marker.rarity-epic { border-color: rgb(155 109 223 / 38%); }
+.near-miss-marker img { display: block; position: absolute; }
+.near-miss-marker-outer { height: 13px; width: 13px; }
+.near-miss-marker-middle { height: 8px; width: 8px; }
+.near-miss-marker-core { height: 4px; width: 4px; }
+.near-miss-card-details { display: grid; gap: 0; min-width: 0; }
+.near-miss-card-details strong {
+  color: var(--text-primary);
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.near-miss-card-details span {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 17px;
+}
+.near-miss-card-status { align-items: end; display: grid; gap: 4px; margin-left: auto; }
+.near-miss-card-status > span:last-child {
+  color: var(--text-subtle);
+  font-family: var(--font-display);
+  font-size: 10px;
+  letter-spacing: .025em;
+  line-height: 15px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.near-miss-rarity {
+  background: rgb(115 120 128 / 10%);
+  border-radius: 4px;
+  color: var(--text-muted);
+  font-family: var(--font-display);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .12em;
+  line-height: 15px;
+  padding: 2px 6px;
+  text-transform: uppercase;
+}
+.near-miss-rarity.rarity-rare { background: rgb(77 157 224 / 10%); color: var(--accent-rare); }
+.near-miss-rarity.rarity-epic { background: rgb(155 109 223 / 10%); color: var(--accent-epic); }
+.near-misses-empty-state, .near-misses-unavailable {
+  background: var(--surface-background);
+  border: 1px solid var(--border-faint);
+  border-radius: var(--radius-card);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  padding: 32px;
+}
+.near-misses-empty-state > p {
+  color: var(--text-muted);
+  font-family: var(--font-display);
+  font-size: 10px;
+  letter-spacing: .2em;
+  margin: 0;
+}
+.near-misses-empty-state span { display: block; font-size: 13px; line-height: 1.5; margin-top: 12px; }
+.near-misses-unavailable { margin-top: 20px; }
 .collected-empty-state {
   background: var(--surface-background);
   border: 1px solid var(--border-faint);

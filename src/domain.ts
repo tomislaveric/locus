@@ -104,6 +104,23 @@ export interface ActivityHistoryItem {
 export interface PersistedActivity extends ActivityHistoryItem {
   events: PersistedActivityEvent[];
   replay?: ReplaySnapshot;
+  video?: ActivityVideo;
+}
+
+export type ActivityVideoState = "syncing" | "sync_failed" | "awaiting_selection" | "rendering" | "succeeded" | "render_failed";
+
+export interface ActivityVideo {
+  mediaId: string;
+  sourceFilename: string;
+  state: ActivityVideoState;
+  sourceDuration?: number;
+  synchronization?: import("./synchronization.js").SynchronizationSummary;
+  events?: MappedGameEvent[];
+  selectedSourceIds?: string[];
+  render?: import("./video.js").RenderSummary;
+  error?: string;
+  previewUrl?: string;
+  downloadUrl?: string;
 }
 
 export interface PersistedActivityEvent {

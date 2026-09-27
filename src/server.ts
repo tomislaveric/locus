@@ -1,4 +1,4 @@
-import { randomBytes } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 import express, { type NextFunction, type Request, type Response } from "express";
 import { access, mkdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -6,7 +6,7 @@ import multer from "multer";
 import { deriveActivity, deriveActivityResult } from "./activity.js";
 import { readCollectibles } from "./coin.js";
 import { config } from "./config.js";
-import type { HudTimeline, Job, MappedGameEvent } from "./domain.js";
+import type { ActivityVideo, HudTimeline, Job, MappedGameEvent, PersistedActivity } from "./domain.js";
 import { UserInputError } from "./errors.js";
 import { parseFitTrack } from "./fit.js";
 import { extractGps5Times, mapToVideoSecond } from "./gpmf.js";
@@ -75,6 +75,14 @@ const upload = multer({
   fileFilter: (_request, file, callback) => {
     if (file.fieldname === "fit" || file.fieldname === "video") callback(null, true);
     else callback(new UserInputError("Only fit and video upload fields are supported."));
+  }
+});
+const lateVideoUpload = multer({
+  dest: config.dataDir,
+  limits: { fileSize: config.maxUploadBytes, files: 1 },
+  fileFilter: (_request, file, callback) => {
+    if (file.fieldname === "video") callback(null, true);
+    else callback(new UserInputError("Only the video upload field is supported."));
   }
 });
 
@@ -251,6 +259,106 @@ const selectedEvents = (job: Job, value: unknown): MappedGameEvent[] => {
   );
 };
 
+const selectedMappedEvents = (mappedEvents: MappedGameEvent[] | undefined, value: unknown): MappedGameEvent[] => {
+  if (!Array.isArray(value) || value.length === 0 || !value.every((id) => typeof id === "string")) {
+    throw new UserInputError("Select at least one detected collectible id.");
+  }
+  if (value.length > config.maxSelectedCoins) {
+    throw new UserInputError(`Select no more than ${config.maxSelectedCoins} collectibles.`);
+  }
+  const ids = new Set(value);
+  if (ids.size !== value.length) throw new UserInputError("Selected collectible ids must be unique.");
+  const knownEvents = new Map((mappedEvents ?? []).map((event) => [event.sourceId, event]));
+  const events = value.map((id) => knownEvents.get(id));
+  if (events.some((event) => event === undefined)) throw new UserInputError("Selection contains an unknown detected collectible.");
+  return (events as MappedGameEvent[]).sort((left, right) => left.videoSecond - right.videoSecond);
+};
+
+const activityMediaDirectory = (activityId: string, mediaId: string): string =>
+  path.join(config.dataDir, "activity-media", activityId, mediaId);
+
+const attachVideoUrls = (activity: PersistedActivity): PersistedActivity => {
+  if (!activity.video) return activity;
+  const video = activity.video;
+  return {
+    ...activity,
+    video: {
+      ...video,
+      ...(video.state === "succeeded" ? {
+        previewUrl: `/api/activities/${encodeURIComponent(activity.id)}/video/preview`,
+        downloadUrl: `/api/activities/${encodeURIComponent(activity.id)}/video/download`
+      } : {})
+    }
+  };
+};
+
+const processAttachedVideo = async (
+  activity: PersistedActivity,
+  mediaId: string,
+  mediaDirectory: string
+): Promise<void> => {
+  const video = activity.video;
+  const replay = activity.replay;
+  if (!video || !replay) return;
+  try {
+    const sourcePath = path.join(mediaDirectory, "source.mp4");
+    const sourceDuration = await probeDuration(sourcePath, config.processTimeoutMs);
+    const streamIndex = await gpmfStreamIndex(sourcePath, config.processTimeoutMs);
+    const samples = await extractGps5Times(sourcePath, path.join(mediaDirectory, "metadata.gpmf"), streamIndex, config.processTimeoutMs);
+    const assessment = assessSynchronization(replay.activity.route, samples, sourceDuration, config.fitSampleGapWarningSeconds);
+    const mappedEvents = replay.activityResult.events.flatMap((event) => {
+      const videoSecond = mapToVideoSecond(event.activityTimestamp, samples);
+      return videoSecond < 0 || videoSecond > sourceDuration ? [] : [{ ...event, videoSecond: Number(videoSecond.toFixed(3)) }];
+    }).sort((left, right) => left.videoSecond - right.videoSecond);
+    const synchronization = withEventAvailability(assessment, replay.activityResult.events.map((event) => event.activityTimestamp));
+    if (mappedEvents.length === 0) throw new UserInputError("No configured coin passage maps to a time within the video.");
+    await saveHudTimeline(
+      path.join(mediaDirectory, "hud-timeline.json"),
+      createHudTimeline(replay.activity.route, replay.activityResult.collectibles, mappedEvents, samples, sourceDuration)
+    );
+    await activityRepository.updateActivityVideo(activity.id, {
+      ...video, mediaId, state: "awaiting_selection", sourceDuration, synchronization, events: mappedEvents
+    });
+  } catch (error) {
+    const synchronization = error instanceof SynchronizationError ? error.summary : undefined;
+    await activityRepository.updateActivityVideo(activity.id, {
+      ...video, mediaId, state: "sync_failed", synchronization,
+      error: error instanceof Error ? error.message : "Unexpected video synchronization failure."
+    });
+    console.error(`Activity video ${mediaId} synchronization failed:`, error);
+  } finally {
+    busy = false;
+  }
+};
+
+const renderAttachedVideo = async (activity: PersistedActivity, events: MappedGameEvent[]): Promise<void> => {
+  const video = activity.video;
+  if (!video) return;
+  const mediaDirectory = activityMediaDirectory(activity.id, video.mediaId);
+  try {
+    if (video.sourceDuration === undefined) throw new UserInputError("Video has no source duration.");
+    const hudTimeline: HudTimeline | undefined = config.hudEnabled && !config.showLegacyCoinOverlay
+      ? await loadHudTimeline(path.join(mediaDirectory, "hud-timeline.json"))
+      : undefined;
+    const outputPath = path.join(mediaDirectory, "highlights.mp4");
+    const render = await renderSelectedClips(
+      path.join(mediaDirectory, "source.mp4"), outputPath, events, video.sourceDuration, mediaDirectory,
+      config.processTimeoutMs, hudTimeline
+    );
+    await activityRepository.updateActivityVideo(activity.id, {
+      ...video, state: "succeeded", selectedSourceIds: events.map((event) => event.sourceId), render
+    }, undefined, outputPath);
+    await activityRepository.markActivityHasVideo(activity.id);
+  } catch (error) {
+    await activityRepository.updateActivityVideo(activity.id, {
+      ...video, state: "render_failed", error: error instanceof Error ? error.message : "Unexpected highlight rendering failure."
+    });
+    console.error(`Activity video ${video.mediaId} rendering failed:`, error);
+  } finally {
+    busy = false;
+  }
+};
+
 const cleanExpiredJobs = async (): Promise<void> => {
   const { readdir } = await import("node:fs/promises");
   let entries: string[];
@@ -313,6 +421,41 @@ app.post(
   }
 );
 
+app.post("/api/activities/:id/video", lateVideoUpload.single("video"), async (request, response, next) => {
+  const uploaded = request.file;
+  try {
+    if (!uploaded) throw new UserInputError("One video file is required.");
+    if (busy) {
+      response.status(429).json({ error: "The renderer is busy. Try again after the current job finishes." });
+      await rm(uploaded.path, { force: true });
+      return;
+    }
+    const activity = await activityRepository.getActivity(String(request.params.id));
+    if (!activity) {
+      await rm(uploaded.path, { force: true });
+      response.status(404).json({ error: "Activity not found." });
+      return;
+    }
+    if (activity.video) {
+      await rm(uploaded.path, { force: true });
+      response.status(409).json({ error: "A video is already attached to this ride. Replacing it is not supported." });
+      return;
+    }
+    const mediaId = randomUUID();
+    const directory = activityMediaDirectory(activity.id, mediaId);
+    const sourcePath = path.join(directory, "source.mp4");
+    await mkdir(directory, { recursive: true });
+    await rename(uploaded.path, sourcePath);
+    const video = await activityRepository.createActivityVideo(activity.id, mediaId, uploaded.originalname, sourcePath);
+    busy = true;
+    void processAttachedVideo({ ...activity, video }, mediaId, directory);
+    response.status(202).json({ activityId: activity.id, video: { ...video, state: "syncing" } });
+  } catch (error) {
+    if (uploaded) await rm(uploaded.path, { force: true });
+    next(error);
+  }
+});
+
 app.get("/api/activities", async (_request, response, next) => {
   try {
     response.json(await activityRepository.listActivities());
@@ -323,14 +466,91 @@ app.get("/api/activities", async (_request, response, next) => {
 
 app.get("/api/activities/:id", async (request, response, next) => {
   try {
-    const activity = await activityRepository.getActivity(request.params.id);
+    const activity = await activityRepository.getActivity(String(request.params.id));
     if (!activity) {
       response.status(404).json({ error: "Activity not found." });
       return;
     }
-    response.json(activity);
+    response.json(attachVideoUrls(activity));
   } catch (error) {
     next(error);
+  }
+});
+
+app.post("/api/activities/:id/video/render", async (request, response) => {
+  try {
+    const activity = await activityRepository.getActivity(String(request.params.id));
+    if (!activity?.video) {
+      response.status(404).json({ error: "Activity video not found." });
+      return;
+    }
+    if (activity.video.state !== "awaiting_selection") {
+      response.status(409).json({ error: "This video is not ready for highlight selection." });
+      return;
+    }
+    if (busy) {
+      response.status(429).json({ error: "The renderer is busy. Try again after the current job finishes." });
+      return;
+    }
+    const events = selectedMappedEvents(activity.video.events, request.body?.sourceIds);
+    if (activity.video.sourceDuration === undefined) throw new UserInputError("Video has no source duration.");
+    const totalDuration = buildClipIntervals(events, activity.video.sourceDuration).reduce(
+      (total, interval) => total + interval.end - interval.start, 0
+    );
+    if (totalDuration > config.maxOutputDurationSeconds) {
+      throw new UserInputError(`Selected clips exceed the ${config.maxOutputDurationSeconds}-second output limit.`);
+    }
+    busy = true;
+    const video = { ...activity.video, state: "rendering" as const, selectedSourceIds: events.map((event) => event.sourceId) };
+    await activityRepository.updateActivityVideo(activity.id, video);
+    void renderAttachedVideo({ ...activity, video }, events);
+    response.status(202).json({ activityId: activity.id, video });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Could not render selected clips.";
+    response.status(error instanceof UserInputError ? 400 : 500).json({ error: message });
+  }
+});
+
+app.delete("/api/activities/:id/video", async (request, response, next) => {
+  try {
+    const activityId = String(request.params.id);
+    const sourcePath = await activityRepository.removeFailedActivityVideo(activityId);
+    if (!sourcePath) {
+      response.status(409).json({ error: "Only a failed video synchronization can be removed for another attempt." });
+      return;
+    }
+    await rm(path.dirname(sourcePath), { recursive: true, force: true });
+    response.status(204).end();
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/api/activities/:id/video/preview", async (request, response) => {
+  try {
+    const paths = await activityRepository.getActivityVideoPaths(String(request.params.id));
+    if (!paths?.outputPath) {
+      response.status(409).json({ error: "Highlights are not ready." });
+      return;
+    }
+    await access(paths.outputPath);
+    response.sendFile(path.resolve(paths.outputPath));
+  } catch (error) {
+    response.status(404).json({ error: error instanceof Error ? error.message : "Video unavailable." });
+  }
+});
+
+app.get("/api/activities/:id/video/download", async (request, response) => {
+  try {
+    const paths = await activityRepository.getActivityVideoPaths(String(request.params.id));
+    if (!paths?.outputPath) {
+      response.status(409).json({ error: "Highlights are not ready." });
+      return;
+    }
+    await access(paths.outputPath);
+    response.download(paths.outputPath, "trailhunt-highlights.mp4");
+  } catch (error) {
+    response.status(404).json({ error: error instanceof Error ? error.message : "Video unavailable." });
   }
 });
 

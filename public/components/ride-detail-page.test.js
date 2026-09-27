@@ -1,18 +1,23 @@
 import { describe, expect, it } from "vitest";
-import { RideDetailPage, replayInputs } from "./ride-detail-page.js";
+import { nearMissInputs, RideDetailPage, replayInputs } from "./ride-detail-page.js";
 import { rideDistanceLabel, rideDurationLabel } from "./ride-summary.js";
+
+const replay = (nearMisses = []) => ({
+  version: 1,
+  activity: { source: "fit", route: [{}, {}] },
+  activityResult: { collectibles: [], events: [], nearMisses }
+});
 
 describe("Ride detail data transformation", () => {
   it("uses only a complete versioned replay snapshot", () => {
-    const replay = {
-      version: 1,
-      activity: { source: "fit", route: [{}, {}] },
-      activityResult: { collectibles: [], events: [], nearMisses: [] }
-    };
-    expect(replayInputs({ replay })).toBe(replay);
+    const snapshot = replay();
+    expect(replayInputs({ replay: snapshot })).toBe(snapshot);
     expect(replayInputs({})).toBeUndefined();
     expect(replayInputs({ replay: { version: 2 } })).toBeUndefined();
-    expect(replayInputs({ replay: { ...replay, activity: { source: "fit", route: [] } } })).toBeUndefined();
+    expect(replayInputs({ replay: { ...snapshot, activity: { source: "fit", route: [] } } })).toBeUndefined();
+    const invalidNearMiss = replay([{ collectibleId: "bad", name: "Bad", value: 1, rarity: "invalid", minimumDistanceMeters: 10 }]);
+    expect(replayInputs({ replay: invalidNearMiss })).toBe(invalidNearMiss);
+    expect(nearMissInputs({ replay: invalidNearMiss })).toBeUndefined();
   });
 
   it("formats canonical summary values while making missing values explicit", () => {
@@ -33,5 +38,65 @@ describe("Ride detail data transformation", () => {
     expect(page).toContain("Coin A");
     expect(page).toContain("COLLECTED (1)");
     expect(page).not.toContain("Replay data is unavailable");
+  });
+
+  it("renders persisted near misses without XP or current-world fields", () => {
+    const page = RideDetailPage({
+      distanceMeters: 1_000,
+      durationSeconds: 600,
+      xpEarned: 25,
+      collectedCount: 1,
+      replay: replay([
+        { collectibleId: "historic-target", name: "Historic Target", value: 100, rarity: "rare", minimumDistanceMeters: 42.4 }
+      ])
+    }, { level: 1, currentLevelXp: 0, nextLevelXp: 100, progressToNextLevel: 0 }, "near-misses");
+    expect(page).toContain("NEAR MISSES (1)");
+    expect(page).toContain("Historic Target");
+    expect(page).toContain("42 m from your route");
+    expect(page).toContain("near-miss-target-rare-a.svg");
+    expect(page).not.toContain("+100 XP");
+    expect(page).not.toContain("landmark");
+  });
+
+  it("renders factual empty and unavailable near-miss states", () => {
+    const activity = { distanceMeters: 1_000, durationSeconds: 600, xpEarned: 0, collectedCount: 0 };
+    const progress = { level: 1, currentLevelXp: 0, nextLevelXp: 100, progressToNextLevel: 0 };
+    expect(RideDetailPage({ ...activity, replay: replay() }, progress, "near-misses")).toContain("NO NEAR MISSES RECORDED");
+    expect(RideDetailPage(activity, progress, "near-misses")).toContain("Near-miss data is unavailable for this legacy ride.");
+  });
+
+  it("keeps the Video tab functional for a valid FIT-only ride", () => {
+    const page = RideDetailPage({
+      id: "ride-1", distanceMeters: 1_000, durationSeconds: 600, xpEarned: 25, collectedCount: 1
+    }, { level: 1, currentLevelXp: 0, nextLevelXp: 100, progressToNextLevel: 0 }, "video");
+    expect(page).toContain('data-ride-tab="video"');
+    expect(page).toContain('aria-selected="true"');
+    expect(page).toContain("NO VIDEO ATTACHED");
+    expect(page).toContain("ATTACH VIDEO");
+  });
+
+  it("uses only persisted video values in the completed Video tab", () => {
+    const page = RideDetailPage({
+      id: "ride-1", distanceMeters: 1_000, durationSeconds: 600, xpEarned: 25, collectedCount: 1,
+      video: {
+        state: "succeeded", previewUrl: "/preview", downloadUrl: "/download",
+        render: { outputDurationSeconds: 24 }, events: [{
+          sourceId: "historic-coin", videoSecond: 6, collectible: { name: "Historic Coin" }
+        }]
+      }
+    }, { level: 1, currentLevelXp: 0, nextLevelXp: 100, progressToNextLevel: 0 }, "video");
+    expect(page).toContain("Auto-Generated Highlights");
+    expect(page).toContain("Historic Coin");
+    expect(page).toContain("/download");
+    expect(page).not.toContain("Castle Gate");
+  });
+
+  it("offers a fresh attachment attempt only after video synchronization fails", () => {
+    const page = RideDetailPage({
+      id: "ride-1", distanceMeters: 1_000, durationSeconds: 600, xpEarned: 25, collectedCount: 1,
+      video: { state: "sync_failed", error: "The FIT activity and video do not overlap in time." }
+    }, { level: 1, currentLevelXp: 0, nextLevelXp: 100, progressToNextLevel: 0 }, "video");
+    expect(page).toContain("TRY ANOTHER VIDEO");
+    expect(page).toContain("data-video-retry");
   });
 });
