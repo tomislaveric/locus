@@ -21,6 +21,7 @@ import { createDatabasePool } from "./persistence/database.js";
 import { migrate } from "./persistence/migrate.js";
 import { buildClipIntervals, gpmfStreamIndex, probeDuration, renderSelectedClips } from "./video.js";
 import { getRelevantCollectibles } from "./worldQuery.js";
+import { createWorldSnapshot } from "./world.js";
 
 interface UploadRequest extends Request {
   job?: Job;
@@ -459,6 +460,18 @@ app.post("/api/activities/:id/video", lateVideoUpload.single("video"), async (re
 app.get("/api/activities", async (_request, response, next) => {
   try {
     response.json(await activityRepository.listActivities());
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/api/world", async (_request, response, next) => {
+  try {
+    const [collectibles, discoveredSourceIds] = await Promise.all([
+      readCollectibles(config.coinsFile),
+      activityRepository.listDiscoveredCollectibleSourceIds()
+    ]);
+    response.json(createWorldSnapshot(collectibles, discoveredSourceIds));
   } catch (error) {
     next(error);
   }

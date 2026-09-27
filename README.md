@@ -37,6 +37,8 @@ Single-container POC for turning a FIT ride into collectible game events and an 
   — add Figma-aligned, snapshot-backed historical near-miss detail within the shared Ride Detail surface.
 - [Milestone 11.7 — Trailhunt Ride Detail Desktop / Video](features/milestone-11-7-ride-detail-desktop-video/README.md)
   — add durable, activity-scoped late video attachment and Figma-aligned Ride Detail highlights without changing gameplay truth.
+- [Milestone 11.8 — Trailhunt World Desktop](features/milestone-11-8-trailhunt-world-desktop/README.md)
+  — add a Figma-aligned World browse surface from configured collectibles and persisted discovery truth, without altering collection behavior.
 - [Persistent activities player state v1](features/persistent-activities-player-state-v1/README.md)
   — persist compact activity/event history and single-player XP in PostgreSQL
   with transaction-safe exactly-once progression.
@@ -55,6 +57,28 @@ Single-container POC for turning a FIT ride into collectible game events and an 
 - [World Collectible Domain Model V1](features/world-collectible-domain-model-v1/README.md)
   — normalize legacy Coin configuration into reusable world Collectibles with
   canonical event relationships and shared replay/HUD presentation metadata.
+
+## World architecture
+
+The World screen is a **browse read model**, not the route-relevant candidate
+query used while processing an activity. `GET /api/world` combines the complete
+configured collectible catalog with the current player's persisted
+`collectible_collected` source IDs. A collectible is Found only when such an
+event exists; geographic proximity to a recorded route never establishes
+discovery.
+
+The current configured catalog is the World scope. Its catalog-intersected,
+distinct player discoveries derive discovered, rare, epic, and remaining counts.
+The UI filters one loaded snapshot client-side for All, Found, Unfound, Rare,
+and Epic; rarity filters intentionally include both found and unfound items.
+
+World visibility is separate from discovery. Current snapshots mark all catalog
+items `visible`, but each World collectible has a presentation visibility state
+so future player-specific explored-area or quest reveal logic can hide
+unrevealed items before page filters and markers render. That logic belongs at
+the World snapshot/API boundary and must not reuse collection events, route-query
+padding, or collection radius. This milestone adds no exploration persistence,
+coverage calculation, geospatial tiling, map masking, regions, or quest system.
 
 ## Verified POC result
 
@@ -239,6 +263,8 @@ or XP.
   newest first, with compact summary fields.
 - `GET /api/activities/:id` returns one persisted activity and its ordered
   event-time collectible snapshots.
+- `GET /api/world` returns the complete configured collectible catalog with
+  player-scoped persisted discovery state and catalog-derived World statistics.
 - `GET /api/player/progress` returns durable `totalXp` and the derived level
   curve values `level`, `currentLevelXp`, `nextLevelXp`, and
   `progressToNextLevel`.

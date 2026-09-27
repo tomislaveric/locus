@@ -13,6 +13,26 @@ export interface Collectible {
   description?: string;
 }
 
+export type WorldCollectibleVisibility = "visible" | "hidden";
+
+export interface WorldCollectible extends Collectible {
+  found: boolean;
+  visibility: WorldCollectibleVisibility;
+}
+
+export interface WorldStats {
+  totalCollectibles: number;
+  discoveredCount: number;
+  rareFinds: number;
+  epicFinds: number;
+  remainingCount: number;
+}
+
+export interface WorldSnapshot {
+  collectibles: WorldCollectible[];
+  stats: WorldStats;
+}
+
 export interface TrackPoint {
   latitude: number;
   longitude: number;

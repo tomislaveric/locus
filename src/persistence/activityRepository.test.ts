@@ -107,6 +107,20 @@ describePersistence("ActivityRepository", () => {
     expect(await restartedRepository.getActivity(id)).toMatchObject({ hasVideo: true });
   });
 
+  it("returns each discovered source ID once for the current player only", async () => {
+    await repository!.persistCompletedActivity(activity("e".repeat(48)), result("e".repeat(48)));
+    await repository!.persistCompletedActivity(activity("f".repeat(48)), result("f".repeat(48)));
+    const otherRepository = new ActivityRepository(
+      pool!,
+      "00000000-0000-4000-8000-000000000098",
+      "Other player"
+    );
+    await otherRepository.initializeDefaultPlayer();
+    await otherRepository.persistCompletedActivity(activity("g".repeat(48)), result("g".repeat(48)));
+
+    expect(await repository!.listDiscoveredCollectibleSourceIds()).toEqual(["historic-coin"]);
+  });
+
   it("rolls back the activity and XP when an event insert fails", async () => {
     const id = "d".repeat(48);
     const invalid = result(id, 30);
