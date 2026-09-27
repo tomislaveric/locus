@@ -164,8 +164,54 @@ button, input { font: inherit; }
 .home-loading, .home-load-error { background: var(--surface-background); border: 1px solid var(--border-faint); border-radius: var(--radius-card); }
 .home-load-error { color: #ff9a9a; }
 
+.rides-page {
+  margin: 0 auto;
+  max-width: 1139px;
+  min-height: 100%;
+  padding: 32px clamp(32px, 18.6vw, 212px) 40px;
+}
+
+.main-content:has(.rides-page) { background: var(--rides-canvas-background); }
+.rides-header h1, .ride-detail-placeholder h1 { color: var(--text-primary); font-size: 48px; font-weight: 700; letter-spacing: -.025em; line-height: 1; margin: 0; }
+.rides-header > p { color: var(--text-muted); font-family: var(--font-display); font-size: 14px; margin: 6px 0 0; }
+.rides-stats { align-items: baseline; color: var(--text-muted); display: flex; flex-wrap: wrap; font-family: var(--font-display); font-size: 14px; gap: 0 8px; margin: 28px 0 0; }
+.rides-stats strong { color: var(--text-primary); font-weight: 600; }
+.rides-stats-xp { color: var(--accent-yellow) !important; }
+.ride-list { display: grid; gap: 10px; margin-top: 28px; }
+.ride-card {
+  background: var(--surface-background);
+  border: 1px solid var(--border-faint);
+  border-radius: var(--radius-card);
+  color: inherit;
+  cursor: pointer;
+  display: block;
+  min-height: 120px;
+  overflow: hidden;
+  padding: 0;
+  text-align: left;
+  width: 100%;
+}
+.ride-card-content { min-height: 120px; padding: 16px; }
+.ride-meta { display: grid; gap: 8px; }
+.ride-meta-heading { align-items: center; display: flex; gap: 8px; min-height: 20px; }
+.ride-meta-heading p, .rides-section-label { color: var(--text-muted); font-family: var(--font-display); font-size: 10px; letter-spacing: .2em; margin: 0; }
+.ride-pov { background: #1e222b; border: 1px solid var(--border-faint); border-radius: 4px; color: var(--text-muted); font-family: var(--font-display); font-size: 9px; letter-spacing: .1em; padding: 3px 6px; }
+.ride-measurements { align-items: baseline; display: flex; gap: 10px; }
+.ride-measurements strong { color: var(--text-primary); font-family: var(--font-display); font-size: 28px; line-height: 1; }
+.ride-measurements strong span { color: var(--text-muted); font-size: 14px; font-weight: 600; }
+.ride-measurements > span { color: var(--text-muted); font-family: var(--font-display); font-size: 14px; }
+.ride-rewards { align-items: center; display: flex; gap: 8px; }
+.ride-xp-chip { border: 1px solid rgb(232 184 10 / 40%); border-radius: 4px; color: var(--accent-yellow); font-family: var(--font-display); font-size: 10px; font-weight: 600; padding: 4px 6px; }
+.ride-collected-count { color: var(--text-muted); font-family: var(--font-display); font-size: 12px; }
+.ride-card:focus-visible { outline: 2px solid var(--accent-yellow); outline-offset: 2px; }
+.rides-empty-state, .rides-loading, .rides-load-error, .ride-detail-placeholder { background: var(--surface-background); border: 1px solid var(--border-faint); border-radius: var(--radius-card); color: var(--text-muted); font-family: var(--font-mono); margin-top: 28px; padding: 32px; }
+.rides-empty-state p:last-child, .ride-detail-placeholder > p:last-child { font-size: 13px; line-height: 1.5; margin: 12px 0 0; }
+.rides-load-error { color: #ff9a9a; }
+.ride-detail-placeholder code { color: var(--accent-yellow); }
+
 @media (max-width: 840px) {
   .home-page { padding: 0 24px 32px; }
+  .rides-page { padding: 32px 24px; }
   .home-level { font-size: 88px; }
   .home-progress { gap: 20px; }
   .home-stats { grid-template-columns: repeat(2, 1fr); gap: 16px; }

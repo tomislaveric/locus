@@ -45,7 +45,7 @@ export const sidebar = Sidebar;
 
 export const setSidebarScreen = (mountPoint, screen) => {
   for (const item of mountPoint.querySelectorAll(".sidebar-nav-item")) {
-    const isActive = item.dataset.screen === screen;
+    const isActive = item.dataset.screen === (screen === "ride-detail" ? "rides" : screen);
     item.classList.toggle("is-active", isActive);
     item.toggleAttribute("aria-current", isActive);
   }
