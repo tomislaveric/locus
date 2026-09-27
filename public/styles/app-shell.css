@@ -324,7 +324,73 @@ button, input { font: inherit; }
   padding: 0 16px;
 }
 .ride-tabs button.is-active { background: #181b22; color: var(--text-primary); }
+.ride-tabs button:not(:disabled) { cursor: pointer; }
 .ride-tabs button:disabled { cursor: default; }
+.collected-tab { margin-top: 20px; }
+.collected-empty-state {
+  background: var(--surface-background);
+  border: 1px solid var(--border-faint);
+  border-radius: var(--radius-card);
+}
+.collected-empty-state > p {
+  color: var(--text-muted);
+  font-family: var(--font-display);
+  font-size: 10px;
+  letter-spacing: .2em;
+  margin: 0;
+}
+.collected-route { height: 60px; margin: 12px 0; overflow: hidden; }
+.collected-route svg { display: block; height: 60px; width: 100%; }
+.collected-route-path { fill: none; stroke: #2b2f36; stroke-linecap: round; stroke-width: 2; }
+.collected-route-marker circle { fill: #737880; stroke: #1e222b; stroke-width: 3; }
+.collected-route-marker text { fill: var(--text-subtle); font-family: var(--font-mono); font-size: 9px; text-anchor: middle; }
+.collected-route-marker.rarity-rare circle { fill: var(--accent-rare); }
+.collected-route-marker.rarity-rare text { fill: var(--accent-rare); }
+.collected-route-marker.rarity-epic circle { fill: var(--accent-epic); }
+.collected-route-marker.rarity-epic text { fill: var(--accent-epic); }
+.collected-list { display: grid; gap: 8px; list-style: none; margin: 12px 0 0; padding: 0; }
+.collectible-card {
+  align-items: center;
+  background: var(--surface-background);
+  border: 1px solid var(--border-faint);
+  border-radius: var(--radius-card);
+  display: flex;
+  gap: 12px;
+  min-height: 79px;
+  padding: 16px;
+}
+.collectible-type-icon {
+  align-items: center;
+  background: #1e222b;
+  border-radius: 8px;
+  color: var(--text-muted);
+  display: flex;
+  flex: 0 0 40px;
+  height: 40px;
+  justify-content: center;
+  width: 40px;
+}
+.collectible-type-icon img { display: block; height: 16px; width: 16px; }
+.collectible-card-details { display: grid; gap: 4px; min-width: 0; }
+.collectible-card-details strong { color: var(--text-primary); font-family: var(--font-display); font-size: 18px; font-weight: 600; }
+.collectible-card-details span, .collectible-rarity {
+  color: var(--text-subtle);
+  font-family: var(--font-display);
+  font-size: 10px;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+}
+.collectible-rarity { border: 1px solid currentcolor; border-radius: 4px; margin-left: auto; padding: 4px 6px; }
+.collectible-value { color: var(--accent-yellow); font-family: var(--font-display); font-size: 16px; font-weight: 600; white-space: nowrap; }
+.collectible-card.rarity-rare .collectible-type-icon, .collectible-rarity.rarity-rare { color: var(--accent-rare); }
+.collectible-card.rarity-epic .collectible-type-icon, .collectible-rarity.rarity-epic { color: var(--accent-epic); }
+.collectible-card.rarity-common .collectible-rarity { color: var(--text-muted); }
+.collectible-card.rarity-rare { background: rgb(77 157 224 / 11%); border-color: rgb(77 157 224 / 20%); }
+.collectible-card.rarity-epic { background: rgb(155 109 223 / 11%); border-color: rgb(155 109 223 / 25%); }
+.collectible-card.rarity-rare .collectible-type-icon { background: rgb(77 157 224 / 20%); }
+.collectible-card.rarity-epic .collectible-type-icon { background: rgb(155 109 223 / 20%); }
+.collected-empty-state { color: var(--text-muted); font-family: var(--font-mono); margin-top: 12px; padding: 32px; }
+.collected-empty-state span { display: block; font-size: 13px; line-height: 1.5; margin-top: 12px; }
 .ride-replay {
   background: #0b0c0f;
   border: 1px solid var(--border-faint);

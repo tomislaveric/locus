@@ -31,6 +31,8 @@ Single-container POC for turning a FIT ride into collectible game events and an 
   — implement the Figma Rides history with compact persisted activities, canonical ordering, and intentional unsupported-data omissions.
 - [Milestone 11.4 — Trailhunt Ride Detail Desktop / Replay](features/milestone-11-4-trailhunt-ride-detail-desktop-replay/README.md)
   — add real persisted-ride detail and snapshot-backed historical replay while retaining the existing replay engine.
+- [Milestone 11.5 — Trailhunt Ride Detail Desktop / Collected](features/milestone-11-5-trailhunt-ride-detail-collected/README.md)
+  — plan Figma-aligned persisted historical collectible detail within the shared Ride Detail surface.
 - [Persistent activities player state v1](features/persistent-activities-player-state-v1/README.md)
   — persist compact activity/event history and single-player XP in PostgreSQL
   with transaction-safe exactly-once progression.

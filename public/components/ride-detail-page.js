@@ -1,3 +1,4 @@
+import { CollectedTab } from "./collected-tab.js";
 import { RideProgress } from "./ride-progress.js";
 import { ReplayTab, mountReplayTab } from "./replay-tab.js";
 import { RideSummary } from "./ride-summary.js";
@@ -27,13 +28,17 @@ export const replayInputs = (activity) => {
   return replay;
 };
 
-export const RideDetailPage = (activity, progress) => `
+const ReplayUnavailable = () => '<p class="ride-detail-state" role="status">Replay data is unavailable for this legacy ride.</p>';
+
+export const RideDetailPage = (activity, progress, selectedTab = "replay") => `
   <section class="ride-detail-page" aria-labelledby="ride-detail-title">
     <button class="ride-detail-back" type="button"><img src="/assets/ride-detail-back.svg" width="16" height="16" alt="">BACK</button>
     ${RideSummary(activity)}
     ${RideProgress(activity, progress)}
-    ${RideTabs(activity)}
-    ${ReplayTab()}
+    ${RideTabs(activity, selectedTab)}
+    <div class="ride-detail-tab-content">
+      ${selectedTab === "collected" ? CollectedTab(activity, replayInputs(activity)) : (replayInputs(activity) ? ReplayTab() : ReplayUnavailable())}
+    </div>
   </section>
 `;
 
@@ -44,15 +49,16 @@ export const mountRideDetailPage = async (mountPoint, activityId, onBack) => {
       fetch(`/api/activities/${encodeURIComponent(activityId)}`).then(responseJson),
       fetch("/api/player/progress").then(responseJson)
     ]);
-    const replay = replayInputs(activity);
-    if (!replay) {
-      mountPoint.innerHTML = `<section class="ride-detail-page"><button class="ride-detail-back" type="button"><img src="/assets/ride-detail-back.svg" width="16" height="16" alt="">BACK</button><p class="ride-detail-state" role="alert">Replay data is unavailable for this legacy ride.</p></section>`;
+    const render = (selectedTab) => {
+      mountPoint.innerHTML = RideDetailPage(activity, progress, selectedTab);
       mountPoint.querySelector(".ride-detail-back").addEventListener("click", onBack);
-      return;
-    }
-    mountPoint.innerHTML = RideDetailPage(activity, progress);
-    mountPoint.querySelector(".ride-detail-back").addEventListener("click", onBack);
-    mountReplayTab(mountPoint, replay);
+      mountPoint.querySelectorAll("[data-ride-tab]").forEach((tab) => {
+        tab.addEventListener("click", () => render(tab.dataset.rideTab));
+      });
+      const replay = replayInputs(activity);
+      if (selectedTab === "replay" && replay) mountReplayTab(mountPoint, replay);
+    };
+    render("replay");
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unable to load ride detail.";
     mountPoint.innerHTML = `<section class="ride-detail-page"><button class="ride-detail-back" type="button"><img src="/assets/ride-detail-back.svg" width="16" height="16" alt="">BACK</button><p class="ride-detail-state ride-detail-error" role="alert">${escapeHtml(message)}</p></section>`;
