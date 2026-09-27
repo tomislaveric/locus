@@ -15,7 +15,10 @@ const activity = (id: string): Activity => ({
   source: "fit",
   startedAt: Date.parse("2026-01-02T03:04:05.000Z"),
   endedAt: Date.parse("2026-01-02T03:14:05.000Z"),
-  route: [],
+  route: [
+    { latitude: 55.6761, longitude: 12.5683, timestampMs: Date.parse("2026-01-02T03:04:05.000Z") },
+    { latitude: 55.6771, longitude: 12.5693, timestampMs: Date.parse("2026-01-02T03:14:05.000Z") }
+  ],
   distance: 12_345,
   duration: 600
 });
@@ -26,7 +29,10 @@ const result = (activityId: string, value = 25): ActivityResult => ({
   duration: 600,
   collectedCount: 1,
   totalPoints: value,
-  collectibles: [],
+  collectibles: [{
+    id: "historic-coin", name: "Historic Coin", type: "coin", rarity: "rare",
+    latitude: 55.6761, longitude: 12.5683, radiusMeters: 15, value
+  }],
   events: [{
     id: "historic-coin",
     sourceId: "historic-coin",
@@ -74,7 +80,12 @@ describePersistence("ActivityRepository", () => {
         collectible: { name: "Historic Coin", type: "coin", rarity: "rare" },
         value: 25,
         activityTimestamp: 1_790_090_187_586.4768
-      })]
+      })],
+      replay: {
+        version: 1,
+        activity: activity(firstId),
+        activityResult: result(firstId)
+      }
     });
   });
 

@@ -103,6 +103,7 @@ export interface ActivityHistoryItem {
 
 export interface PersistedActivity extends ActivityHistoryItem {
   events: PersistedActivityEvent[];
+  replay?: ReplaySnapshot;
 }
 
 export interface PersistedActivityEvent {
@@ -114,6 +115,12 @@ export interface PersistedActivityEvent {
   latitude: number;
   longitude: number;
   activityTimestamp: number;
+}
+
+export interface ReplaySnapshot {
+  version: 1;
+  activity: Activity;
+  activityResult: ActivityResult;
 }
 
 export interface HudTrackSample {

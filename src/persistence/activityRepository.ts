@@ -6,7 +6,8 @@ import type {
   ActivityResult,
   PersistedActivity,
   PersistedActivityEvent,
-  PlayerProgress
+  PlayerProgress,
+  ReplaySnapshot
 } from "../domain.js";
 import { getLevelProgress } from "../progression.js";
 
@@ -18,6 +19,7 @@ interface ActivityRow {
   xp_earned: number;
   collected_count: number;
   has_video: boolean;
+  replay_snapshot: ReplaySnapshot | null;
 }
 
 interface EventRow {
@@ -41,6 +43,12 @@ const mapActivity = (row: ActivityRow): ActivityHistoryItem => ({
   xpEarned: row.xp_earned,
   collectedCount: row.collected_count,
   hasVideo: row.has_video
+});
+
+const createReplaySnapshot = (activity: Activity, activityResult: ActivityResult): ReplaySnapshot => ({
+  version: 1,
+  activity: structuredClone(activity),
+  activityResult: structuredClone(activityResult)
 });
 
 const mapEvent = (row: EventRow): PersistedActivityEvent => ({
@@ -83,10 +91,11 @@ export class ActivityRepository {
       await client.query("BEGIN");
       const inserted = await client.query<ActivityRow>(
         `INSERT INTO activities (
-          id, player_id, source_type, started_at, distance_meters, duration_seconds, xp_earned, collected_count
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+          id, player_id, source_type, started_at, distance_meters, duration_seconds, xp_earned, collected_count,
+          replay_snapshot
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
         ON CONFLICT (id) DO NOTHING
-        RETURNING id, started_at, distance_meters, duration_seconds, xp_earned, collected_count, has_video`,
+        RETURNING id, started_at, distance_meters, duration_seconds, xp_earned, collected_count, has_video, replay_snapshot`,
         [
           activity.id,
           this.defaultPlayerId,
@@ -95,7 +104,8 @@ export class ActivityRepository {
           activity.distance ?? null,
           activity.duration ?? null,
           result.totalPoints,
-          result.collectedCount
+          result.collectedCount,
+          JSON.stringify(createReplaySnapshot(activity, result))
         ]
       );
 
@@ -145,7 +155,7 @@ export class ActivityRepository {
 
   async listActivities(): Promise<ActivityHistoryItem[]> {
     const result = await this.pool.query<ActivityRow>(
-      `SELECT id, started_at, distance_meters, duration_seconds, xp_earned, collected_count, has_video
+      `SELECT id, started_at, distance_meters, duration_seconds, xp_earned, collected_count, has_video, replay_snapshot
        FROM activities WHERE player_id = $1 ORDER BY created_at DESC, id DESC`,
       [this.defaultPlayerId]
     );
@@ -192,7 +202,7 @@ export class ActivityRepository {
 
   private async getActivityWithClient(client: PoolClient, id: string): Promise<PersistedActivity> {
     const activityResult = await client.query<ActivityRow>(
-      `SELECT id, started_at, distance_meters, duration_seconds, xp_earned, collected_count, has_video
+      `SELECT id, started_at, distance_meters, duration_seconds, xp_earned, collected_count, has_video, replay_snapshot
        FROM activities WHERE id = $1 AND player_id = $2`,
       [id, this.defaultPlayerId]
     );
@@ -203,6 +213,10 @@ export class ActivityRepository {
        FROM activity_events WHERE activity_id = $1 ORDER BY activity_timestamp, id`,
       [id]
     );
-    return { ...mapActivity(activityResult.rows[0]), events: events.rows.map(mapEvent) };
+    return {
+      ...mapActivity(activityResult.rows[0]),
+      events: events.rows.map(mapEvent),
+      ...(activityResult.rows[0].replay_snapshot === null ? {} : { replay: activityResult.rows[0].replay_snapshot })
+    };
   }
 }

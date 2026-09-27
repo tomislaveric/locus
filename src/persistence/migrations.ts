@@ -60,4 +60,12 @@ export const migrations: Migration[] = [{
         USING activity_timestamp::DOUBLE PRECISION
     `);
   }
+}, {
+  id: "003_activity_replay_snapshots",
+  async up(client) {
+    await client.query(`
+      ALTER TABLE activities
+        ADD COLUMN replay_snapshot JSONB
+    `);
+  }
 }];
