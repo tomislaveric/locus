@@ -14,7 +14,7 @@ export const mountAppShell = (mountPoint, onScreenChange) => {
     const button = event.target.closest("[data-screen]");
     if (!button || !mountPoint.contains(button)) return;
     const { screen } = button.dataset;
-    if (screen === "home" || screen === "rides" || screen === "add-ride") onScreenChange(screen);
+    if (screen === "home" || screen === "rides" || screen === "world" || screen === "add-ride") onScreenChange(screen);
   });
   return {
     content: mountPoint.querySelector(".main-content"),

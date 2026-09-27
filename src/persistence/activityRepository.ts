@@ -210,6 +210,18 @@ export class ActivityRepository {
     return getLevelProgress(result.rows[0].total_xp);
   }
 
+  async listDiscoveredCollectibleSourceIds(): Promise<string[]> {
+    const result = await this.pool.query<{ source_id: string }>(
+      `SELECT DISTINCT events.source_id
+       FROM activity_events AS events
+       INNER JOIN activities ON activities.id = events.activity_id
+       WHERE activities.player_id = $1
+       ORDER BY events.source_id`,
+      [this.defaultPlayerId]
+    );
+    return result.rows.map((row) => row.source_id);
+  }
+
   async markActivityHasVideo(id: string): Promise<void> {
     const result = await this.pool.query(
       "UPDATE activities SET has_video = true WHERE id = $1 AND player_id = $2",
