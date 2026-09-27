@@ -97,11 +97,14 @@ button, input { font: inherit; }
 
 .add-ride-cta { width: 100%; }
 .add-ride-cta:hover, .legacy-activity button:hover { background: var(--accent-yellow-bright); }
+.add-ride-cta.is-current { box-shadow: 0 0 10px rgb(232 184 10 / 20%); }
 
 .main-content {
   background: var(--canvas-background);
   min-width: 0;
-  padding: 64px 72px;
+  outline: 0;
+  overflow: auto;
+  padding: 0;
 }
 
 .legacy-activity {
@@ -110,6 +113,62 @@ button, input { font: inherit; }
   margin: 0 auto;
   max-width: 760px;
   padding: 36px;
+}
+
+.main-content > .legacy-activity { margin-top: 64px; }
+
+.home-page {
+  margin: 0 auto;
+  max-width: 1139px;
+  min-height: 100%;
+  padding: 0 clamp(32px, 15vw, 172px) 40px;
+}
+
+.home-hero { border-radius: var(--radius-panel); min-height: 255px; overflow: hidden; padding: 32px 24px 0; }
+.home-progress { align-items: end; display: flex; gap: 32px; }
+.home-level { font-family: var(--font-display); font-size: 118px; font-weight: 700; letter-spacing: -.04em; line-height: .86; }
+.home-progress-details { flex: 1; max-width: 668px; padding-bottom: 12px; }
+.home-section-label { color: var(--text-muted); font-family: var(--font-display); font-size: 10px; letter-spacing: .22em; margin: 0; }
+.home-xp { font-family: var(--font-mono); font-size: 14px; margin: 4px 0 0; }
+.home-xp strong { color: var(--text-primary); font-size: 24px; font-weight: 500; }
+.home-xp span { color: var(--text-muted); }
+.home-xp-track { background: #181b22; border-radius: 999px; height: 6px; margin-top: 12px; overflow: hidden; }
+.home-xp-track span { background: var(--accent-yellow); border-radius: inherit; box-shadow: 0 0 12px rgb(232 184 10 / 40%); display: block; height: 100%; }
+.home-progress-caption { color: var(--text-subtle); font-family: var(--font-display); font-size: 10px; letter-spacing: .025em; margin: 8px 0 0; }
+.home-stats { border-top: 1px solid var(--border-faint); display: grid; grid-template-columns: repeat(4, 1fr); margin: 24px 0 0; padding-top: 16px; }
+.home-stats div { text-align: center; }
+.home-stats dt { color: var(--text-subtle); font-family: var(--font-display); font-size: 9px; letter-spacing: .18em; }
+.home-stats dd { color: var(--text-primary); font-family: var(--font-display); font-size: 14px; font-weight: 600; margin: 3px 0 0; }
+.home-last-ride { padding-top: 24px; }
+.home-section-heading { align-items: center; display: flex; height: 27px; justify-content: space-between; padding-bottom: 12px; }
+.home-section-heading h1 { color: var(--text-muted); font-family: var(--font-display); font-size: 10px; font-weight: 400; letter-spacing: .22em; margin: 0; }
+.home-ride-card, .home-empty-state { background: var(--surface-background); border: 1px solid var(--border-faint); border-radius: var(--radius-card); }
+.home-ride-card { overflow: hidden; }
+.home-ride-header { display: flex; justify-content: space-between; min-height: 104px; padding: 20px; }
+.home-distance { color: var(--text-primary); font-family: var(--font-display); font-size: 48px; font-weight: 700; line-height: 1; margin: 7px 0 0; }
+.home-distance span { color: var(--text-muted); font-size: 20px; font-weight: 600; }
+.home-earned { display: flex; flex-direction: column; text-align: right; }
+.home-earned span, .home-found > span { color: var(--text-subtle); font-family: var(--font-display); font-size: 10px; letter-spacing: .18em; }
+.home-earned strong { color: var(--accent-yellow); font-family: var(--font-display); font-size: 30px; line-height: 1; margin-top: 5px; }
+.home-ride-details { background: #0b0c0f; color: var(--text-muted); display: flex; flex-wrap: wrap; font-family: var(--font-mono); font-size: 13px; gap: 10px; min-height: 58px; padding: 20px; }
+.home-ride-details i { color: var(--text-subtle); font-style: normal; }
+.home-found { align-items: center; display: flex; gap: 10px; min-height: 64px; padding: 14px 20px; }
+.home-found ul { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; margin: 0; padding: 0; }
+.home-found-item { border: 1px solid currentcolor; border-radius: 6px; font-family: var(--font-display); font-size: 11px; font-weight: 600; padding: 4px 9px; }
+.home-found-item.rarity-rare { background: rgb(77 157 224 / 11%); color: var(--accent-rare); }
+.home-found-item.rarity-epic { background: rgb(155 109 223 / 11%); color: var(--accent-epic); }
+.home-found-item.rarity-common, .home-found-item.rarity-coin, .home-found-item.rarity-landmark { color: var(--text-muted); }
+.home-no-finds { color: var(--text-subtle); font-family: var(--font-mono); font-size: 12px; margin: 0; padding: 20px; }
+.home-empty-state, .home-loading, .home-load-error { color: var(--text-muted); font-family: var(--font-mono); padding: 32px; }
+.home-empty-state p:last-child { font-size: 13px; line-height: 1.5; margin: 12px 0 0; }
+.home-loading, .home-load-error { background: var(--surface-background); border: 1px solid var(--border-faint); border-radius: var(--radius-card); }
+.home-load-error { color: #ff9a9a; }
+
+@media (max-width: 840px) {
+  .home-page { padding: 0 24px 32px; }
+  .home-level { font-size: 88px; }
+  .home-progress { gap: 20px; }
+  .home-stats { grid-template-columns: repeat(2, 1fr); gap: 16px; }
 }
 
 .legacy-activity-header { border-bottom: 1px solid var(--border-subtle); margin-bottom: 28px; padding-bottom: 24px; }

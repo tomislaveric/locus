@@ -25,6 +25,8 @@ Single-container POC for turning a FIT ride into collectible game events and an 
   Coin passages and combine them into one chronological highlight video.
 - [Milestone 11.1 — Trailhunt application shell](features/milestone-11-1-trailhunt-application-shell/README.md)
   — establish Figma-derived desktop tokens, application shell, sidebar, and main-content layout while preserving current activity behavior.
+- [Milestone 11.2 — Trailhunt Home Desktop](features/milestone-11-2-trailhunt-home-desktop/README.md)
+  — implement the real-data-backed Figma Home content surface while retaining the legacy Add Ride workflow.
 - [Persistent activities player state v1](features/persistent-activities-player-state-v1/README.md)
   — persist compact activity/event history and single-player XP in PostgreSQL
   with transaction-safe exactly-once progression.

@@ -1,5 +1,5 @@
 import { mainContent } from "./main-content.js";
-import { sidebar } from "./sidebar.js";
+import { setSidebarScreen, sidebar } from "./sidebar.js";
 
 export const AppShell = () => `
   <div class="app-shell">
@@ -8,6 +8,18 @@ export const AppShell = () => `
   </div>
 `;
 
-export const mountAppShell = (mountPoint) => {
+export const mountAppShell = (mountPoint, onScreenChange) => {
   mountPoint.innerHTML = AppShell();
+  mountPoint.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-screen]");
+    if (!button || !mountPoint.contains(button)) return;
+    const { screen } = button.dataset;
+    if (screen === "home" || screen === "add-ride") onScreenChange(screen);
+  });
+  return {
+    content: mountPoint.querySelector(".main-content"),
+    setScreen(screen) {
+      setSidebarScreen(mountPoint, screen);
+    }
+  };
 };
