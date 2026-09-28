@@ -18,6 +18,16 @@ const dateLabel = (startedAt) => new Intl.DateTimeFormat("en-US", {
 }).format(new Date(startedAt)).toUpperCase();
 
 const eventsForActivities = (activities) => activities.flatMap((activity) => activity.events ?? []);
+const replayForHome = (activity) => {
+  const replay = activity?.replay;
+  if (
+    !Array.isArray(replay?.activity?.route)
+    || replay.activity.route.length < 2
+    || !Array.isArray(replay.activityResult?.collectibles)
+    || !Array.isArray(replay.activityResult?.events)
+  ) return undefined;
+  return replay;
+};
 
 export const homeViewModel = (progress, activities) => {
   const events = eventsForActivities(activities);
@@ -86,10 +96,11 @@ export const HomeLastRide = (activity) => {
     `${activity.collectedCount} collected`,
     activity.hasVideo ? "POV available" : undefined
   ].filter(Boolean);
+  const replay = replayForHome(activity);
   return `
     <section class="home-last-ride" aria-labelledby="last-ride-title">
       <div class="home-section-heading"><h1 id="last-ride-title">LAST RIDE</h1></div>
-      <article class="home-ride-card">
+      <button class="home-ride-card" type="button" data-activity-id="${escapeHtml(activity.id)}" aria-label="View last ride">
         <header class="home-ride-header">
           <div>
             <p class="home-section-label">${dateLabel(activity.startedAt)}</p>
@@ -97,9 +108,10 @@ export const HomeLastRide = (activity) => {
           </div>
           <div class="home-earned"><span>XP EARNED</span><strong>+${formatNumber(activity.xpEarned)}</strong></div>
         </header>
+        ${replay ? Replay({ canvasLabel: "Last ride route", className: "home-ride-replay", height: 170 }) : ""}
         <div class="home-ride-details">${details.map((detail) => `<span>${escapeHtml(detail)}</span>`).join("<i aria-hidden=\"true\">·</i>")}</div>
         ${activity.events?.length ? `<div class="home-found"><span>FOUND</span><ul>${foundItems(activity.events)}</ul></div>` : '<p class="home-no-finds">No collectibles were recorded on this ride.</p>'}
-      </article>
+      </button>
     </section>
   `;
 };
@@ -117,7 +129,7 @@ const responseJson = async (response) => {
   return body;
 };
 
-export const mountHomePage = async (mountPoint) => {
+export const mountHomePage = async (mountPoint, onSelectActivity) => {
   mountPoint.innerHTML = '<section class="home-page"><p class="home-loading" role="status">Loading Home...</p></section>';
   try {
     const [progress, history] = await Promise.all([
@@ -128,8 +140,23 @@ export const mountHomePage = async (mountPoint) => {
       ...activity,
       ...(await fetch(`/api/activities/${encodeURIComponent(activity.id)}`).then(responseJson))
     })));
-    mountPoint.innerHTML = HomePage(homeViewModel(progress, activities));
+    const model = homeViewModel(progress, activities);
+    mountPoint.innerHTML = HomePage(model);
+    const replay = replayForHome(model.latest);
+    if (replay) {
+      mountReplay({
+        canvas: mountPoint.querySelector(".home-ride-replay .ride-replay-canvas"),
+        activity: replay.activity,
+        activityResult: replay.activityResult,
+        staticRoute: true
+      });
+    }
+    mountPoint.querySelector("[data-activity-id]")?.addEventListener("click", () => {
+      onSelectActivity?.(model.latest.id);
+    });
   } catch (error) {
     mountPoint.innerHTML = `<section class="home-page"><p class="home-load-error" role="alert">Unable to load Home: ${escapeHtml(error.message)}</p></section>`;
   }
 };
+import { mountReplay } from "../replay.js";
+import { Replay } from "./replay-tab.js";

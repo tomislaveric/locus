@@ -170,55 +170,7 @@ const drawMarker = (context, position, collectible, state) => {
   context.restore();
 };
 
-const renderFeed = (feed, events, timestamp) => {
-  feed.replaceChildren(...feedDisplayData(events, timestamp).map(({ event, name, value, rarity }) => {
-    const item = document.createElement("li");
-    item.className = "activity-feed-item";
-    if (rarity) item.classList.add(rarity.className);
-    const rarityLabel = rarity ? ` · ${rarity.label}` : "";
-    item.textContent = `Collected ${name} · +${value} XP${rarityLabel}`;
-    return item;
-  }));
-};
-
-const renderNearMisses = (section, list, nearMisses) => {
-  const items = nearMissDisplayData(nearMisses);
-  section.hidden = !items;
-  if (!items) return;
-  list.replaceChildren(...items.map((nearMiss) => {
-    const item = document.createElement("li");
-    item.className = "near-miss-item";
-    if (nearMiss.rarity) item.classList.add(nearMiss.rarity.className);
-    const rarityLabel = nearMiss.rarity ? ` · ${nearMiss.rarity.label}` : "";
-    item.textContent = `○ ${nearMiss.name} · ${nearMiss.distanceLabel}${rarityLabel} · +${nearMiss.value} XP`;
-    return item;
-  }));
-};
-
-const renderUi = (ui, activityResult, timestamp, elapsed, duration, rider) => {
-  const collected = eventAtTimestamp(activityResult.events, timestamp);
-  const feedback = activeCollectionFeedback(activityResult.events, timestamp);
-  const next = nextCollectibleData(activityResult.collectibles, activityResult.events, timestamp, rider);
-  const completion = replayCompletion(elapsed, duration, collected.length, activityResult.totalPoints);
-  const score = completion ? activityResult.totalPoints : replayScore(activityResult.events, timestamp);
-  ui.score.textContent = `${score} XP`;
-  ui.count.textContent = `${collected.length} collectible${collected.length === 1 ? "" : "s"}`;
-  ui.score.classList.toggle("is-updated", Boolean(feedback));
-  ui.count.classList.toggle("is-updated", Boolean(feedback));
-  ui.feedback.hidden = !feedback;
-  if (feedback) {
-    const rarity = rarityPresentation(feedback.collectible?.rarity);
-    ui.feedback.textContent = `Collected ${feedback.collectible?.name || feedback.sourceId} · +${feedback.value} XP${rarity ? ` · ${rarity.label}` : ""}`;
-  }
-  ui.next.hidden = !next;
-  if (next) ui.next.textContent = `Next: ${next.name} · ${Math.round(next.distanceMeters)} m away`;
-  ui.completion.hidden = !completion;
-  if (completion) ui.completion.textContent =
-    `Ride complete · ${completion.collectedCount} collectible${completion.collectedCount === 1 ? "" : "s"} · ${completion.totalPoints} XP`;
-  renderFeed(ui.feed, activityResult.events, timestamp);
-};
-
-export const mountReplay = ({ canvas, activity, activityResult, ui }) => {
+export const mountReplay = ({ canvas, activity, activityResult, onPlaybackStateChange = () => {}, staticRoute = false }) => {
   const context = canvas.getContext("2d");
   const { route } = activity;
   const bounds = routeBounds(route);
@@ -228,9 +180,8 @@ export const mountReplay = ({ canvas, activity, activityResult, ui }) => {
   let elapsed = 0;
   let frame;
 
-  renderNearMisses(ui.nearMisses, ui.nearMissList, activityResult.nearMisses ?? []);
   const draw = () => {
-    const progress = Math.min(1, elapsed / duration);
+    const progress = staticRoute ? 1 : Math.min(1, elapsed / duration);
     const timestamp = activity.startedAt + (activity.endedAt - activity.startedAt) * progress;
     const riderPosition = interpolatePosition(route, timestamp);
     context.clearRect(0, 0, canvas.width, canvas.height);
@@ -246,14 +197,19 @@ export const mountReplay = ({ canvas, activity, activityResult, ui }) => {
     context.strokeStyle = "#ffd83d";
     context.lineWidth = 4;
     context.beginPath();
-    route.filter((point) => point.timestampMs <= timestamp).forEach((point, index) => {
+    route.filter((point) => staticRoute || point.timestampMs <= timestamp).forEach((point, index) => {
       const position = project(point, bounds, canvas);
       if (index === 0) context.moveTo(position.x, position.y);
       else context.lineTo(position.x, position.y);
     });
     context.stroke();
     for (const collectible of sources) {
-      drawMarker(context, project(collectible, bounds, canvas), collectible, markerState(collectible.id, activityResult.events, timestamp));
+      drawMarker(
+        context,
+        project(collectible, bounds, canvas),
+        collectible,
+        staticRoute ? "available" : markerState(collectible.id, activityResult.events, timestamp)
+      );
     }
     const rider = project(riderPosition, bounds, canvas);
     context.fillStyle = "#f5f7fa";
@@ -263,7 +219,6 @@ export const mountReplay = ({ canvas, activity, activityResult, ui }) => {
     context.arc(rider.x, rider.y, 8, 0, Math.PI * 2);
     context.fill();
     context.stroke();
-    renderUi(ui, activityResult, timestamp, elapsed, duration, riderPosition);
   };
 
   const play = (now) => {
@@ -271,12 +226,16 @@ export const mountReplay = ({ canvas, activity, activityResult, ui }) => {
     elapsed = Math.min(duration, (now - startedAt) / 1000);
     draw();
     if (elapsed < duration) frame = requestAnimationFrame(play);
-    else frame = undefined;
+    else {
+      frame = undefined;
+      onPlaybackStateChange(false);
+    }
   };
   const pause = () => {
     if (frame !== undefined) cancelAnimationFrame(frame);
     frame = undefined;
     startedAt = undefined;
+    onPlaybackStateChange(false);
   };
   const restart = () => {
     pause();
@@ -284,7 +243,19 @@ export const mountReplay = ({ canvas, activity, activityResult, ui }) => {
     draw();
   };
   draw();
-  return { play: () => { if (frame === undefined && elapsed < duration) frame = requestAnimationFrame(play); }, pause, restart };
+  return {
+    play: () => {
+      if (frame !== undefined) return;
+      if (elapsed >= duration) {
+        elapsed = 0;
+        startedAt = undefined;
+      }
+      onPlaybackStateChange(true);
+      frame = requestAnimationFrame(play);
+    },
+    pause,
+    restart
+  };
 };
 
 export {

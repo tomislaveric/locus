@@ -13,7 +13,7 @@ function selectScreen(screen) {
   else if (screen === "rides") mountRidesPage(shell.content, selectRide);
   else if (screen === "ride-detail") mountRideDetailPage(shell.content, selectedActivityId, () => selectScreen("rides"));
   else if (screen === "world") mountWorldPage(shell.content);
-  else mountHomePage(shell.content);
+  else mountHomePage(shell.content, selectRide);
   shell.content.focus({ preventScroll: true });
 }
 
