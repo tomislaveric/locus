@@ -1,10 +1,10 @@
 import { CollectedTab } from "./collected-tab.js";
 import { canonicalRarity } from "./collected-list.js";
 import { NearMissesTab } from "./near-misses-tab.js";
-import { RideProgress } from "./ride-progress.js";
+import { ActivityProgress } from "./activity-progress.js";
 import { ReplayTab, mountReplayTab } from "./replay-tab.js";
-import { RideSummary } from "./ride-summary.js";
-import { RideTabs } from "./ride-tabs.js";
+import { ActivitySummary } from "./activity-summary.js";
+import { ActivityTabs } from "./activity-tabs.js";
 import { VideoTab, mountVideoTab } from "./video-tab.js";
 
 const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (character) => ({
@@ -13,7 +13,7 @@ const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (character) => (
 
 const responseJson = async (response) => {
   const body = await response.json();
-  if (!response.ok) throw new Error(body.error ?? "Unable to load ride detail.");
+  if (!response.ok) throw new Error(body.error ?? "Unable to load activity detail.");
   return body;
 };
 
@@ -43,10 +43,10 @@ export const nearMissInputs = (activity) => {
   return replay;
 };
 
-const ReplayUnavailable = () => '<p class="ride-detail-state" role="status">Replay data is unavailable for this legacy ride.</p>';
-const NearMissesUnavailable = () => '<p class="ride-detail-state near-misses-unavailable" role="status">Near-miss data is unavailable for this legacy ride.</p>';
+const ReplayUnavailable = () => '<p class="activity-detail-state" role="status">Replay data is unavailable for this legacy activity.</p>';
+const NearMissesUnavailable = () => '<p class="activity-detail-state near-misses-unavailable" role="status">Near-miss data is unavailable for this legacy activity.</p>';
 
-export const RideDetailPage = (activity, progress, selectedTab = "replay") => {
+export const ActivityDetailPage = (activity, progress, selectedTab = "replay") => {
   const replay = replayInputs(activity);
   const nearMissReplay = nearMissInputs(activity);
   const tabContent = selectedTab === "collected"
@@ -57,18 +57,18 @@ export const RideDetailPage = (activity, progress, selectedTab = "replay") => {
         ? VideoTab(activity)
         : (replay ? ReplayTab() : ReplayUnavailable());
   return `
-    <section class="ride-detail-page" aria-labelledby="ride-detail-title">
-      <button class="ride-detail-back" type="button"><img src="/assets/ride-detail-back.svg" width="16" height="16" alt="">BACK</button>
-      ${RideSummary(activity)}
-      ${RideProgress(activity, progress)}
-      ${RideTabs(activity, selectedTab, nearMissReplay?.activityResult.nearMisses.length)}
-      <div class="ride-detail-tab-content">${tabContent}</div>
+    <section class="activity-detail-page" aria-labelledby="activity-detail-title">
+      <button class="activity-detail-back" type="button"><img src="/assets/activity-detail-back.svg" width="16" height="16" alt="">BACK</button>
+      ${ActivitySummary(activity)}
+      ${ActivityProgress(activity, progress)}
+      ${ActivityTabs(activity, selectedTab, nearMissReplay?.activityResult.nearMisses.length)}
+      <div class="activity-detail-tab-content">${tabContent}</div>
     </section>
   `;
 };
 
-export const mountRideDetailPage = async (mountPoint, activityId, onBack) => {
-  mountPoint.innerHTML = '<section class="ride-detail-page"><p class="ride-detail-state" role="status">Loading ride detail...</p></section>';
+export const mountActivityDetailPage = async (mountPoint, activityId, onBack) => {
+  mountPoint.innerHTML = '<section class="activity-detail-page"><p class="activity-detail-state" role="status">Loading activity detail...</p></section>';
   try {
     const [loadedActivity, progress] = await Promise.all([
       fetch(`/api/activities/${encodeURIComponent(activityId)}`).then(responseJson),
@@ -80,9 +80,9 @@ export const mountRideDetailPage = async (mountPoint, activityId, onBack) => {
     const render = (tab) => {
       selectedTab = tab;
       clearTimeout(polling);
-      mountPoint.innerHTML = RideDetailPage(activity, progress, selectedTab);
-      mountPoint.querySelector(".ride-detail-back").addEventListener("click", onBack);
-      mountPoint.querySelectorAll("[data-ride-tab]").forEach((tab) => {
+      mountPoint.innerHTML = ActivityDetailPage(activity, progress, selectedTab);
+      mountPoint.querySelector(".activity-detail-back").addEventListener("click", onBack);
+      mountPoint.querySelectorAll("[data-activity-tab]").forEach((tab) => {
         tab.addEventListener("click", () => render(tab.dataset.rideTab));
       });
       const replay = replayInputs(activity);
@@ -103,13 +103,13 @@ export const mountRideDetailPage = async (mountPoint, activityId, onBack) => {
         if (selectedTab === "video") render("video");
         if (activity.video?.state === "syncing" || activity.video?.state === "rendering") polling = setTimeout(pollVideo, 1500);
       } catch (error) {
-        if (selectedTab === "video") mountPoint.querySelector(".ride-detail-tab-content").innerHTML = `<p class="ride-detail-state ride-detail-error" role="alert">${escapeHtml(error.message)}</p>`;
+        if (selectedTab === "video") mountPoint.querySelector(".activity-detail-tab-content").innerHTML = `<p class="activity-detail-state activity-detail-error" role="alert">${escapeHtml(error.message)}</p>`;
       }
     };
     render("replay");
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unable to load ride detail.";
-    mountPoint.innerHTML = `<section class="ride-detail-page"><button class="ride-detail-back" type="button"><img src="/assets/ride-detail-back.svg" width="16" height="16" alt="">BACK</button><p class="ride-detail-state ride-detail-error" role="alert">${escapeHtml(message)}</p></section>`;
-    mountPoint.querySelector(".ride-detail-back").addEventListener("click", onBack);
+    const message = error instanceof Error ? error.message : "Unable to load activity detail.";
+    mountPoint.innerHTML = `<section class="activity-detail-page"><button class="activity-detail-back" type="button"><img src="/assets/activity-detail-back.svg" width="16" height="16" alt="">BACK</button><p class="activity-detail-state activity-detail-error" role="alert">${escapeHtml(message)}</p></section>`;
+    mountPoint.querySelector(".activity-detail-back").addEventListener("click", onBack);
   }
 };

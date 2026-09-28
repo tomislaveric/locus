@@ -30,7 +30,7 @@ export const NearMissItem = (nearMiss) => {
       </div>
       <div class="near-miss-card-status">
         ${rarity ? `<span class="near-miss-rarity rarity-${rarity}">${escapeHtml(rarity)}</span>` : ""}
-        <span>Next ride</span>
+        <span>Next activity</span>
       </div>
     </li>
   `;

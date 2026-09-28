@@ -17,7 +17,7 @@ const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (character) => (
 
 export const levelName = (level) => levelNames[level] ?? `Level ${formatNumber(level)}`;
 
-export const formatRideDate = (startedAt) => {
+export const formatActivityDate = (startedAt) => {
   const parts = new Intl.DateTimeFormat("en-US", {
     day: "2-digit",
     month: "short",
@@ -29,8 +29,8 @@ export const formatRideDate = (startedAt) => {
 };
 
 export const progressViewModel = (dashboard) => {
-  const { progress, lifetime, levels, recentRides } = dashboard;
-  const maximumRideXp = Math.max(0, ...recentRides.map((ride) => ride.xpEarned));
+  const { progress, lifetime, levels, recentActivities } = dashboard;
+  const maximumActivityXp = Math.max(0, ...recentActivities.map((activity) => activity.xpEarned));
   return {
     ...dashboard,
     progress: {
@@ -44,9 +44,9 @@ export const progressViewModel = (dashboard) => {
       state: item.level < progress.level ? "completed" : item.level === progress.level ? "current" : "future"
     })),
     lifetime: { ...lifetime },
-    recentRides: recentRides.map((ride) => ({
-      ...ride,
-      percentage: maximumRideXp ? Math.max(0, Math.min(100, ride.xpEarned / maximumRideXp * 100)) : 0
+    recentActivities: recentActivities.map((activity) => ({
+      ...activity,
+      percentage: maximumActivityXp ? Math.max(0, Math.min(100, activity.xpEarned / maximumActivityXp * 100)) : 0
     }))
   };
 };
@@ -55,7 +55,7 @@ export const ProgressSummary = ({ progress, lifetime }) => `
   <p class="progress-summary">
     <strong>${formatNumber(progress.totalXp)} XP</strong>
     <i aria-hidden="true">·</i>
-    <span>${formatNumber(lifetime.distanceMeters / 1000, 1)} km ridden</span>
+    <span>${formatNumber(lifetime.distanceMeters / 1000, 1)} km covered</span>
     <i aria-hidden="true">·</i>
     <span>${formatNumber(lifetime.totalCollectibles)} collectibles</span>
     <i aria-hidden="true">·</i>
@@ -109,30 +109,30 @@ export const ProgressJourney = ({ levels, progress }) => `
   </ol>
 `;
 
-export const RecentRide = (ride) => {
-  const distance = Number.isFinite(ride.distanceMeters)
-    ? `${formatNumber(ride.distanceMeters / 1000, 1)} km`
+export const RecentActivity = (activity) => {
+  const distance = Number.isFinite(activity.distanceMeters)
+    ? `${formatNumber(activity.distanceMeters / 1000, 1)} km`
     : "Distance unavailable";
   return `
-    <li class="recent-ride">
+    <li class="recent-activity">
       <div>
-        <strong>Ride · ${escapeHtml(formatRideDate(ride.startedAt))}</strong>
-        <span>${escapeHtml(formatRideDate(ride.startedAt))} · ${escapeHtml(distance)} · ${formatNumber(ride.collectedCount)} found</span>
+        <strong>Activity · ${escapeHtml(formatActivityDate(activity.startedAt))}</strong>
+        <span>${escapeHtml(formatActivityDate(activity.startedAt))} · ${escapeHtml(distance)} · ${formatNumber(activity.collectedCount)} found</span>
       </div>
-      <div class="recent-ride-xp">
-        <span aria-hidden="true"><i style="width: ${ride.percentage}%"></i></span>
-        <strong>+${formatNumber(ride.xpEarned)}</strong>
+      <div class="recent-activity-xp">
+        <span aria-hidden="true"><i style="width: ${activity.percentage}%"></i></span>
+        <strong>+${formatNumber(activity.xpEarned)}</strong>
       </div>
     </li>
   `;
 };
 
-export const RecentRides = (rides) => `
-  <section class="recent-rides" aria-labelledby="recent-rides-title">
-    <h2 id="recent-rides-title">RECENT RIDES</h2>
-    ${rides.length
-    ? `<ol>${rides.map(RecentRide).join("")}</ol>`
-    : '<p class="recent-rides-empty">NO COMPLETED RIDES YET</p>'}
+export const RecentActivities = (activities) => `
+  <section class="recent-activities" aria-labelledby="recent-activities-title">
+    <h2 id="recent-activities-title">RECENT ACTIVITIES</h2>
+    ${activities.length
+    ? `<ol>${activities.map(RecentActivity).join("")}</ol>`
+    : '<p class="recent-activities-empty">NO COMPLETED ACTIVITIES YET</p>'}
   </section>
 `;
 
@@ -144,7 +144,7 @@ export const ProgressPage = (model) => `
     </header>
     ${ProgressSummary(model)}
     ${ProgressJourney(model)}
-    ${RecentRides(model.recentRides)}
+    ${RecentActivities(model.recentActivities)}
   </section>
 `;
 

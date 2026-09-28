@@ -15,12 +15,21 @@ describe("activity derivation", () => {
       { id: "first", name: "First", type: "coin", latitude: 0, longitude: 0.00095, radiusMeters: 10, value: 10 }
     ]);
 
-    expect(activity).toMatchObject({ id: "ride", source: "fit", startedAt: 1_000, endedAt: 121_000, duration: 120 });
+    expect(activity).toMatchObject({ id: "ride", source: "fit", type: "unknown", startedAt: 1_000, endedAt: 121_000, duration: 120 });
     expect(activity.distance).toBeGreaterThan(200);
     expect(result).toMatchObject({ activityId: "ride", collectedCount: 2, totalPoints: 30 });
     expect(result.events.map((event) => event.sourceId)).toEqual(["first", "later"]);
     expect(result.events.map((event) => event.collectible.name)).toEqual(["First", "Later"]);
     expect(result.events.every((event) => event.videoSecond === undefined)).toBe(true);
+  });
+
+  it("retains an explicitly supplied non-cycling activity type without changing derivation", () => {
+    expect(deriveActivity("run", route, "running")).toMatchObject({
+      id: "run",
+      type: "running",
+      distance: expect.any(Number),
+      duration: 120
+    });
   });
 
   it("completes a zero-collectible activity", () => {

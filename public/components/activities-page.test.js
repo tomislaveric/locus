@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { RideCard, formatRideDate, formatRideDuration, ridesViewModel } from "./rides-page.js";
+import { ActivityCard, activitiesViewModel, formatActivityDate, formatActivityDuration } from "./activities-page.js";
 
-describe("Rides data transformation", () => {
+describe("Activities data transformation", () => {
   const activities = [
     {
       id: "newest", startedAt: "2026-09-26T12:00:00.000Z", distanceMeters: 5_400,
@@ -14,19 +14,19 @@ describe("Rides data transformation", () => {
   ];
 
   it("preserves repository ordering while deriving compact history totals", () => {
-    expect(ridesViewModel(activities)).toMatchObject({
+    expect(activitiesViewModel(activities)).toMatchObject({
       activities,
       stats: { count: 2, distanceMeters: 5_400, xp: 50, collected: 3 }
     });
   });
 
-  it("formats persisted ride metadata and missing values explicitly", () => {
-    expect(formatRideDate(activities[0].startedAt)).toBe("SAT, SEP 26");
-    expect(formatRideDuration(activities[0].durationSeconds)).toBe("1h 6m");
-    expect(formatRideDuration(undefined)).toBe("Duration unavailable");
+  it("formats persisted activity metadata and missing values explicitly", () => {
+    expect(formatActivityDate(activities[0].startedAt)).toBe("SAT, SEP 26");
+    expect(formatActivityDuration(activities[0].durationSeconds)).toBe("1h 6m");
+    expect(formatActivityDuration(undefined)).toBe("Duration unavailable");
   });
 
-  it("shows the static route preview and collectible dots for a detailed ride", () => {
+  it("shows the static route preview and collectible dots for a detailed activity", () => {
     const activity = {
       ...activities[0],
       events: [{ sourceId: "castle", collectible: { name: "Castle Gate", rarity: "rare" } }],
@@ -38,9 +38,9 @@ describe("Rides data transformation", () => {
       }
     };
 
-    expect(RideCard(activity)).toContain('class="ride-replay ride-card-replay"');
-    expect(RideCard(activity)).toContain('class="rarity-rare"');
-    expect(RideCard(activity)).not.toContain("Castle Gate");
-    expect(RideCard(activity)).not.toContain("ride-found");
+    expect(ActivityCard(activity)).toContain('class="activity-replay activity-card-replay"');
+    expect(ActivityCard(activity)).toContain('class="rarity-rare"');
+    expect(ActivityCard(activity)).not.toContain("Castle Gate");
+    expect(ActivityCard(activity)).not.toContain("activity-found");
   });
 });

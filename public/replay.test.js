@@ -40,7 +40,7 @@ describe("activity replay", () => {
     [45 * 60, 22.5],
     [60 * 60, 30],
     [5 * 60, 12]
-  ])("clamps a %i-second ride to %s replay seconds", (activityDuration, expected) => {
+  ])("clamps a %i-second activity to %s replay seconds", (activityDuration, expected) => {
     expect(replayDurationSeconds(activityDuration)).toBe(expected);
   });
 
@@ -99,7 +99,7 @@ describe("activity replay", () => {
     expect(replayCompletion(11.9, 12, 1, 25)).toBeUndefined();
   });
 
-  it("keeps replay scoring limited to the current ride events", () => {
+  it("keeps replay scoring limited to the current activity events", () => {
     expect(replayScore([coinEvent], Number.POSITIVE_INFINITY)).toBe(25);
     expect(replayScore([landmarkEvent], Number.POSITIVE_INFINITY)).toBe(50);
   });

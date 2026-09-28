@@ -635,7 +635,7 @@ app.post("/api/auth/step-up/email/verify", requireUser, requireCsrf, authLimiter
 app.get("/api/account/export", requireUser, async (request: UploadRequest, response, next) => {
   try {
     if (!authService.isFreshStepUp(request.user!)) throw new UserInputError("Recent step-up authentication is required.");
-    response.attachment("trailhunt-account-export.json").json(await authService.exportAccount(request.user!));
+    response.attachment("staza-account-export.json").json(await authService.exportAccount(request.user!));
   } catch (error) { next(error); }
 });
 app.post("/api/account/deletion-intent", requireUser, requireCsrf, async (request: UploadRequest, response, next) => {
@@ -719,7 +719,7 @@ app.post("/api/activities/:id/video", requirePlayer, requireCsrf, lateVideoUploa
     }
     if (activity.video) {
       await rm(uploaded.path, { force: true });
-      response.status(409).json({ error: "A video is already attached to this ride. Replacing it is not supported." });
+      response.status(409).json({ error: "A video is already attached to this activity. Replacing it is not supported." });
       return;
     }
     const mediaId = randomUUID();
@@ -733,7 +733,7 @@ app.post("/api/activities/:id/video", requirePlayer, requireCsrf, lateVideoUploa
     response.status(202).json({ activityId: activity.id, video: { ...video, state: "syncing" } });
   } catch (error) {
     if (uploaded) await rm(uploaded.path, { force: true });
-    if (error instanceof Error && error.message === "A video is already attached to this ride. Replacing it is not supported.") {
+    if (error instanceof Error && error.message === "A video is already attached to this activity. Replacing it is not supported.") {
       response.status(409).json({ error: error.message });
       return;
     }
@@ -844,7 +844,7 @@ app.get("/api/activities/:id/video/download", requirePlayer, async (request: Upl
       return;
     }
     await access(paths.outputPath);
-    response.download(paths.outputPath, "trailhunt-highlights.mp4");
+    response.download(paths.outputPath, "staza-highlights.mp4");
   } catch (error) {
     response.status(404).json({ error: error instanceof Error ? error.message : "Video unavailable." });
   }

@@ -1,0 +1,163 @@
+const formatNumber = (value, maximumFractionDigits = 0) => new Intl.NumberFormat("en-US", {
+  maximumFractionDigits
+}).format(value);
+
+const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (character) => ({
+  "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+})[character]);
+
+export const formatActivityDate = (startedAt) => new Intl.DateTimeFormat("en-US", {
+  day: "2-digit",
+  month: "short",
+  weekday: "short",
+  timeZone: "UTC"
+}).format(new Date(startedAt)).toUpperCase();
+
+export const formatActivityDistance = (distanceMeters) => (
+  Number.isFinite(distanceMeters) ? `${formatNumber(distanceMeters / 1000, 1)} km` : "Distance unavailable"
+);
+
+export const formatActivityDuration = (durationSeconds) => {
+  if (!Number.isFinite(durationSeconds)) return "Duration unavailable";
+  const hours = Math.floor(durationSeconds / 3600);
+  const minutes = Math.floor((durationSeconds % 3600) / 60);
+  return hours ? `${hours}h ${minutes}m` : `${minutes}m`;
+};
+
+export const activitiesViewModel = (activities) => ({
+  activities,
+  stats: {
+    count: activities.length,
+    distanceMeters: activities.reduce((total, activity) => total + (activity.distanceMeters ?? 0), 0),
+    xp: activities.reduce((total, activity) => total + activity.xpEarned, 0),
+    collected: activities.reduce((total, activity) => total + activity.collectedCount, 0)
+  }
+});
+
+const replayForActivity = (activity) => {
+  const replay = activity?.replay;
+  if (
+    !Array.isArray(replay?.activity?.route)
+    || replay.activity.route.length < 2
+    || !Array.isArray(replay.activityResult?.collectibles)
+    || !Array.isArray(replay.activityResult?.events)
+  ) return undefined;
+  return replay;
+};
+
+const collectibleRarity = (event) => ["rare", "epic"].includes(event.collectible?.rarity)
+  ? event.collectible.rarity
+  : "common";
+
+export const ActivityCollectibleDots = (activity) => {
+  const events = activity.events ?? [];
+  if (!events.length) return "";
+  return `
+    <span class="activity-collectible-dots" aria-label="${activity.collectedCount} collectibles found">
+      ${events.slice(0, 5).map((event) => `<i class="rarity-${collectibleRarity(event)}"></i>`).join("")}
+      <small>${formatNumber(activity.collectedCount)}</small>
+    </span>
+  `;
+};
+
+export const ActivityStats = ({ count, distanceMeters, xp, collected }) => `
+  <p class="activities-stats">
+    <span>${formatNumber(count)} ${count === 1 ? "activity" : "activities"} ·</span>
+    <strong>${formatNumber(distanceMeters / 1000, 1)} km</strong>
+    <span>explored ·</span>
+    <strong class="activities-stats-xp">+${formatNumber(xp)} XP</strong>
+    <span>earned ·</span>
+    <strong>${formatNumber(collected)}</strong>
+    <span>collectibles found</span>
+  </p>
+`;
+
+export const ActivityMeta = (activity) => {
+  const collectibleDots = ActivityCollectibleDots(activity);
+  return `
+    <div class="activity-meta">
+      <div class="activity-meta-heading">
+        <p>${escapeHtml(formatActivityDate(activity.startedAt))}</p>
+        ${activity.hasVideo ? '<span class="activity-pov">POV</span>' : ""}
+      </div>
+      <div class="activity-measurements">
+        <strong>${escapeHtml(formatActivityDistance(activity.distanceMeters).replace(" km", ""))}<span>${Number.isFinite(activity.distanceMeters) ? " km" : ""}</span></strong>
+        <span>${escapeHtml(formatActivityDuration(activity.durationSeconds))}</span>
+      </div>
+      <div class="activity-rewards">
+        <span class="activity-xp-chip">+${formatNumber(activity.xpEarned)} XP</span>
+      </div>
+      ${collectibleDots ? `<div class="activity-collectible-row">${collectibleDots}</div>` : ""}
+    </div>
+  `;
+};
+
+export const ActivityCard = (activity) => `
+  <button class="activity-card" type="button" data-activity-id="${escapeHtml(activity.id)}" aria-label="View activity from ${escapeHtml(formatActivityDate(activity.startedAt))}">
+    <div class="activity-card-main">
+      ${replayForActivity(activity) ? Replay({ canvasLabel: "Route for activity from " + formatActivityDate(activity.startedAt), className: "activity-card-replay", height: 122, width: 100 }) : ""}
+      <div class="activity-card-content">${ActivityMeta(activity)}</div>
+    </div>
+  </button>
+`;
+
+export const ActivityList = (activities) => `
+  <div class="activity-list" aria-label="Activity history">
+    ${activities.map(ActivityCard).join("")}
+  </div>
+`;
+
+export const ActivitiesEmptyState = () => `
+  <section class="activities-empty-state">
+    <p class="activities-section-label">NO COMPLETED ACTIVITIES YET</p>
+    <p>Complete a FIT activity to see your exploration history here.</p>
+  </section>
+`;
+
+export const ActivitiesPage = (model) => `
+  <section class="activities-page" aria-labelledby="activities-title">
+    <header class="activities-header">
+      <h1 id="activities-title">Activities</h1>
+      <p>Your exploration history</p>
+    </header>
+    ${ActivityStats(model.stats)}
+    ${model.activities.length ? ActivityList(model.activities) : ActivitiesEmptyState()}
+  </section>
+`;
+
+const responseJson = async (response) => {
+  const body = await response.json();
+  if (!response.ok) throw new Error(body.error ?? "Unable to load activities.");
+  return body;
+};
+
+export const mountActivitiesPage = async (mountPoint, onSelectActivity) => {
+  mountPoint.innerHTML = '<section class="activities-page"><p class="activities-loading" role="status">Loading activities...</p></section>';
+  try {
+    const history = await fetch("/api/activities").then(responseJson);
+    const activities = await Promise.all(history.map(async (activity) => ({
+      ...activity,
+      ...(await fetch(`/api/activities/${encodeURIComponent(activity.id)}`).then(responseJson))
+    })));
+    const model = activitiesViewModel(activities);
+    mountPoint.innerHTML = ActivitiesPage(model);
+    mountPoint.querySelectorAll(".activity-card").forEach((card) => {
+      const replay = replayForActivity(model.activities.find((activity) => activity.id === card.dataset.activityId));
+      if (!replay) return;
+      mountReplay({
+        canvas: card.querySelector(".activity-card-replay .activity-replay-canvas"),
+        activity: replay.activity,
+        activityResult: replay.activityResult,
+        staticRoute: true
+      });
+    });
+    mountPoint.querySelector(".activity-list")?.addEventListener("click", (event) => {
+      const card = event.target.closest("[data-activity-id]");
+      if (card) onSelectActivity(card.dataset.activityId);
+    });
+  } catch (error) {
+    mountPoint.innerHTML = `<section class="activities-page"><p class="activities-load-error" role="alert">Unable to load activities: ${escapeHtml(error.message)}</p></section>`;
+  }
+};
+import { mountReplay } from "../replay.js";
+import { Replay } from "./replay-tab.js";

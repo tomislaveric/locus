@@ -13,9 +13,9 @@ const errorCopy = (video) => video.synchronization?.code
   : video.error ?? "We could not process this video.";
 
 const VideoEmptyState = () => `
-  <section class="video-empty-state" aria-label="Ride video">
-    <p>NO VIDEO ATTACHED</p><h2>Add your ride video</h2>
-    <span>No video attached to this ride yet. Video is optional—add your GoPro or action-camera footage to create automatic highlights.</span>
+  <section class="video-empty-state" aria-label="Activity video">
+    <p>NO VIDEO ATTACHED</p><h2>Add your activity video</h2>
+    <span>No video attached to this activity yet. Video is optional—add your GoPro or action-camera footage to create automatic highlights.</span>
     <form data-video-upload><div data-video-upload-fields>${VideoFileUpload({ optional: false })}</div><button class="video-attach-button">ATTACH VIDEO</button></form>
   </section>
 `;
@@ -24,7 +24,7 @@ const VideoProcessingState = (video) => `
   <section class="video-processing-state" aria-live="polite">
     <p>${video.state === "rendering" ? "CREATING HIGHLIGHTS" : "ANALYSING VIDEO"}</p>
     <h2>${video.state === "rendering" ? "Rendering selected moments" : "Analysing Video"}</h2>
-    <span>${video.state === "rendering" ? "Your selected highlights are rendering." : "Matching footage to your ride data"}</span>
+    <span>${video.state === "rendering" ? "Your selected highlights are rendering." : "Matching footage to your activity data"}</span>
     ${video.state === "rendering"
       ? UploadProgress({ label: "Rendering your selected moments." })
       : `<ol class="video-analysis-steps">
@@ -39,7 +39,7 @@ const VideoErrorState = (video) => `
   <section class="video-error-state" role="alert">
     <p>HIGHLIGHT FAILED</p>
     <h2>${escapeHtml(errorCopy(video))}</h2>
-    <span>Your ride and collected items are unchanged.</span>
+    <span>Your activity and collected items are unchanged.</span>
     ${UploadError({ message: "Your source video is preserved." })}
   </section>
 `;
@@ -56,7 +56,7 @@ const VideoSelection = (video) => `
 
 const VideoNoHighlightsState = ({ retry = false } = {}) => `
   <section class="video-no-highlights" role="status">
-    <div><p>NO HIGHLIGHTS FOUND</p><h2>No collectible moments were found in this video.</h2><span>${retry ? "This video could not be matched to the moments collected on this ride." : "Your source video is attached, but none of this ride’s collected events map to its timeline."}</span></div>
+    <div><p>NO HIGHLIGHTS FOUND</p><h2>No collectible moments were found in this video.</h2><span>${retry ? "This video could not be matched to the moments collected on this activity." : "Your source video is attached, but none of this activity’s collected events map to its timeline."}</span></div>
     <button type="button" ${retry ? "data-video-retry" : "data-no-highlights-close"}>${retry ? "TRY AGAIN" : "CLOSE"}</button>
   </section>
 `;
@@ -90,8 +90,8 @@ export const VideoTab = (activity) => {
 
 export const mountVideoTab = (mountPoint, activity, onActivityUpdated) => {
   const showError = (error) => {
-    const state = mountPoint.querySelector(".ride-detail-tab-content");
-    if (state) state.insertAdjacentHTML("afterbegin", `<p class="ride-detail-state ride-detail-error" role="alert">${escapeHtml(error instanceof Error ? error.message : "Unable to update ride video.")}</p>`);
+    const state = mountPoint.querySelector(".activity-detail-tab-content");
+    if (state) state.insertAdjacentHTML("afterbegin", `<p class="activity-detail-state activity-detail-error" role="alert">${escapeHtml(error instanceof Error ? error.message : "Unable to update activity video.")}</p>`);
   };
   const upload = mountPoint.querySelector("[data-video-upload]");
   let selectedVideo;
@@ -162,7 +162,7 @@ export const mountVideoTab = (mountPoint, activity, onActivityUpdated) => {
   });
   selections.forEach((input) => input.addEventListener("change", updateSelection));
   mountPoint.querySelector("[data-no-highlights-close]")?.addEventListener("click", () => {
-    const state = mountPoint.querySelector(".ride-detail-tab-content");
+    const state = mountPoint.querySelector(".activity-detail-tab-content");
     if (state) state.replaceChildren();
   });
   mountPoint.querySelector("[data-video-retry]")?.addEventListener("click", async (event) => {

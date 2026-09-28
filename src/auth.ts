@@ -132,9 +132,12 @@ export class AuthService {
       "SELECT id FROM users WHERE email = $1 AND deleted_at IS NULL", [email]
     );
     if (user.rowCount !== 1) return {};
+    await this.ensurePlayer(user.rows[0].id);
     const session = await this.createSession(user.rows[0].id);
     await this.event(user.rows[0].id, "email_login", true);
-    return { sessionToken: session.token, user: await this.getSessionUser(session.token) };
+    const sessionUser = await this.getSessionUser(session.token);
+    if (!sessionUser) throw new Error("A player could not be created for the account.");
+    return { sessionToken: session.token, user: sessionUser };
   }
 
   async getSessionUser(rawToken: string | undefined): Promise<SessionUser | undefined> {
@@ -217,9 +220,12 @@ export class AuthService {
       "UPDATE passkeys SET counter = $2, last_used_at = now() WHERE id = $1",
       [credential.id, verification.authenticationInfo.newCounter]
     );
+    await this.ensurePlayer(credential.user_id);
     const session = await this.createSession(credential.user_id, true);
     await this.event(credential.user_id, "passkey_login", true);
-    return { sessionToken: session.token, user: await this.getSessionUser(session.token) as SessionUser };
+    const sessionUser = await this.getSessionUser(session.token);
+    if (!sessionUser) throw new Error("A player could not be created for the account.");
+    return { sessionToken: session.token, user: sessionUser };
   }
 
   async listPasskeys(userId: string): Promise<Array<{ id: string; name: string; createdAt: string; lastUsedAt?: string }>> {
@@ -327,7 +333,7 @@ export class AuthService {
   private webauthnConfig(): Required<Pick<AuthConfig, "rpId" | "rpName" | "origin">> {
     if (this.settings.rpId && this.settings.rpName && this.settings.origin) return this.settings as Required<Pick<AuthConfig, "rpId" | "rpName" | "origin">>;
     if (this.settings.production) throw new Error("WebAuthn is not configured.");
-    return { rpId: "localhost", rpName: "Trailhunt development", origin: "http://localhost:3000" };
+    return { rpId: "localhost", rpName: "Staza development", origin: "http://localhost:3000" };
   }
 
   private async verifyEmailCode(email: string, value: unknown, purpose: "register" | "login" | "step_up"): Promise<void> {
@@ -366,6 +372,17 @@ export class AuthService {
     } finally {
       client.release();
     }
+  }
+
+  private async ensurePlayer(userId: string): Promise<void> {
+    await this.pool.query(
+      `INSERT INTO players (id, display_name, user_id)
+       SELECT $1, split_part(email, '@', 1), id
+       FROM users
+       WHERE id = $2
+       ON CONFLICT (user_id) WHERE user_id IS NOT NULL DO NOTHING`,
+      [randomUUID(), userId]
+    );
   }
 
   private async createSessionWithClient(client: import("pg").PoolClient, userId: string, steppedUp = false): Promise<{ token: string; tokenHash: string }> {

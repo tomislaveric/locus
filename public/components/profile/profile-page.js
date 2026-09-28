@@ -35,8 +35,8 @@ export const profileOverviewView = (profile, session) => {
     </section>
     <section class="profile-section"><h2>EXPLORER RECORD</h2><dl class="profile-stats">
       <div><dt>Total XP earned</dt><dd>${formatNumber(progress.totalXp)} XP</dd></div>
-      <div><dt>Distance ridden</dt><dd>${formatNumber(profile.distanceMeters / 1000, 1)} km</dd></div>
-      <div><dt>Rides completed</dt><dd>${formatNumber(profile.rideCount)}</dd></div>
+      <div><dt>Distance</dt><dd>${formatNumber(profile.distanceMeters / 1000, 1)} km</dd></div>
+      <div><dt>Activities completed</dt><dd>${formatNumber(profile.activityCount)}</dd></div>
       <div><dt>Collectibles found</dt><dd>${formatNumber(collectibles.discoveredCount)} of ${formatNumber(collectibles.totalCollectibles)}</dd></div>
       <div><dt>Rare &amp; epic</dt><dd>${formatNumber(collectibles.rareFinds)} rare · ${formatNumber(collectibles.epicFinds)} epic</dd></div>
     </dl></section>

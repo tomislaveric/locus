@@ -2,8 +2,8 @@ import { mountAppShell } from "./components/app-shell.js";
 import { mountAddActivityPage } from "./components/add-activity-page.js";
 import { mountHomePage } from "./components/home-page.js";
 import { mountProgressPage } from "./components/progress-page.js";
-import { mountRideDetailPage } from "./components/ride-detail-page.js";
-import { mountRidesPage } from "./components/rides-page.js";
+import { mountActivityDetailPage } from "./components/activity-detail-page.js";
+import { mountActivitiesPage } from "./components/activities-page.js";
 import { mountWorldPage } from "./components/world-page.js";
 import { mountProfilePage } from "./components/profile/profile-page.js";
 import { startAuthentication, startRegistration } from "/shared/webauthn/index.js";
@@ -30,9 +30,9 @@ const mountPrivateApp = () => {
   let selectedActivityId;
   function selectScreen(screen) {
     shell.setScreen(screen);
-    if (screen === "add-activity") mountAddActivityPage(shell.content, selectRide);
-    else if (screen === "rides") mountRidesPage(shell.content, selectRide);
-    else if (screen === "ride-detail") mountRideDetailPage(shell.content, selectedActivityId, () => selectScreen("rides"));
+    if (screen === "add-activity") mountAddActivityPage(shell.content, selectActivity);
+    else if (screen === "activities") mountActivitiesPage(shell.content, selectActivity);
+    else if (screen === "activity-detail") mountActivityDetailPage(shell.content, selectedActivityId, () => selectScreen("activities"));
     else if (screen === "world") mountWorldPage(shell.content);
     else if (screen === "progress") mountProgressPage(shell.content);
     else if (screen === "profile") mountProfilePage(shell.content, {
@@ -46,12 +46,12 @@ const mountPrivateApp = () => {
         mountSignIn();
       }
     });
-    else mountHomePage(shell.content, selectRide);
+    else mountHomePage(shell.content, selectActivity);
     shell.content.focus({ preventScroll: true });
   }
-  function selectRide(activityId) {
+  function selectActivity(activityId) {
     selectedActivityId = activityId;
-    selectScreen("ride-detail");
+    selectScreen("activity-detail");
   }
   selectScreen("home");
 };

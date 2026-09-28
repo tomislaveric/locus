@@ -18,7 +18,7 @@ const layout = ({ content, message = "", messageType = "status", screen, busy = 
     </section>
   </main>`;
 
-const brand = () => `<div class="auth-brand"><img src="${logo}" width="36" height="36" alt=""><span>TRAILHUNT</span></div>`;
+const brand = () => `<div class="auth-brand"><img src="${logo}" width="36" height="36" alt=""><span>STAZA</span></div>`;
 const back = (label = "Back") => `<button class="auth-back" type="button" data-auth-back><img src="${backIcon}" width="14" height="14" alt="">${label}</button>`;
 
 export const renderAuthSessionLoading = () => `
@@ -49,7 +49,7 @@ export const renderAuthSignIn = ({ busy, message, messageType }) => layout({
       <button class="auth-secondary" type="button" data-auth-email-login${disabled(busy)}>Use email code</button>
     </div>
     <p class="auth-security-note">Secure, passwordless sign-in</p>
-    <p class="auth-account-link">New to Trailhunt? <button type="button" data-auth-register${disabled(busy)}>Create an account</button></p>`
+    <p class="auth-account-link">New to Staza? <button type="button" data-auth-register${disabled(busy)}>Create an account</button></p>`
 });
 
 export const renderAuthEmailRequest = ({ busy, email, message, messageType, purpose }) => layout({
@@ -119,7 +119,7 @@ export const renderAuthPasskeyReady = () => layout({
       <p>Passkey ready</p>
       <h1>Your account is secured.</h1>
       <span>You can now sign in instantly with your device.</span>
-      <button class="auth-primary" type="button" data-auth-continue>Continue to Trailhunt</button>
+      <button class="auth-primary" type="button" data-auth-continue>Continue to Staza</button>
     </div>`
 });
 
@@ -136,5 +136,6 @@ export const renderAuthError = ({ unavailable, message }) => layout({
     <div class="auth-actions">
       <button class="auth-primary" type="button" data-auth-retry>${unavailable ? "Try again" : "Try again"}</button>
       <button class="auth-secondary" type="button" data-auth-email-login>Use email code</button>
-    </div>`
+    </div>
+    <p class="auth-account-link">New to Staza? <button type="button" data-auth-register>Create an account</button></p>`
 });

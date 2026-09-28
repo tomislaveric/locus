@@ -203,4 +203,13 @@ export const migrations: Migration[] = [{
       );
     `);
   }
+}, {
+  id: "009_activity_type",
+  async up(client) {
+    await client.query(`
+      ALTER TABLE activities
+        ADD COLUMN activity_type TEXT NOT NULL DEFAULT 'unknown'
+        CHECK (activity_type IN ('cycling', 'running', 'hiking', 'walking', 'unknown'));
+    `);
+  }
 }];

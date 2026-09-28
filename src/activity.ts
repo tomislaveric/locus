@@ -1,10 +1,10 @@
-import type { Activity, ActivityResult, Collectible, GameEvent, NearMissCollectible, TrackPoint } from "./domain.js";
+import type { Activity, ActivityResult, ActivityType, Collectible, GameEvent, NearMissCollectible, TrackPoint } from "./domain.js";
 import { distanceMeters, detectFirstCollectiblePassages, minimumRouteDistanceMeters } from "./geometry.js";
 
 export const NEAR_MISS_THRESHOLD_METERS = 100;
 export const MAX_NEAR_MISSES = 5;
 
-export const deriveActivity = (id: string, route: TrackPoint[]): Activity => {
+export const deriveActivity = (id: string, route: TrackPoint[], type: ActivityType = "unknown"): Activity => {
   const distance = route.slice(1).reduce(
     (total, point, index) =>
       total + distanceMeters(route[index].latitude, route[index].longitude, point.latitude, point.longitude),
@@ -15,6 +15,7 @@ export const deriveActivity = (id: string, route: TrackPoint[]): Activity => {
   return {
     id,
     source: "fit",
+    type,
     startedAt,
     endedAt,
     route,

@@ -45,7 +45,7 @@ export const CollectedList = (activity) => {
     return `
       <section class="collected-empty-state" aria-label="Collected items">
         <p>NO COLLECTIBLES FOUND</p>
-        <span>No collectible events were recorded on this ride.</span>
+        <span>No collectible events were recorded on this activity.</span>
       </section>
     `;
   }

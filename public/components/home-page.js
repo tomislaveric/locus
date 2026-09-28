@@ -79,14 +79,14 @@ const foundItems = (events) => events.slice(0, 4).map((event) => {
   return `<li class="home-found-item rarity-${escapeHtml(rarity)}">${escapeHtml(event.collectible?.name ?? event.sourceId)}</li>`;
 }).join("");
 
-export const HomeLastRide = (activity) => {
+export const HomeRecentActivity = (activity) => {
   if (!activity) {
     return `
-      <section class="home-last-ride" aria-labelledby="last-ride-title">
-        <div class="home-section-heading"><h1 id="last-ride-title">LAST RIDE</h1></div>
+      <section class="home-recent-activity" aria-labelledby="recent-activity-title">
+        <div class="home-section-heading"><h1 id="recent-activity-title">RECENT ACTIVITY</h1></div>
         <div class="home-empty-state">
-          <p class="home-section-label">NO COMPLETED RIDES YET</p>
-          <p>Complete a FIT ride to see your latest activity, collectibles, and XP here.</p>
+          <p class="home-section-label">NO COMPLETED ACTIVITIES YET</p>
+          <p>Complete a FIT activity to see your latest activity, collectibles, and XP here.</p>
         </div>
       </section>
     `;
@@ -98,19 +98,19 @@ export const HomeLastRide = (activity) => {
   ].filter(Boolean);
   const replay = replayForHome(activity);
   return `
-    <section class="home-last-ride" aria-labelledby="last-ride-title">
-      <div class="home-section-heading"><h1 id="last-ride-title">LAST RIDE</h1></div>
-      <button class="home-ride-card" type="button" data-activity-id="${escapeHtml(activity.id)}" aria-label="View last ride">
-        <header class="home-ride-header">
+    <section class="home-recent-activity" aria-labelledby="recent-activity-title">
+      <div class="home-section-heading"><h1 id="recent-activity-title">RECENT ACTIVITY</h1></div>
+      <button class="home-activity-card" type="button" data-activity-id="${escapeHtml(activity.id)}" aria-label="View recent activity">
+        <header class="home-activity-header">
           <div>
             <p class="home-section-label">${dateLabel(activity.startedAt)}</p>
             <p class="home-distance">${activity.distanceMeters === undefined ? "—" : formatNumber(activity.distanceMeters / 1000, 1)} <span>KM</span></p>
           </div>
           <div class="home-earned"><span>XP EARNED</span><strong>+${formatNumber(activity.xpEarned)}</strong></div>
         </header>
-        ${replay ? Replay({ canvasLabel: "Last ride route", className: "home-ride-replay", height: 170 }) : ""}
-        <div class="home-ride-details">${details.map((detail) => `<span>${escapeHtml(detail)}</span>`).join("<i aria-hidden=\"true\">·</i>")}</div>
-        ${activity.events?.length ? `<div class="home-found"><span>FOUND</span><ul>${foundItems(activity.events)}</ul></div>` : '<p class="home-no-finds">No collectibles were recorded on this ride.</p>'}
+        ${replay ? Replay({ canvasLabel: "Recent activity route", className: "home-activity-replay", height: 170 }) : ""}
+        <div class="home-activity-details">${details.map((detail) => `<span>${escapeHtml(detail)}</span>`).join("<i aria-hidden=\"true\">·</i>")}</div>
+        ${activity.events?.length ? `<div class="home-found"><span>FOUND</span><ul>${foundItems(activity.events)}</ul></div>` : '<p class="home-no-finds">No collectibles were recorded on this activity.</p>'}
       </button>
     </section>
   `;
@@ -119,7 +119,7 @@ export const HomeLastRide = (activity) => {
 export const HomePage = (model) => `
   <section class="home-page">
     ${HomePlayerProgress(model)}
-    ${HomeLastRide(model.latest)}
+    ${HomeRecentActivity(model.latest)}
   </section>
 `;
 
@@ -145,7 +145,7 @@ export const mountHomePage = async (mountPoint, onSelectActivity) => {
     const replay = replayForHome(model.latest);
     if (replay) {
       mountReplay({
-        canvas: mountPoint.querySelector(".home-ride-replay .ride-replay-canvas"),
+        canvas: mountPoint.querySelector(".home-activity-replay .activity-replay-canvas"),
         activity: replay.activity,
         activityResult: replay.activityResult,
         staticRoute: true

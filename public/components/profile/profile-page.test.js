@@ -8,7 +8,7 @@ describe("Profile views", () => {
     const view = profileOverviewView({
       displayName: "Rider",
       distanceMeters: 12_500,
-      rideCount: 3,
+      activityCount: 3,
       progress: { level: 4, totalXp: 650, currentLevelXp: 50, nextLevelXp: 400, progressToNextLevel: .125 },
       collectibles: { discoveredCount: 4, totalCollectibles: 20, rareFinds: 1, epicFinds: 1 }
     }, session);

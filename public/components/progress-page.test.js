@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   ProgressPage,
-  RecentRides,
+  RecentActivities,
   levelName,
   progressViewModel
 } from "./progress-page.js";
@@ -27,7 +27,7 @@ const dashboard = {
     { level: 9, totalXpRequired: 3_600 },
     { level: 10, totalXpRequired: 4_500 }
   ],
-  recentRides: [{
+  recentActivities: [{
     id: "latest",
     startedAt: "2026-09-26T09:00:00.000Z",
     distanceMeters: 66_800,
@@ -43,17 +43,17 @@ const dashboard = {
 };
 
 describe("Progress page", () => {
-  it("renders canonical progress values and uses persisted recent-ride XP", () => {
+  it("renders canonical progress values and uses persisted recent-activity XP", () => {
     const page = ProgressPage(progressViewModel(dashboard));
 
     expect(page).toContain("4,590 XP");
-    expect(page).toContain("1,247.8 km ridden");
+    expect(page).toContain("1,247.8 km covered");
     expect(page).toContain("390 XP");
     expect(page).toContain("310 to Level 8");
     expect(page).toContain('aria-valuemax="700"');
     expect(page).toContain('aria-valuenow="390"');
     expect(page).toContain("2,800 XP needed");
-    expect(page).toContain("Ride · SAT 26 SEP");
+    expect(page).toContain("Activity · SAT 26 SEP");
     expect(page).toContain("+540");
     expect(page).toContain("+320");
   });
@@ -86,16 +86,16 @@ describe("Progress page", () => {
         { level: 3, totalXpRequired: 300 },
         { level: 4, totalXpRequired: 600 }
       ],
-      recentRides: []
+      recentActivities: []
     });
 
     expect(model.progress.percentage).toBe(0);
     expect(model.levels.map((level) => level.state)).toEqual(["current", "future", "future", "future"]);
-    expect(ProgressPage(model)).toContain("NO COMPLETED RIDES YET");
+    expect(ProgressPage(model)).toContain("NO COMPLETED ACTIVITIES YET");
     expect(ProgressPage(model)).not.toContain("is-completed");
   });
 
-  it("renders no ride history safely", () => {
-    expect(RecentRides([])).toContain("NO COMPLETED RIDES YET");
+  it("renders no activity history safely", () => {
+    expect(RecentActivities([])).toContain("NO COMPLETED ACTIVITIES YET");
   });
 });

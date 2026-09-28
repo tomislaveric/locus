@@ -23,32 +23,35 @@ Single-container POC for turning a FIT ride into collectible game events and an 
   retention-aware.
 - [Multi Clip creation](features/multi-clip-creation/README.md) — select detected
   Coin passages and combine them into one chronological highlight video.
-- [Milestone 11.1 — Trailhunt application shell](features/milestone-11-1-trailhunt-application-shell/README.md)
-  — establish Figma-derived desktop tokens, application shell, sidebar, and main-content layout while preserving current activity behavior.
-- [Milestone 11.10 — Trailhunt Progress Desktop](features/milestone-11-10-trailhunt-progress-desktop/README.md)
-  — implement the Figma-aligned, canonical-data Progress Desktop without changing progression or Ride terminology.
-- [Milestone 11.2 — Trailhunt Home Desktop](features/milestone-11-2-trailhunt-home-desktop/README.md)
-  — implement the real-data-backed Figma Home content surface while retaining the legacy Add Ride workflow.
-- [Milestone 11.3 — Trailhunt Rides Desktop](features/milestone-11-3-trailhunt-rides-desktop/README.md)
-  — implement the Figma Rides history with compact persisted activities, canonical ordering, and intentional unsupported-data omissions.
-- [Milestone 11.4 — Trailhunt Ride Detail Desktop / Replay](features/milestone-11-4-trailhunt-ride-detail-desktop-replay/README.md)
-  — add real persisted-ride detail and snapshot-backed historical replay while retaining the existing replay engine.
-- [Milestone 11.5 — Trailhunt Ride Detail Desktop / Collected](features/milestone-11-5-trailhunt-ride-detail-collected/README.md)
-  — plan Figma-aligned persisted historical collectible detail within the shared Ride Detail surface.
-- [Milestone 11.6 — Trailhunt Ride Detail Desktop / Near Misses](features/milestone-11-6-trailhunt-ride-detail-desktop-near-misses/README.md)
-  — add Figma-aligned, snapshot-backed historical near-miss detail within the shared Ride Detail surface.
-- [Milestone 11.7 — Trailhunt Ride Detail Desktop / Video](features/milestone-11-7-ride-detail-desktop-video/README.md)
-  — add durable, activity-scoped late video attachment and Figma-aligned Ride Detail highlights without changing gameplay truth.
-- [Milestone 11.8 — Trailhunt World Desktop](features/milestone-11-8-trailhunt-world-desktop/README.md)
-  — add a Figma-aligned World browse surface from configured collectibles and persisted discovery truth, without altering collection behavior.
-- [Milestone 11.9 — Trailhunt Add Activity and Attach Video](features/milestone-11-9-trailhunt-add-activity-and-attach-video/README.md)
-  — replace legacy activity upload with Figma-aligned, idempotent FIT import and reuse durable activity-scoped video attachment.
+- [Milestone 11.1 — Application shell (historical)](features/milestone-11-1-trailhunt-application-shell/README.md)
+  — historical implementation of desktop tokens, shell, sidebar, and main content.
+- [Milestone 11.10 — Progress desktop (historical)](features/milestone-11-10-trailhunt-progress-desktop/README.md)
+  — historical Figma-aligned Progress implementation.
+- [Milestone 11.2 — Home desktop (historical)](features/milestone-11-2-trailhunt-home-desktop/README.md)
+  — historical real-data-backed Home implementation.
+- [Milestone 11.3 — Activity history desktop (historical)](features/milestone-11-3-trailhunt-rides-desktop/README.md)
+  — historical persisted activity history implementation.
+- [Milestone 11.4 — Activity detail / Replay (historical)](features/milestone-11-4-trailhunt-ride-detail-desktop-replay/README.md)
+  — historical persisted detail and replay implementation.
+- [Milestone 11.5 — Activity detail / Collected (historical)](features/milestone-11-5-trailhunt-ride-detail-collected/README.md)
+  — historical collected-items detail implementation.
+- [Milestone 11.6 — Activity detail / Near Misses (historical)](features/milestone-11-6-trailhunt-ride-detail-desktop-near-misses/README.md)
+  — historical near-miss detail implementation.
+- [Milestone 11.7 — Activity detail / Video (historical)](features/milestone-11-7-ride-detail-desktop-video/README.md)
+  — historical activity-scoped video highlight implementation.
+- [Milestone 11.8 — World desktop (historical)](features/milestone-11-8-trailhunt-world-desktop/README.md)
+  — historical World browse implementation.
+- [Milestone 11.9 — Add Activity and Attach Video (historical)](features/milestone-11-9-trailhunt-add-activity-and-attach-video/README.md)
+  — historical idempotent FIT import and video attachment implementation.
 - [Milestone 12 — Identity, Authentication & User Accounts](features/milestone-12-identity-authentication-user-accounts/README.md)
   — establish passkey-first identity, email-code recovery, server-side sessions, and user-owned player authorization.
 - [Milestone 12B — Authentication UI Integration](features/milestone-12b-authentication-ui-integration/README.md)
   — replace the temporary authentication presentation with the Figma-approved UI while preserving the canonical Milestone 12 auth behavior.
 - [Milestone 13 — Profile UI & Account Management Integration](features/milestone-13-profile-ui-account-management-integration/README.md)
   — add Figma-aligned Profile and account-management presentation while retaining canonical account security and Player ownership.
+- [Milestone 14 — Staza Brand & Activity Terminology Migration](features/milestone-14-staza-brand-activity-terminology-migration/README.md)
+  — migrate active product branding to Staza and establish Activity as the
+  cross-sport terminology while preserving core behavior.
 - [Persistent activities player state v1](features/persistent-activities-player-state-v1/README.md)
   — persist compact activity/event history and single-player XP in PostgreSQL
   with transaction-safe exactly-once progression.

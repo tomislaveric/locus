@@ -6,7 +6,7 @@ export const AlmostGotTheseSection = (nearMisses) => {
     <section class="almost-got-these" aria-labelledby="near-misses-heading">
       <div class="almost-got-these-heading">
         <h2 id="near-misses-heading">${nearMisses.length} ${targetLabel} nearby</h2>
-        <p>These were within striking range. Route through them on your next ride to collect.</p>
+        <p>These were within striking range. Return through them on your next activity to collect.</p>
       </div>
       ${NearMissList(nearMisses)}
     </section>
@@ -16,7 +16,7 @@ export const AlmostGotTheseSection = (nearMisses) => {
 const NoNearMisses = () => `
   <section class="near-misses-empty-state" aria-label="Near misses">
     <p>NO NEAR MISSES RECORDED</p>
-    <span>No nearby targets were recorded on this ride.</span>
+    <span>No nearby targets were recorded on this activity.</span>
   </section>
 `;
 

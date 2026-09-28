@@ -13,7 +13,7 @@ const selectedFiles = ({ fit }) => `
   <div class="add-activity-files">
     <section>
       <p>ACTIVITY</p>
-      <span>Your ride from Garmin, Wahoo, or any FIT-compatible device</span>
+      <span>Your activity from Garmin, Wahoo, or any FIT-compatible device</span>
       ${ActivityFileUpload(fit)}
     </section>
   </div>
@@ -22,21 +22,21 @@ const selectedFiles = ({ fit }) => `
 const content = (state) => {
   if (state.complete) {
     return `${UploadStatus({
-      title: "Ride Ready",
+      title: "Activity Ready",
       detail: `${state.complete.collectedCount} collectible${state.complete.collectedCount === 1 ? "" : "s"} found along your route`,
       xpEarned: state.complete.xpEarned,
-      actionLabel: "VIEW RIDE"
-    })}${state.error ? UploadError({ message: `Your ride was saved, but video processing could not start: ${state.error}` }) : ""}`;
+      actionLabel: "VIEW ACTIVITY"
+    })}${state.error ? UploadError({ message: `Your activity was saved, but video processing could not start: ${state.error}` }) : ""}`;
   }
   if (state.processing !== undefined) return ProcessingState({ step: state.processing });
   return `
     <header class="add-activity-header">
-      <div><h1 id="add-activity-title">Add Ride</h1><p>Import a FIT file to start discovering</p></div>
+      <div><h1 id="add-activity-title">Add Activity</h1><p>Import a FIT file to start discovering</p></div>
     </header>
     <form class="add-activity-form" novalidate>
       ${selectedFiles(state)}
       ${state.error ? UploadError({ message: state.error }) : ""}
-      <button class="upload-primary-button" type="submit">PROCESS RIDE</button>
+      <button class="upload-primary-button" type="submit">PROCESS ACTIVITY</button>
     </form>
   `;
 };

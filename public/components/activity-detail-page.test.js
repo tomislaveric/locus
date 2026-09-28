@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { nearMissInputs, RideDetailPage, replayInputs } from "./ride-detail-page.js";
-import { rideDistanceLabel, rideDurationLabel } from "./ride-summary.js";
+import { ActivityDetailPage, nearMissInputs, replayInputs } from "./activity-detail-page.js";
+import { activityDistanceLabel, activityDurationLabel } from "./activity-summary.js";
 
 const replay = (nearMisses = []) => ({
   version: 1,
@@ -8,7 +8,7 @@ const replay = (nearMisses = []) => ({
   activityResult: { collectibles: [], events: [], nearMisses }
 });
 
-describe("Ride detail data transformation", () => {
+describe("Activity detail data transformation", () => {
   it("uses only a complete versioned replay snapshot", () => {
     const snapshot = replay();
     expect(replayInputs({ replay: snapshot })).toBe(snapshot);
@@ -21,14 +21,14 @@ describe("Ride detail data transformation", () => {
   });
 
   it("formats canonical summary values while making missing values explicit", () => {
-    expect(rideDistanceLabel(6_680)).toBe("6.7 KM");
-    expect(rideDistanceLabel(undefined)).toBe("DISTANCE UNAVAILABLE");
-    expect(rideDurationLabel(9_180)).toBe("2h 33m");
-    expect(rideDurationLabel(undefined)).toBe("DURATION UNAVAILABLE");
+    expect(activityDistanceLabel(6_680)).toBe("6.7 KM");
+    expect(activityDistanceLabel(undefined)).toBe("DISTANCE UNAVAILABLE");
+    expect(activityDurationLabel(9_180)).toBe("2h 33m");
+    expect(activityDurationLabel(undefined)).toBe("DURATION UNAVAILABLE");
   });
 
-  it("keeps collected content available when a legacy ride has no replay snapshot", () => {
-    const page = RideDetailPage({
+  it("keeps collected content available when a legacy activity has no replay snapshot", () => {
+    const page = ActivityDetailPage({
       distanceMeters: 1_000,
       durationSeconds: 600,
       xpEarned: 25,
@@ -41,7 +41,7 @@ describe("Ride detail data transformation", () => {
   });
 
   it("renders persisted near misses without XP or current-world fields", () => {
-    const page = RideDetailPage({
+    const page = ActivityDetailPage({
       distanceMeters: 1_000,
       durationSeconds: 600,
       xpEarned: 25,
@@ -61,15 +61,15 @@ describe("Ride detail data transformation", () => {
   it("renders factual empty and unavailable near-miss states", () => {
     const activity = { distanceMeters: 1_000, durationSeconds: 600, xpEarned: 0, collectedCount: 0 };
     const progress = { level: 1, currentLevelXp: 0, nextLevelXp: 100, progressToNextLevel: 0 };
-    expect(RideDetailPage({ ...activity, replay: replay() }, progress, "near-misses")).toContain("NO NEAR MISSES RECORDED");
-    expect(RideDetailPage(activity, progress, "near-misses")).toContain("Near-miss data is unavailable for this legacy ride.");
+    expect(ActivityDetailPage({ ...activity, replay: replay() }, progress, "near-misses")).toContain("NO NEAR MISSES RECORDED");
+    expect(ActivityDetailPage(activity, progress, "near-misses")).toContain("Near-miss data is unavailable for this legacy activity.");
   });
 
-  it("keeps the Video tab functional for a valid FIT-only ride", () => {
-    const page = RideDetailPage({
-      id: "ride-1", distanceMeters: 1_000, durationSeconds: 600, xpEarned: 25, collectedCount: 1
+  it("keeps the Video tab functional for a valid FIT-only activity", () => {
+    const page = ActivityDetailPage({
+      id: "activity-1", distanceMeters: 1_000, durationSeconds: 600, xpEarned: 25, collectedCount: 1
     }, { level: 1, currentLevelXp: 0, nextLevelXp: 100, progressToNextLevel: 0 }, "video");
-    expect(page).toContain('data-ride-tab="video"');
+    expect(page).toContain('data-activity-tab="video"');
     expect(page).toContain('aria-selected="true"');
     expect(page).toContain("NO VIDEO ATTACHED");
     expect(page).toContain("ATTACH VIDEO");
@@ -78,8 +78,8 @@ describe("Ride detail data transformation", () => {
   });
 
   it("uses only persisted video values in the completed Video tab", () => {
-    const page = RideDetailPage({
-      id: "ride-1", distanceMeters: 1_000, durationSeconds: 600, xpEarned: 25, collectedCount: 1,
+    const page = ActivityDetailPage({
+      id: "activity-1", distanceMeters: 1_000, durationSeconds: 600, xpEarned: 25, collectedCount: 1,
       video: {
         state: "succeeded", previewUrl: "/preview", downloadUrl: "/download",
         render: { outputDurationSeconds: 24 }, events: [{
@@ -95,16 +95,16 @@ describe("Ride detail data transformation", () => {
 
   it("renders immediate analysis, selectable highlights, and no-highlight dismissal states", () => {
     const progress = { level: 1, currentLevelXp: 0, nextLevelXp: 100, progressToNextLevel: 0 };
-    const base = { id: "ride-1", distanceMeters: 1_000, durationSeconds: 600, xpEarned: 25, collectedCount: 1 };
-    const analysing = RideDetailPage({ ...base, video: { state: "uploading" } }, progress, "video");
-    const selection = RideDetailPage({
+    const base = { id: "activity-1", distanceMeters: 1_000, durationSeconds: 600, xpEarned: 25, collectedCount: 1 };
+    const analysing = ActivityDetailPage({ ...base, video: { state: "uploading" } }, progress, "video");
+    const selection = ActivityDetailPage({
       ...base,
       video: {
         state: "awaiting_selection",
         events: [{ sourceId: "coin-a", collectible: { name: "Coin A", rarity: "rare", type: "coin" }, value: 100 }]
       }
     }, progress, "video");
-    const noHighlights = RideDetailPage({ ...base, video: { state: "no_highlights" } }, progress, "video");
+    const noHighlights = ActivityDetailPage({ ...base, video: { state: "no_highlights" } }, progress, "video");
 
     expect(analysing).toContain("Analysing Video");
     expect(analysing).toContain("Reading Video");
@@ -117,8 +117,8 @@ describe("Ride detail data transformation", () => {
   });
 
   it("lets an unavailable source video return to the initial upload state", () => {
-    const page = RideDetailPage({
-      id: "ride-1", distanceMeters: 1_000, durationSeconds: 600, xpEarned: 25, collectedCount: 1,
+    const page = ActivityDetailPage({
+      id: "activity-1", distanceMeters: 1_000, durationSeconds: 600, xpEarned: 25, collectedCount: 1,
       video: { state: "sync_failed", error: "The FIT activity and video do not overlap in time." }
     }, { level: 1, currentLevelXp: 0, nextLevelXp: 100, progressToNextLevel: 0 }, "video");
     expect(page).toContain("NO HIGHLIGHTS FOUND");

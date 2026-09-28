@@ -1,15 +1,15 @@
 const navItems = [
   ["home", "Home", "nav-home.svg"],
-  ["rides", "Rides", "nav-rides.svg"],
+  ["activities", "Activities", "nav-activities.svg"],
   ["world", "World", "nav-world.svg"],
   ["progress", "Progress", "nav-progress.svg"],
   ["profile", "Profile", "nav-profile.svg"]
 ];
 
 export const SidebarLogo = () => `
-  <a class="sidebar-logo" href="/" aria-label="Trailhunt home">
+  <a class="sidebar-logo" href="/" aria-label="Staza home">
     <img src="/assets/sidebar-logo-mark.svg" width="28" height="28" alt="">
-    <span>TRAILHUNT</span>
+    <span>STAZA</span>
   </a>
 `;
 
@@ -26,10 +26,10 @@ export const SidebarNavMenu = () => `
   </nav>
 `;
 
-export const AddRideCTA = () => `
-  <button class="add-ride-cta" type="button" data-screen="add-activity">
-    <img src="/assets/add-ride-upload.svg" width="16" height="16" alt="">
-    <span>ADD RIDE</span>
+export const AddActivityCTA = () => `
+  <button class="add-activity-cta" type="button" data-screen="add-activity">
+    <img src="/assets/add-activity-upload.svg" width="16" height="16" alt="">
+    <span>ADD ACTIVITY</span>
   </button>
 `;
 
@@ -37,7 +37,7 @@ export const Sidebar = () => `
   <aside class="sidebar">
     <div class="sidebar-logo-region">${SidebarLogo()}</div>
     ${SidebarNavMenu()}
-    <div class="sidebar-cta-region">${AddRideCTA()}</div>
+    <div class="sidebar-cta-region">${AddActivityCTA()}</div>
   </aside>
 `;
 
@@ -45,9 +45,9 @@ export const sidebar = Sidebar;
 
 export const setSidebarScreen = (mountPoint, screen) => {
   for (const item of mountPoint.querySelectorAll(".sidebar-nav-item")) {
-    const isActive = item.dataset.screen === (screen === "ride-detail" ? "rides" : screen);
+    const isActive = item.dataset.screen === (screen === "activity-detail" ? "activities" : screen);
     item.classList.toggle("is-active", isActive);
     item.toggleAttribute("aria-current", isActive);
   }
-  mountPoint.querySelector(".add-ride-cta").classList.toggle("is-current", screen === "add-activity");
+  mountPoint.querySelector(".add-activity-cta").classList.toggle("is-current", screen === "add-activity");
 };

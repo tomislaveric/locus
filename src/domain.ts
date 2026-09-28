@@ -73,9 +73,12 @@ export interface MappedGameEvent extends GameEvent {
   videoSecond: number;
 }
 
+export type ActivityType = "cycling" | "running" | "hiking" | "walking" | "unknown";
+
 export interface Activity {
   id: string;
   source: "fit";
+  type: ActivityType;
   startedAt: number;
   endedAt: number;
   route: TrackPoint[];
@@ -106,7 +109,7 @@ export interface PlayerProfileOverview {
   displayName: string;
   progress: PlayerProgress;
   distanceMeters: number;
-  rideCount: number;
+  activityCount: number;
 }
 
 export interface ProgressLevel {
@@ -124,7 +127,7 @@ export interface ProgressDashboard {
   progress: PlayerProgress;
   lifetime: ProgressLifetimeStats;
   levels: ProgressLevel[];
-  recentRides: ActivityHistoryItem[];
+  recentActivities: ActivityHistoryItem[];
 }
 
 export interface ProgressionResult {
@@ -138,6 +141,7 @@ export interface ProgressionResult {
 
 export interface ActivityHistoryItem {
   id: string;
+  type: ActivityType;
   startedAt: string;
   distanceMeters?: number;
   durationSeconds?: number;

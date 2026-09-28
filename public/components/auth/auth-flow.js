@@ -74,7 +74,16 @@ export const mountAuthFlow = (root, {
       const body = await json(await request(state.purpose === "register" ? authEndpoints.registerVerify : authEndpoints.loginVerify, {
         method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: state.email, code })
       }));
-      if (state.purpose === "login" && !body.authenticated) throw new Error("not-authenticated");
+      if (state.purpose === "login" && !body.authenticated) {
+        show({
+          screen: "email-request",
+          purpose: "register",
+          busy: false,
+          message: "No account was found for this email. Create one with a new verification code.",
+          messageType: "status"
+        });
+        return;
+      }
       onSession(body);
       if (state.purpose === "register") show({ screen: "create-passkey", busy: false, message: "", messageType: "status" });
       else onAuthenticated();

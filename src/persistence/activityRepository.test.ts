@@ -13,6 +13,7 @@ const repository = pool ? new ActivityRepository(pool) : undefined;
 const activity = (id: string): Activity => ({
   id,
   source: "fit",
+  type: "unknown",
   startedAt: Date.parse("2026-01-02T03:04:05.000Z"),
   endedAt: Date.parse("2026-01-02T03:14:05.000Z"),
   route: [
@@ -247,7 +248,7 @@ describePersistence("ActivityRepository", () => {
       { level: 4, totalXpRequired: 600 },
       { level: 5, totalXpRequired: 1_000 }
     ]);
-    expect(dashboard.recentRides.map((item) => item.id)).toEqual([
+    expect(dashboard.recentActivities.map((item) => item.id)).toEqual([
       "e".repeat(48), "d".repeat(48), "c".repeat(48), "b".repeat(48)
     ]);
     expect(await repository!.getProgress(playerId)).toEqual(before);

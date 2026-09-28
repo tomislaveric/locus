@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
 import type {
   Activity,
+  ActivityType,
   ActivityImportResult,
   ActivityHistoryItem,
   ActivityResult,
@@ -18,6 +19,7 @@ import { getLevelProgress, getTotalXpRequiredForLevel } from "../progression.js"
 
 interface ActivityRow {
   id: string;
+  activity_type: ActivityType;
   started_at: Date;
   distance_meters: number | null;
   duration_seconds: number | null;
@@ -61,6 +63,7 @@ interface ProgressLifetimeRow {
 
 const mapActivity = (row: ActivityRow): ActivityHistoryItem => ({
   id: row.id,
+  type: row.activity_type,
   startedAt: row.started_at.toISOString(),
   ...(row.distance_meters === null ? {} : { distanceMeters: row.distance_meters }),
   ...(row.duration_seconds === null ? {} : { durationSeconds: row.duration_seconds }),
@@ -116,15 +119,16 @@ export class ActivityRepository {
       await client.query("BEGIN");
       const inserted = await client.query<ActivityRow>(
         `INSERT INTO activities (
-          id, player_id, source_type, started_at, distance_meters, duration_seconds, xp_earned, collected_count,
+          id, player_id, source_type, activity_type, started_at, distance_meters, duration_seconds, xp_earned, collected_count,
           replay_snapshot, source_external_id
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
         ON CONFLICT DO NOTHING
-        RETURNING id, started_at, distance_meters, duration_seconds, xp_earned, collected_count, has_video, replay_snapshot`,
+        RETURNING id, activity_type, started_at, distance_meters, duration_seconds, xp_earned, collected_count, has_video, replay_snapshot`,
         [
           activity.id,
           playerId,
           activity.source,
+          activity.type,
           new Date(activity.startedAt),
           activity.distance ?? null,
           activity.duration ?? null,
@@ -196,7 +200,7 @@ export class ActivityRepository {
 
   async listActivities(playerId: string): Promise<ActivityHistoryItem[]> {
     const result = await this.pool.query<ActivityRow>(
-      `SELECT id, started_at, distance_meters, duration_seconds, xp_earned, collected_count, has_video, replay_snapshot
+      `SELECT id, activity_type, started_at, distance_meters, duration_seconds, xp_earned, collected_count, has_video, replay_snapshot
        FROM activities WHERE player_id = $1 ORDER BY created_at DESC, id DESC`,
       [playerId]
     );
@@ -233,8 +237,8 @@ export class ActivityRepository {
         [playerId]
       );
       if (player.rowCount !== 1) throw new Error("Player does not exist.");
-      const lifetime = await client.query<{ distance_meters: number; ride_count: string }>(
-        `SELECT COALESCE(SUM(distance_meters), 0) AS distance_meters, COUNT(*) AS ride_count
+      const lifetime = await client.query<{ distance_meters: number; activity_count: string }>(
+        `SELECT COALESCE(SUM(distance_meters), 0) AS distance_meters, COUNT(*) AS activity_count
          FROM activities WHERE player_id = $1`,
         [playerId]
       );
@@ -243,7 +247,7 @@ export class ActivityRepository {
         displayName: player.rows[0].display_name,
         progress: getLevelProgress(player.rows[0].total_xp),
         distanceMeters: Number(lifetime.rows[0].distance_meters),
-        rideCount: Number(lifetime.rows[0].ride_count)
+        activityCount: Number(lifetime.rows[0].activity_count)
       };
     } catch (error) {
       await client.query("ROLLBACK");
@@ -274,8 +278,8 @@ export class ActivityRepository {
          WHERE activities.player_id = $1`,
         [playerId]
       );
-      const recentRidesResult = await client.query<ActivityRow>(
-        `SELECT id, started_at, distance_meters, duration_seconds, xp_earned, collected_count, has_video, replay_snapshot
+      const recentActivitiesResult = await client.query<ActivityRow>(
+        `SELECT id, activity_type, started_at, distance_meters, duration_seconds, xp_earned, collected_count, has_video, replay_snapshot
          FROM activities
          WHERE player_id = $1
          ORDER BY created_at DESC, id DESC
@@ -298,7 +302,7 @@ export class ActivityRepository {
           const level = firstLevel + index;
           return { level, totalXpRequired: getTotalXpRequiredForLevel(level) };
         }),
-        recentRides: recentRidesResult.rows.map(mapActivity)
+        recentActivities: recentActivitiesResult.rows.map(mapActivity)
       };
     } catch (error) {
       await client.query("ROLLBACK");
@@ -339,7 +343,7 @@ export class ActivityRepository {
     if (result.rowCount === 1) return mapVideo(result.rows[0]);
     const activity = await this.getActivity(playerId, activityId);
     if (!activity) throw new Error("Activity not found.");
-    if (activity.video) throw new Error("A video is already attached to this ride. Replacing it is not supported.");
+    if (activity.video) throw new Error("A video is already attached to this activity. Replacing it is not supported.");
     throw new Error("Could not attach video.");
   }
 
@@ -410,7 +414,7 @@ export class ActivityRepository {
 
   private async getActivityWithClient(client: PoolClient, playerId: string, id: string): Promise<PersistedActivity> {
     const activityResult = await client.query<ActivityRow>(
-      `SELECT id, started_at, distance_meters, duration_seconds, xp_earned, collected_count, has_video, replay_snapshot
+      `SELECT id, activity_type, started_at, distance_meters, duration_seconds, xp_earned, collected_count, has_video, replay_snapshot
        FROM activities WHERE id = $1 AND player_id = $2`,
       [id, playerId]
     );

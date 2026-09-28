@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { HomeLastRide, homeViewModel } from "./home-page.js";
+import { HomeRecentActivity, homeViewModel } from "./home-page.js";
 
 describe("Home data transformation", () => {
   const progress = { totalXp: 700, level: 4, currentLevelXp: 100, nextLevelXp: 400, progressToNextLevel: .25 };
@@ -19,7 +19,7 @@ describe("Home data transformation", () => {
     });
   });
 
-  it("includes a static route preview when the latest ride has replay data", () => {
+  it("includes a static route preview when the latest activity has replay data", () => {
     const activity = {
       ...activities[0],
       startedAt: "2026-09-26T09:00:00.000Z",
@@ -31,8 +31,8 @@ describe("Home data transformation", () => {
       }
     };
 
-    expect(HomeLastRide(activity)).toContain('class="ride-replay home-ride-replay"');
-    expect(HomeLastRide(activity)).not.toContain("ride-replay-play");
-    expect(HomeLastRide(activity)).toContain('data-activity-id="latest"');
+    expect(HomeRecentActivity(activity)).toContain('class="activity-replay home-activity-replay"');
+    expect(HomeRecentActivity(activity)).not.toContain("activity-replay-play");
+    expect(HomeRecentActivity(activity)).toContain('data-activity-id="latest"');
   });
 });
