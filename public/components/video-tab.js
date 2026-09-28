@@ -16,7 +16,7 @@ const VideoEmptyState = () => `
   <section class="video-empty-state" aria-label="Ride video">
     <p>NO VIDEO ATTACHED</p><h2>Add your ride video</h2>
     <span>No video attached to this ride yet. Video is optional—add your GoPro or action-camera footage to create automatic highlights.</span>
-    <form data-video-upload><input name="video" type="file" accept="video/mp4,.mp4" required><button class="video-attach-button">ATTACH VIDEO</button></form>
+    <form data-video-upload><div data-video-upload-fields>${VideoFileUpload({ optional: false })}</div><button class="video-attach-button">ATTACH VIDEO</button></form>
   </section>
 `;
 
@@ -25,6 +25,7 @@ const VideoProcessingState = (video) => `
     <p>${video.state === "rendering" ? "CREATING HIGHLIGHTS" : "SYNCHRONIZING VIDEO"}</p>
     <h2>${video.state === "rendering" ? "Rendering selected moments" : "Matching video to your ride"}</h2>
     <span>${video.state === "rendering" ? "Your selected highlights are rendering." : "Using your existing ride timestamps and route data."}</span>
+    ${UploadProgress({ label: "This stage is in progress." })}
   </section>
 `;
 
@@ -33,7 +34,7 @@ const VideoErrorState = (video) => `
     <p>${video.state === "render_failed" ? "HIGHLIGHT FAILED" : "VIDEO SYNC FAILED"}</p>
     <h2>${escapeHtml(errorCopy(video))}</h2>
     <span>Your ride and collected items are unchanged.</span>
-    ${video.state === "sync_failed" ? '<button class="video-attach-button" type="button" data-video-retry>TRY ANOTHER VIDEO</button>' : ""}
+    ${UploadError({ message: "Your existing source video is preserved. Replacing a source video is not supported yet." })}
   </section>
 `;
 
@@ -79,10 +80,30 @@ export const mountVideoTab = (mountPoint, activity, onActivityUpdated) => {
     if (state) state.insertAdjacentHTML("afterbegin", `<p class="ride-detail-state ride-detail-error" role="alert">${escapeHtml(error instanceof Error ? error.message : "Unable to update ride video.")}</p>`);
   };
   const upload = mountPoint.querySelector("[data-video-upload]");
+  let selectedVideo;
+  const bindUploadDropzone = () => {
+    const fields = mountPoint.querySelector("[data-video-upload-fields]");
+    const dropzone = fields?.querySelector("[data-upload-dropzone]");
+    if (dropzone) {
+      mountUploadDropzone(dropzone, (file) => {
+        selectedVideo = file;
+        fields.innerHTML = VideoFileUpload({ file });
+        fields.querySelector("[data-remove-upload]")?.addEventListener("click", () => {
+          selectedVideo = undefined;
+          fields.innerHTML = VideoFileUpload({ optional: false });
+          bindUploadDropzone();
+        });
+      });
+    }
+  };
+  bindUploadDropzone();
   if (upload) upload.addEventListener("submit", async (event) => {
     event.preventDefault();
     try {
-      const response = await fetch(`/api/activities/${encodeURIComponent(activity.id)}/video`, { method: "POST", body: new FormData(upload) });
+      const data = new FormData();
+      const file = selectedVideo ?? upload.querySelector("input[name=video]")?.files?.[0];
+      if (file) data.append("video", file);
+      const response = await fetch(`/api/activities/${encodeURIComponent(activity.id)}/video`, { method: "POST", body: data });
       const body = await response.json();
       if (!response.ok) throw new Error(body.error);
       onActivityUpdated({ ...activity, video: body.video });
@@ -105,19 +126,8 @@ export const mountVideoTab = (mountPoint, activity, onActivityUpdated) => {
       showError(error);
     }
   });
-  const retry = mountPoint.querySelector("[data-video-retry]");
-  if (retry) retry.addEventListener("click", async () => {
-    try {
-      retry.disabled = true;
-      const response = await fetch(`/api/activities/${encodeURIComponent(activity.id)}/video`, { method: "DELETE" });
-      if (!response.ok) {
-        const body = await response.json();
-        throw new Error(body.error);
-      }
-      onActivityUpdated({ ...activity, video: undefined });
-    } catch (error) {
-      retry.disabled = false;
-      showError(error);
-    }
-  });
 };
+import { UploadError } from "./upload-error.js";
+import { UploadProgress } from "./upload-progress.js";
+import { VideoFileUpload } from "./video-file-upload.js";
+import { mountUploadDropzone } from "./upload-dropzone.js";

@@ -1,6 +1,8 @@
 import { mainContent } from "./main-content.js";
 import { setSidebarScreen, sidebar } from "./sidebar.js";
 
+export const navigableScreens = new Set(["home", "rides", "world", "add-activity"]);
+
 export const AppShell = () => `
   <div class="app-shell">
     ${sidebar()}
@@ -14,7 +16,7 @@ export const mountAppShell = (mountPoint, onScreenChange) => {
     const button = event.target.closest("[data-screen]");
     if (!button || !mountPoint.contains(button)) return;
     const { screen } = button.dataset;
-    if (screen === "home" || screen === "rides" || screen === "world" || screen === "add-ride") onScreenChange(screen);
+    if (navigableScreens.has(screen)) onScreenChange(screen);
   });
   return {
     content: mountPoint.querySelector(".main-content"),

@@ -27,7 +27,7 @@ export const SidebarNavMenu = () => `
 `;
 
 export const AddRideCTA = () => `
-  <button class="add-ride-cta" type="button" data-screen="add-ride">
+  <button class="add-ride-cta" type="button" data-screen="add-activity">
     <img src="/assets/add-ride-upload.svg" width="16" height="16" alt="">
     <span>ADD RIDE</span>
   </button>
@@ -49,5 +49,5 @@ export const setSidebarScreen = (mountPoint, screen) => {
     item.classList.toggle("is-active", isActive);
     item.toggleAttribute("aria-current", isActive);
   }
-  mountPoint.querySelector(".add-ride-cta").classList.toggle("is-current", screen === "add-ride");
+  mountPoint.querySelector(".add-ride-cta").classList.toggle("is-current", screen === "add-activity");
 };

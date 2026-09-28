@@ -39,6 +39,8 @@ Single-container POC for turning a FIT ride into collectible game events and an 
   — add durable, activity-scoped late video attachment and Figma-aligned Ride Detail highlights without changing gameplay truth.
 - [Milestone 11.8 — Trailhunt World Desktop](features/milestone-11-8-trailhunt-world-desktop/README.md)
   — add a Figma-aligned World browse surface from configured collectibles and persisted discovery truth, without altering collection behavior.
+- [Milestone 11.9 — Trailhunt Add Activity and Attach Video](features/milestone-11-9-trailhunt-add-activity-and-attach-video/README.md)
+  — replace legacy activity upload with Figma-aligned, idempotent FIT import and reuse durable activity-scoped video attachment.
 - [Persistent activities player state v1](features/persistent-activities-player-state-v1/README.md)
   — persist compact activity/event history and single-player XP in PostgreSQL
   with transaction-safe exactly-once progression.
@@ -243,12 +245,13 @@ resources, at most 20 Coins and 120 seconds of merged output can be selected; se
 `MAX_SELECTED_COINS`, `MAX_OUTPUT_DURATION_SECONDS`, `SELECTION_TTL_MS`, or
 `JOB_TTL_MS` to override the defaults.
 
-Job JSON, uploads, telemetry artifacts, generated HUD files, and rendered video
-remain transient and follow these TTLs. PostgreSQL retains only compact completed
-activity summaries, event-time collectible snapshots, video availability, and the
-default player's total XP. A valid FIT activity is committed before optional video
-synchronization or rendering, so later video failure does not remove its history
-or XP.
+Legacy job JSON, uploads, telemetry artifacts, generated HUD files, and rendered
+video remain transient and follow these TTLs. Add Activity and Ride Detail video
+attachment store source and rendered media in `MEDIA_DIR` (default
+`./data/media`) outside the TTL job root; PostgreSQL stores activity-scoped
+metadata, state, and media references—not MP4 binaries. A valid FIT activity is
+committed before optional video synchronization or rendering, so later video
+failure does not remove its history or XP.
 
 ## API
 
@@ -259,10 +262,19 @@ or XP.
   `{ "sourceIds": ["collectible-a", "collectible-b"] }`. The legacy
   `{ "coinIds": [...] }` field remains accepted temporarily as an alias.
 - `GET /api/jobs/:token/download`
+- `POST /api/activities/import` multipart fields: required `fit`, optional
+  `video`, and required `Idempotency-Key`. Returns the persisted activity and
+  starts optional video processing separately.
 - `GET /api/activities` returns the default player's completed activities,
   newest first, with compact summary fields.
 - `GET /api/activities/:id` returns one persisted activity and its ordered
   event-time collectible snapshots.
+- `POST /api/activities/:id/video` multipart field: required `video`; attaches
+  one canonical source video to an existing activity without changing activity
+  or player progression.
+- `POST /api/activities/:id/video/render` submits selected persisted event
+  `sourceIds`; preview and download are available at the corresponding
+  `/video/preview` and `/video/download` routes once highlights are ready.
 - `GET /api/world` returns the complete configured collectible catalog with
   player-scoped persisted discovery state and catalog-derived World statistics.
 - `GET /api/player/progress` returns durable `totalXp` and the derived level

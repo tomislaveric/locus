@@ -93,6 +93,22 @@ describePersistence("ActivityRepository", () => {
         activityResult: result(firstId)
       }
     });
+
+  });
+
+  it("uses an import key to make separate submissions resolve to one activity and XP award", async () => {
+    const importKey = "73fa9c8d-2c12-4c11-9bd6-4000f8104001";
+    const originalId = "i".repeat(48);
+    const retryId = "j".repeat(48);
+    const first = await repository!.persistCompletedActivity(activity(originalId), result(originalId, 40), importKey);
+    const retried = await repository!.persistCompletedActivity(activity(retryId), result(retryId, 40), importKey);
+
+    expect(first.inserted).toBe(true);
+    expect(retried.inserted).toBe(false);
+    expect(retried.activity.id).toBe(originalId);
+    expect(await repository!.listActivities()).toHaveLength(1);
+    expect(await repository!.getProgress()).toMatchObject({ totalXp: 40 });
+    expect((await repository!.getActivity(originalId))?.events).toHaveLength(1);
   });
 
   it("reconstructs durable state from a new repository and marks video separately", async () => {
@@ -104,7 +120,47 @@ describePersistence("ActivityRepository", () => {
     expect(await restartedRepository.getProgress()).toMatchObject({
       totalXp: 100, level: 2, currentLevelXp: 0, nextLevelXp: 200, progressToNextLevel: 0
     });
+
     expect(await restartedRepository.getActivity(id)).toMatchObject({ hasVideo: true });
+  });
+
+  it("stores one durable source video per activity without changing activity truth", async () => {
+    const id = "v".repeat(48);
+    await repository!.persistCompletedActivity(activity(id), result(id, 100));
+    const initialProgress = await repository!.getProgress();
+    const created = await repository!.createActivityVideo(id, "00000000-0000-4000-8000-000000000123", "source.mp4", "/durable/source.mp4");
+    await repository!.updateActivityVideo(id, {
+      ...created,
+      state: "sync_failed",
+      error: "No GPS5 track was found."
+    });
+
+    await expect(repository!.createActivityVideo(
+      id,
+      "00000000-0000-4000-8000-000000000124",
+      "replacement.mp4",
+      "/durable/replacement.mp4"
+    )).rejects.toThrow("already attached");
+    const restartedRepository = new ActivityRepository(pool!, playerId, "Persistence test player");
+    expect(await restartedRepository.getActivity(id)).toMatchObject({
+      id,
+      xpEarned: 100,
+      events: [expect.objectContaining({ sourceId: "historic-coin" })],
+      video: { state: "sync_failed", sourceFilename: "source.mp4", error: "No GPS5 track was found." }
+    });
+    expect(await restartedRepository.getProgress()).toEqual(initialProgress);
+  });
+
+  it("retains interrupted video work as an explicit durable failure after restart", async () => {
+    const id = "r".repeat(48);
+    await repository!.persistCompletedActivity(activity(id), result(id));
+    await repository!.createActivityVideo(id, "00000000-0000-4000-8000-000000000125", "source.mp4", "/durable/source.mp4");
+    await repository!.markInterruptedActivityVideos();
+
+    expect((await repository!.getActivity(id))?.video).toMatchObject({
+      state: "sync_failed",
+      error: "Video processing was interrupted by a server restart."
+    });
   });
 
   it("returns each discovered source ID once for the current player only", async () => {

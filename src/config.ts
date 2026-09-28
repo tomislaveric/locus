@@ -41,6 +41,7 @@ const uuidEnv = (name: string, fallback: string): string => {
 export const config = {
   port: integerEnv("PORT", 3000),
   dataDir: path.resolve(process.env.DATA_DIR ?? "./data/jobs"),
+  mediaDir: path.resolve(process.env.MEDIA_DIR ?? "./data/media"),
   coinsFile: path.resolve(process.env.COINS_FILE ?? "./coins.json"),
   maxUploadBytes: integerEnv("MAX_UPLOAD_BYTES", 6 * 1024 * 1024 * 1024),
   jobTtlMs: integerEnv("JOB_TTL_MS", 30 * 60 * 1000),

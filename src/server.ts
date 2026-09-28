@@ -6,7 +6,7 @@ import multer from "multer";
 import { deriveActivity, deriveActivityResult } from "./activity.js";
 import { readCollectibles } from "./coin.js";
 import { config } from "./config.js";
-import type { ActivityVideo, HudTimeline, Job, MappedGameEvent, PersistedActivity } from "./domain.js";
+import type { ActivityImportResult, ActivityVideo, HudTimeline, Job, MappedGameEvent, PersistedActivity } from "./domain.js";
 import { UserInputError } from "./errors.js";
 import { parseFitTrack } from "./fit.js";
 import { extractGps5Times, mapToVideoSecond } from "./gpmf.js";
@@ -39,6 +39,7 @@ const activityRepository = new ActivityRepository(
   config.defaultPlayerName
 );
 await activityRepository.initializeDefaultPlayer();
+await activityRepository.markInterruptedActivityVideos();
 
 const jobFile = (directory: string): string => path.join(directory, "job.json");
 
@@ -84,6 +85,14 @@ const lateVideoUpload = multer({
   fileFilter: (_request, file, callback) => {
     if (file.fieldname === "video") callback(null, true);
     else callback(new UserInputError("Only the video upload field is supported."));
+  }
+});
+const importUpload = multer({
+  dest: config.dataDir,
+  limits: { fileSize: config.maxUploadBytes, files: 2 },
+  fileFilter: (_request, file, callback) => {
+    if (file.fieldname === "fit" || file.fieldname === "video") callback(null, true);
+    else callback(new UserInputError("Only fit and video upload fields are supported."));
   }
 });
 
@@ -276,7 +285,7 @@ const selectedMappedEvents = (mappedEvents: MappedGameEvent[] | undefined, value
 };
 
 const activityMediaDirectory = (activityId: string, mediaId: string): string =>
-  path.join(config.dataDir, "activity-media", activityId, mediaId);
+  path.join(config.mediaDir, activityId, mediaId);
 
 const attachVideoUrls = (activity: PersistedActivity): PersistedActivity => {
   if (!activity.video) return activity;
@@ -329,6 +338,71 @@ const processAttachedVideo = async (
     console.error(`Activity video ${mediaId} synchronization failed:`, error);
   } finally {
     busy = false;
+  }
+};
+
+const attachUploadedVideo = async (
+  activity: PersistedActivity,
+  uploaded: Express.Multer.File
+): Promise<{ video?: ActivityVideo; videoError?: string }> => {
+  const mediaId = randomUUID();
+  const directory = activityMediaDirectory(activity.id, mediaId);
+  const sourcePath = path.join(directory, "source.mp4");
+  await mkdir(directory, { recursive: true });
+  try {
+    await rename(uploaded.path, sourcePath);
+    const video = await activityRepository.createActivityVideo(activity.id, mediaId, uploaded.originalname, sourcePath);
+    if (busy) {
+      const videoError = "Video processing is busy. Attach this video again after the current processing finishes.";
+      await activityRepository.updateActivityVideo(activity.id, { ...video, state: "sync_failed", error: videoError });
+      return { video: { ...video, state: "sync_failed", error: videoError }, videoError };
+    }
+    busy = true;
+    void processAttachedVideo({ ...activity, video }, mediaId, directory);
+    return { video: { ...video, state: "syncing" } };
+  } catch (error) {
+    await rm(directory, { recursive: true, force: true });
+    throw error;
+  }
+};
+
+const importActivity = async (
+  importKey: string,
+  fit: Express.Multer.File,
+  uploadedVideo?: Express.Multer.File
+): Promise<ActivityImportResult> => {
+  const existing = await activityRepository.getActivityByImportKey(importKey);
+  if (existing) {
+    await Promise.all([rm(fit.path, { force: true }), uploadedVideo ? rm(uploadedVideo.path, { force: true }) : Promise.resolve()]);
+    return { activity: attachVideoUrls(existing), inserted: false };
+  }
+
+  try {
+    const [collectibles, track] = await Promise.all([
+      readCollectibles(config.coinsFile),
+      parseFitTrack(fit.path)
+    ]);
+    const activity = deriveActivity(randomUUID(), track);
+    const relevantCollectibles = getRelevantCollectibles(collectibles, track, config.worldQueryPaddingMeters);
+    const activityResult = deriveActivityResult(activity, relevantCollectibles);
+    const persisted = await activityRepository.persistCompletedActivity(activity, activityResult, importKey);
+    let importedActivity = persisted.activity;
+    let videoError: string | undefined;
+    if (persisted.inserted && uploadedVideo) {
+      try {
+        const attachment = await attachUploadedVideo(importedActivity, uploadedVideo);
+        if (attachment.video) importedActivity = { ...importedActivity, video: attachment.video };
+        videoError = attachment.videoError;
+      } catch (error) {
+        videoError = error instanceof Error ? error.message : "Video could not be attached.";
+        console.error(`Could not attach video to imported activity ${importedActivity.id}:`, error);
+      }
+    } else if (uploadedVideo) {
+      await rm(uploadedVideo.path, { force: true });
+    }
+    return { activity: attachVideoUrls(importedActivity), inserted: persisted.inserted, ...(videoError ? { videoError } : {}) };
+  } finally {
+    await rm(fit.path, { force: true });
   }
 };
 
@@ -394,7 +468,7 @@ const cleanExpiredJobs = async (): Promise<void> => {
   );
 };
 
-await mkdir(config.dataDir, { recursive: true });
+await Promise.all([mkdir(config.dataDir, { recursive: true }), mkdir(config.mediaDir, { recursive: true })]);
 await cleanExpiredJobs();
 setInterval(() => void cleanExpiredJobs(), Math.min(config.jobTtlMs, 60_000)).unref();
 
@@ -404,6 +478,32 @@ app.get("/shared/progression.js", (_request, response) => {
 });
 app.use(express.static(path.resolve("public")));
 app.use(express.json({ limit: "16kb" }));
+
+app.post(
+  "/api/activities/import",
+  importUpload.fields([{ name: "fit", maxCount: 1 }, { name: "video", maxCount: 1 }]),
+  async (request, response, next) => {
+    const files = request.files as Record<string, Express.Multer.File[]> | undefined;
+    const fit = files?.fit?.[0];
+    const video = files?.video?.[0];
+    const importKey = request.header("Idempotency-Key");
+    if (!fit) {
+      response.status(400).json({ error: "One FIT file is required." });
+      return;
+    }
+    if (!importKey || !/^[a-zA-Z0-9-]{16,128}$/.test(importKey)) {
+      await Promise.all([rm(fit.path, { force: true }), video ? rm(video.path, { force: true }) : Promise.resolve()]);
+      response.status(400).json({ error: "A valid Idempotency-Key is required for activity import." });
+      return;
+    }
+    try {
+      response.status(201).json(await importActivity(importKey, fit, video));
+    } catch (error) {
+      await Promise.all([rm(fit.path, { force: true }), video ? rm(video.path, { force: true }) : Promise.resolve()]);
+      next(error);
+    }
+  }
+);
 
 app.post(
   "/api/jobs",
@@ -453,6 +553,10 @@ app.post("/api/activities/:id/video", lateVideoUpload.single("video"), async (re
     response.status(202).json({ activityId: activity.id, video: { ...video, state: "syncing" } });
   } catch (error) {
     if (uploaded) await rm(uploaded.path, { force: true });
+    if (error instanceof Error && error.message === "A video is already attached to this ride. Replacing it is not supported.") {
+      response.status(409).json({ error: error.message });
+      return;
+    }
     next(error);
   }
 });
@@ -521,21 +625,6 @@ app.post("/api/activities/:id/video/render", async (request, response) => {
   } catch (error) {
     const message = error instanceof Error ? error.message : "Could not render selected clips.";
     response.status(error instanceof UserInputError ? 400 : 500).json({ error: message });
-  }
-});
-
-app.delete("/api/activities/:id/video", async (request, response, next) => {
-  try {
-    const activityId = String(request.params.id);
-    const sourcePath = await activityRepository.removeFailedActivityVideo(activityId);
-    if (!sourcePath) {
-      response.status(409).json({ error: "Only a failed video synchronization can be removed for another attempt." });
-      return;
-    }
-    await rm(path.dirname(sourcePath), { recursive: true, force: true });
-    response.status(204).end();
-  } catch (error) {
-    next(error);
   }
 });
 
@@ -663,7 +752,8 @@ app.get("/api/jobs/:token/download", async (request, response) => {
 app.use((error: Error, request: UploadRequest, response: Response, _next: NextFunction) => {
   console.error("Request failed:", error);
   if (request.jobDir) void cleanupReservation(request);
-  response.status(error instanceof multer.MulterError ? 400 : 500).json({
+  const isInputError = error instanceof multer.MulterError || error instanceof UserInputError;
+  response.status(isInputError ? 400 : 500).json({
     error: error instanceof multer.MulterError ? `Upload rejected: ${error.message}` : error.message
   });
 });

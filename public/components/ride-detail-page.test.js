@@ -91,12 +91,14 @@ describe("Ride detail data transformation", () => {
     expect(page).not.toContain("Castle Gate");
   });
 
-  it("offers a fresh attachment attempt only after video synchronization fails", () => {
+  it("preserves the failed source video and does not expose replacement", () => {
     const page = RideDetailPage({
       id: "ride-1", distanceMeters: 1_000, durationSeconds: 600, xpEarned: 25, collectedCount: 1,
       video: { state: "sync_failed", error: "The FIT activity and video do not overlap in time." }
     }, { level: 1, currentLevelXp: 0, nextLevelXp: 100, progressToNextLevel: 0 }, "video");
-    expect(page).toContain("TRY ANOTHER VIDEO");
-    expect(page).toContain("data-video-retry");
+    expect(page).toContain("VIDEO SYNC FAILED");
+    expect(page).toContain("Replacing a source video is not supported yet.");
+    expect(page).not.toContain("TRY ANOTHER VIDEO");
+    expect(page).not.toContain("data-video-retry");
   });
 });

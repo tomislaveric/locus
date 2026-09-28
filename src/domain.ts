@@ -143,6 +143,12 @@ export interface ActivityVideo {
   downloadUrl?: string;
 }
 
+export interface ActivityImportResult {
+  activity: PersistedActivity;
+  inserted: boolean;
+  videoError?: string;
+}
+
 export interface PersistedActivityEvent {
   id: string;
   sourceId: string;
