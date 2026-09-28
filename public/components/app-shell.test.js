@@ -10,4 +10,8 @@ describe("AppShell routing", () => {
   it("allows the sidebar Progress item to navigate to Progress", () => {
     expect(navigableScreens.has("progress")).toBe(true);
   });
+
+  it("allows the sidebar Profile item to navigate to Profile", () => {
+    expect(navigableScreens.has("profile")).toBe(true);
+  });
 });

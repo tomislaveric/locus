@@ -11,6 +11,7 @@ import type {
   PersistedActivityEvent,
   ProgressDashboard,
   PlayerProgress,
+  PlayerProfileOverview,
   ReplaySnapshot
 } from "../domain.js";
 import { getLevelProgress, getTotalXpRequiredForLevel } from "../progression.js";
@@ -221,6 +222,35 @@ export class ActivityRepository {
     );
     if (result.rowCount !== 1) throw new Error("Default player does not exist.");
     return getLevelProgress(result.rows[0].total_xp);
+  }
+
+  async getProfileOverview(playerId: string): Promise<PlayerProfileOverview> {
+    const client = await this.pool.connect();
+    try {
+      await client.query("BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY");
+      const player = await client.query<{ display_name: string; total_xp: number }>(
+        "SELECT display_name, total_xp FROM players WHERE id = $1",
+        [playerId]
+      );
+      if (player.rowCount !== 1) throw new Error("Player does not exist.");
+      const lifetime = await client.query<{ distance_meters: number; ride_count: string }>(
+        `SELECT COALESCE(SUM(distance_meters), 0) AS distance_meters, COUNT(*) AS ride_count
+         FROM activities WHERE player_id = $1`,
+        [playerId]
+      );
+      await client.query("COMMIT");
+      return {
+        displayName: player.rows[0].display_name,
+        progress: getLevelProgress(player.rows[0].total_xp),
+        distanceMeters: Number(lifetime.rows[0].distance_meters),
+        rideCount: Number(lifetime.rows[0].ride_count)
+      };
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 
   async getProgressDashboard(playerId: string): Promise<ProgressDashboard> {

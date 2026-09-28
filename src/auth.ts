@@ -20,6 +20,7 @@ export interface AuthConfig {
 export interface SessionUser {
   id: string;
   email: string;
+  emailVerified: boolean;
   playerId: string;
   csrfToken: string;
   stepUpAt?: Date;
@@ -385,8 +386,8 @@ export class AuthService {
   }
 
   private async sessionUserWithClient(client: import("pg").PoolClient, tokenHash: string): Promise<SessionUser | undefined> {
-    const result = await client.query<{ id: string; email: string; player_id: string; csrf_token: string; step_up_at: Date | null }>(
-      `SELECT users.id, users.email, players.id AS player_id, sessions.csrf_token, sessions.step_up_at
+    const result = await client.query<{ id: string; email: string; email_verified_at: Date | null; player_id: string; csrf_token: string; step_up_at: Date | null }>(
+      `SELECT users.id, users.email, users.email_verified_at, players.id AS player_id, sessions.csrf_token, sessions.step_up_at
        FROM sessions INNER JOIN users ON users.id = sessions.user_id
        INNER JOIN players ON players.user_id = users.id
        WHERE sessions.token_hash = $1 AND sessions.revoked_at IS NULL AND users.deleted_at IS NULL
@@ -394,7 +395,14 @@ export class AuthService {
       [tokenHash]
     );
     const row = result.rows[0];
-    return row ? { id: row.id, email: row.email, playerId: row.player_id, csrfToken: row.csrf_token, ...(row.step_up_at ? { stepUpAt: row.step_up_at } : {}) } : undefined;
+    return row ? {
+      id: row.id,
+      email: row.email,
+      emailVerified: row.email_verified_at !== null,
+      playerId: row.player_id,
+      csrfToken: row.csrf_token,
+      ...(row.step_up_at ? { stepUpAt: row.step_up_at } : {})
+    } : undefined;
   }
 
   private async storeChallenge(userId: string | undefined, purpose: "passkey_registration" | "passkey_login", challenge: string): Promise<void> {

@@ -1,7 +1,7 @@
 import { mainContent } from "./main-content.js";
 import { setSidebarScreen, sidebar } from "./sidebar.js";
 
-export const navigableScreens = new Set(["home", "rides", "world", "progress", "add-activity"]);
+export const navigableScreens = new Set(["home", "rides", "world", "progress", "profile", "add-activity"]);
 
 export const AppShell = () => `
   <div class="app-shell">

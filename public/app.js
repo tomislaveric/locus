@@ -5,12 +5,14 @@ import { mountProgressPage } from "./components/progress-page.js";
 import { mountRideDetailPage } from "./components/ride-detail-page.js";
 import { mountRidesPage } from "./components/rides-page.js";
 import { mountWorldPage } from "./components/world-page.js";
+import { mountProfilePage } from "./components/profile/profile-page.js";
 import { startAuthentication, startRegistration } from "/shared/webauthn/index.js";
 import { mountAuthFlow, mountAuthSessionLoading } from "./components/auth/auth-flow.js";
 
 const app = document.querySelector("#app");
 const nativeFetch = window.fetch.bind(window);
 let csrfToken;
+let currentSession;
 
 const authenticateFetch = (input, init = {}) => {
   const method = (init.method ?? "GET").toUpperCase();
@@ -33,6 +35,17 @@ const mountPrivateApp = () => {
     else if (screen === "ride-detail") mountRideDetailPage(shell.content, selectedActivityId, () => selectScreen("rides"));
     else if (screen === "world") mountWorldPage(shell.content);
     else if (screen === "progress") mountProgressPage(shell.content);
+    else if (screen === "profile") mountProfilePage(shell.content, {
+      fetch: authenticateFetch,
+      session: currentSession,
+      startRegistration,
+      onUnauthenticated: () => {
+        csrfToken = undefined;
+        currentSession = undefined;
+        window.fetch = nativeFetch;
+        mountSignIn();
+      }
+    });
     else mountHomePage(shell.content, selectRide);
     shell.content.focus({ preventScroll: true });
   }
@@ -45,6 +58,7 @@ const mountPrivateApp = () => {
 
 const configureSession = (session) => {
   csrfToken = session.csrfToken;
+  currentSession = session;
   window.fetch = authenticateFetch;
 };
 

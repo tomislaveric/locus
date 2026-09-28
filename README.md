@@ -47,6 +47,8 @@ Single-container POC for turning a FIT ride into collectible game events and an 
   — establish passkey-first identity, email-code recovery, server-side sessions, and user-owned player authorization.
 - [Milestone 12B — Authentication UI Integration](features/milestone-12b-authentication-ui-integration/README.md)
   — replace the temporary authentication presentation with the Figma-approved UI while preserving the canonical Milestone 12 auth behavior.
+- [Milestone 13 — Profile UI & Account Management Integration](features/milestone-13-profile-ui-account-management-integration/README.md)
+  — add Figma-aligned Profile and account-management presentation while retaining canonical account security and Player ownership.
 - [Persistent activities player state v1](features/persistent-activities-player-state-v1/README.md)
   — persist compact activity/event history and single-player XP in PostgreSQL
   with transaction-safe exactly-once progression.

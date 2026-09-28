@@ -564,7 +564,7 @@ app.post("/api/auth/register/verify", authLimiter, async (request, response, nex
   try {
     const session = await authService.register(request.body?.email, request.body?.code);
     setSession(response, session.sessionToken);
-    response.status(201).json({ user: { email: session.user.email }, csrfToken: session.user.csrfToken, passkeySetupRequired: true });
+    response.status(201).json({ user: { email: session.user.email, emailVerified: session.user.emailVerified }, csrfToken: session.user.csrfToken, passkeySetupRequired: true });
   } catch (error) { next(error); }
 });
 app.post("/api/auth/email-code/request", authLimiter, async (request, response, next) => {
@@ -577,7 +577,11 @@ app.post("/api/auth/email-code/verify", authLimiter, async (request, response, n
   try {
     const session = await authService.emailLogin(request.body?.email, request.body?.code);
     if (session.sessionToken && session.user) setSession(response, session.sessionToken);
-    response.json(session.user ? { authenticated: true, user: { email: session.user.email }, csrfToken: session.user.csrfToken } : { authenticated: false });
+    response.json(session.user ? {
+      authenticated: true,
+      user: { email: session.user.email, emailVerified: session.user.emailVerified },
+      csrfToken: session.user.csrfToken
+    } : { authenticated: false });
   } catch (error) { next(error); }
 });
 app.post("/api/auth/passkeys/login/options", authLimiter, async (_request, response, next) => {
@@ -587,12 +591,16 @@ app.post("/api/auth/passkeys/login/verify", authLimiter, async (request, respons
   try {
     const session = await authService.verifyLogin(request.body as AuthenticationResponseJSON);
     setSession(response, session.sessionToken);
-    response.json({ user: { email: session.user.email }, csrfToken: session.user.csrfToken });
+    response.json({ user: { email: session.user.email, emailVerified: session.user.emailVerified }, csrfToken: session.user.csrfToken });
   } catch (error) { next(error); }
 });
 app.use("/api", optionalUser);
 app.get("/api/auth/session", (request: UploadRequest, response) => {
-  response.json(request.user ? { authenticated: true, user: { email: request.user.email }, csrfToken: request.user.csrfToken } : { authenticated: false });
+  response.json(request.user ? {
+    authenticated: true,
+    user: { email: request.user.email, emailVerified: request.user.emailVerified },
+    csrfToken: request.user.csrfToken
+  } : { authenticated: false });
 });
 app.post("/api/auth/logout", requireUser, requireCsrf, async (request: UploadRequest, response, next) => {
   try { await authService.logout(request.sessionToken); clearSession(response); response.status(204).end(); } catch (error) { next(error); }
@@ -853,6 +861,20 @@ app.get("/api/player/progress", requirePlayer, async (request: UploadRequest, re
 app.get("/api/player/progress-dashboard", requirePlayer, async (request: UploadRequest, response, next) => {
   try {
     response.json(await activityRepository.getProgressDashboard(request.user!.playerId));
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/api/player/profile", requirePlayer, async (request: UploadRequest, response, next) => {
+  try {
+    const [profile, collectibles, discoveredSourceIds] = await Promise.all([
+      activityRepository.getProfileOverview(request.user!.playerId),
+      readCollectibles(config.coinsFile),
+      activityRepository.listDiscoveredCollectibleSourceIds(request.user!.playerId)
+    ]);
+    const world = createWorldSnapshot(collectibles, discoveredSourceIds);
+    response.json({ ...profile, collectibles: world.stats });
   } catch (error) {
     next(error);
   }

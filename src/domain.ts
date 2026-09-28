@@ -102,6 +102,13 @@ export interface PlayerProgress {
   progressToNextLevel: number;
 }
 
+export interface PlayerProfileOverview {
+  displayName: string;
+  progress: PlayerProgress;
+  distanceMeters: number;
+  rideCount: number;
+}
+
 export interface ProgressLevel {
   level: number;
   totalXpRequired: number;
