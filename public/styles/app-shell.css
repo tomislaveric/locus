@@ -191,7 +191,10 @@ button, input { font: inherit; }
   text-align: left;
   width: 100%;
 }
-.ride-card-content { min-height: 120px; padding: 16px; }
+.ride-card-main { display: flex; min-height: 118px; }
+.ride-card-replay { background: #0b0c0f; border-right: 1px solid var(--border-faint); flex: 0 0 100px; height: 122px; }
+.ride-card-replay .ride-replay-canvas { height: 122px; width: 100px; }
+.ride-card-content { min-height: 118px; padding: 16px; }
 .ride-meta { display: grid; gap: 8px; }
 .ride-meta-heading { align-items: center; display: flex; gap: 8px; min-height: 20px; }
 .ride-meta-heading p, .rides-section-label { color: var(--text-muted); font-family: var(--font-display); font-size: 10px; letter-spacing: .2em; margin: 0; }
@@ -202,7 +205,12 @@ button, input { font: inherit; }
 .ride-measurements > span { color: var(--text-muted); font-family: var(--font-display); font-size: 14px; }
 .ride-rewards { align-items: center; display: flex; gap: 8px; }
 .ride-xp-chip { border: 1px solid rgb(232 184 10 / 40%); border-radius: 4px; color: var(--accent-yellow); font-family: var(--font-display); font-size: 10px; font-weight: 600; padding: 4px 6px; }
-.ride-collected-count { color: var(--text-muted); font-family: var(--font-display); font-size: 12px; }
+.ride-collectible-row { display: flex; }
+.ride-collectible-dots { align-items: center; display: inline-flex; gap: 4px; }
+.ride-collectible-dots i { background: #737880; border: 0; border-radius: 50%; height: 8px; padding: 0; width: 8px; }
+.ride-collectible-dots i.rarity-rare { background: var(--accent-rare); border: 0; padding: 0; }
+.ride-collectible-dots i.rarity-epic { background: var(--accent-epic); border: 0; padding: 0; }
+.ride-collectible-dots small { color: var(--text-subtle); font-family: var(--font-mono); font-size: 10px; margin-left: 2px; }
 .ride-card:focus-visible { outline: 2px solid var(--accent-yellow); outline-offset: 2px; }
 .rides-empty-state, .rides-loading, .rides-load-error, .ride-detail-placeholder { background: var(--surface-background); border: 1px solid var(--border-faint); border-radius: var(--radius-card); color: var(--text-muted); font-family: var(--font-mono); margin-top: 28px; padding: 32px; }
 .rides-empty-state p:last-child, .ride-detail-placeholder > p:last-child { font-size: 13px; line-height: 1.5; margin: 12px 0 0; }

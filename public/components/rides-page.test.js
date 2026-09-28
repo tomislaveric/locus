@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatRideDate, formatRideDuration, ridesViewModel } from "./rides-page.js";
+import { RideCard, formatRideDate, formatRideDuration, ridesViewModel } from "./rides-page.js";
 
 describe("Rides data transformation", () => {
   const activities = [
@@ -24,5 +24,23 @@ describe("Rides data transformation", () => {
     expect(formatRideDate(activities[0].startedAt)).toBe("SAT, SEP 26");
     expect(formatRideDuration(activities[0].durationSeconds)).toBe("1h 6m");
     expect(formatRideDuration(undefined)).toBe("Duration unavailable");
+  });
+
+  it("shows the static route preview and collectible dots for a detailed ride", () => {
+    const activity = {
+      ...activities[0],
+      events: [{ sourceId: "castle", collectible: { name: "Castle Gate", rarity: "rare" } }],
+      replay: {
+        activity: {
+          route: [{ latitude: 48, longitude: 11, timestampMs: 0 }, { latitude: 48.1, longitude: 11.1, timestampMs: 1_000 }]
+        },
+        activityResult: { collectibles: [], events: [] }
+      }
+    };
+
+    expect(RideCard(activity)).toContain('class="ride-replay ride-card-replay"');
+    expect(RideCard(activity)).toContain('class="rarity-rare"');
+    expect(RideCard(activity)).not.toContain("Castle Gate");
+    expect(RideCard(activity)).not.toContain("ride-found");
   });
 });
