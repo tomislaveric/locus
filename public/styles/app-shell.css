@@ -1144,9 +1144,3 @@ h3 { font-size: 20px; }
   .world-legend { gap: 8px; left: 10px; padding-inline: 8px; }
   .world-legend small { font-size: 8px; }
 }
- .auth-screen { min-height: 100vh; display: grid; place-items: center; padding: 24px; background: var(--color-background, #101818); color: var(--color-text-primary, #fff); }
- .auth-card { width: min(100%, 420px); padding: 32px; border: 1px solid rgba(255,255,255,.15); border-radius: 16px; background: rgba(255,255,255,.04); }
- .auth-card form { display: grid; gap: 14px; margin-top: 18px; }
- .auth-card label { display: grid; gap: 6px; }
- .auth-card input, .auth-card button { min-height: 42px; border-radius: 7px; padding: 8px 12px; }
- .auth-card button { cursor: pointer; margin-top: 12px; }
