@@ -163,6 +163,28 @@ describePersistence("ActivityRepository", () => {
     });
   });
 
+  it("clears only retryable video media without changing the activity result", async () => {
+    const id = "t".repeat(48);
+    await repository!.persistCompletedActivity(activity(id), result(id, 55));
+    const before = await repository!.getProgress();
+    const created = await repository!.createActivityVideo(
+      id,
+      "00000000-0000-4000-8000-000000000126",
+      "unmatched.mp4",
+      "/durable/unmatched.mp4"
+    );
+    await repository!.updateActivityVideo(id, { ...created, state: "no_highlights", events: [] });
+
+    await expect(repository!.removeRetryableActivityVideo(id)).resolves.toBe("/durable/unmatched.mp4");
+    expect(await repository!.getActivity(id)).toMatchObject({
+      id,
+      xpEarned: 55,
+      events: [expect.objectContaining({ sourceId: "historic-coin" })]
+    });
+    expect((await repository!.getActivity(id))?.video).toBeUndefined();
+    expect(await repository!.getProgress()).toEqual(before);
+  });
+
   it("returns each discovered source ID once for the current player only", async () => {
     await repository!.persistCompletedActivity(activity("e".repeat(48)), result("e".repeat(48)));
     await repository!.persistCompletedActivity(activity("f".repeat(48)), result("f".repeat(48)));

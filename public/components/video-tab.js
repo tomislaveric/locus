@@ -22,30 +22,42 @@ const VideoEmptyState = () => `
 
 const VideoProcessingState = (video) => `
   <section class="video-processing-state" aria-live="polite">
-    <p>${video.state === "rendering" ? "CREATING HIGHLIGHTS" : "SYNCHRONIZING VIDEO"}</p>
-    <h2>${video.state === "rendering" ? "Rendering selected moments" : "Matching video to your ride"}</h2>
-    <span>${video.state === "rendering" ? "Your selected highlights are rendering." : "Using your existing ride timestamps and route data."}</span>
-    ${UploadProgress({ label: "This stage is in progress." })}
+    <p>${video.state === "rendering" ? "CREATING HIGHLIGHTS" : "ANALYSING VIDEO"}</p>
+    <h2>${video.state === "rendering" ? "Rendering selected moments" : "Analysing Video"}</h2>
+    <span>${video.state === "rendering" ? "Your selected highlights are rendering." : "Matching footage to your ride data"}</span>
+    ${video.state === "rendering"
+      ? UploadProgress({ label: "Rendering your selected moments." })
+      : `<ol class="video-analysis-steps">
+        <li class="${video.state === "uploading" ? "is-active" : "is-complete"}"><i></i><span>Reading Video</span></li>
+        <li class="${video.state === "uploading" ? "is-pending" : "is-active"}"><i></i><span>Reading FIT File</span></li>
+        <li class="is-pending"><i></i><span>Searching Collectibles</span></li>
+      </ol>`}
   </section>
 `;
 
 const VideoErrorState = (video) => `
   <section class="video-error-state" role="alert">
-    <p>${video.state === "render_failed" ? "HIGHLIGHT FAILED" : "VIDEO SYNC FAILED"}</p>
+    <p>HIGHLIGHT FAILED</p>
     <h2>${escapeHtml(errorCopy(video))}</h2>
     <span>Your ride and collected items are unchanged.</span>
-    ${UploadError({ message: "Your existing source video is preserved. Replacing a source video is not supported yet." })}
+    ${UploadError({ message: "Your source video is preserved." })}
   </section>
 `;
 
 const VideoSelection = (video) => `
   <section class="video-selection" aria-label="Highlight selection">
-    <p>VIDEO ATTACHED</p><h2>Select moments for your highlights</h2>
-    <span>Choose the detected moments to include in the rendered video.</span>
+    <div class="video-selection-heading"><div><h2>${video.events?.length ?? 0} Collectibles Found</h2><span>Select which moments to include in your highlight video</span></div><button type="button" data-select-all>Select All</button></div>
     <form data-video-selection>
-      <ul>${(video.events ?? []).map((event) => `<li><label><input type="checkbox" name="sourceId" value="${escapeHtml(event.sourceId)}" checked> <b>${escapeHtml(event.collectible.name)}</b><em>${duration(event.videoSecond)}</em></label></li>`).join("")}</ul>
-      <button class="video-attach-button">GENERATE HIGHLIGHTS</button>
+      <ul>${(video.events ?? []).map((event) => `<li><label><input type="checkbox" name="sourceId" value="${escapeHtml(event.sourceId)}"><i></i><span><b>${escapeHtml(event.collectible.name)}</b><small>${escapeHtml(event.collectible.rarity ?? "common")} · ${escapeHtml(event.collectible.type)}</small></span><em>+${escapeHtml(event.value)} XP</em></label></li>`).join("")}</ul>
+      <button class="video-attach-button" type="submit" disabled>GENERATE HIGHLIGHTS</button>
     </form>
+  </section>
+`;
+
+const VideoNoHighlightsState = ({ retry = false } = {}) => `
+  <section class="video-no-highlights" role="status">
+    <div><p>NO HIGHLIGHTS FOUND</p><h2>No collectible moments were found in this video.</h2><span>${retry ? "This video could not be matched to the moments collected on this ride." : "Your source video is attached, but none of this ride’s collected events map to its timeline."}</span></div>
+    <button type="button" ${retry ? "data-video-retry" : "data-no-highlights-close"}>${retry ? "TRY AGAIN" : "CLOSE"}</button>
   </section>
 `;
 
@@ -68,8 +80,10 @@ const HighlightReadyState = (video) => {
 export const VideoTab = (activity) => {
   const video = activity.video;
   if (!video) return VideoEmptyState();
-  if (video.state === "syncing" || video.state === "rendering") return VideoProcessingState(video);
-  if (video.state === "sync_failed" || video.state === "render_failed") return VideoErrorState(video);
+  if (video.state === "uploading" || video.state === "syncing" || video.state === "rendering") return VideoProcessingState(video);
+  if (video.state === "sync_failed") return VideoNoHighlightsState({ retry: true });
+  if (video.state === "render_failed") return VideoErrorState(video);
+  if (video.state === "no_highlights") return VideoNoHighlightsState();
   if (video.state === "awaiting_selection") return VideoSelection(video);
   return HighlightReadyState(video);
 };
@@ -102,12 +116,18 @@ export const mountVideoTab = (mountPoint, activity, onActivityUpdated) => {
     try {
       const data = new FormData();
       const file = selectedVideo ?? upload.querySelector("input[name=video]")?.files?.[0];
+      if (!file) throw new Error("Choose a video file before attaching it.");
       if (file) data.append("video", file);
+      onActivityUpdated({
+        ...activity,
+        video: { mediaId: "uploading", sourceFilename: file.name, state: "uploading" }
+      });
       const response = await fetch(`/api/activities/${encodeURIComponent(activity.id)}/video`, { method: "POST", body: data });
       const body = await response.json();
       if (!response.ok) throw new Error(body.error);
       onActivityUpdated({ ...activity, video: body.video });
     } catch (error) {
+      onActivityUpdated(activity);
       showError(error);
     }
   });
@@ -123,6 +143,40 @@ export const mountVideoTab = (mountPoint, activity, onActivityUpdated) => {
       if (!response.ok) throw new Error(body.error);
       onActivityUpdated({ ...activity, video: body.video });
     } catch (error) {
+      showError(error);
+    }
+  });
+  const selectAll = mountPoint.querySelector("[data-select-all]");
+  const selectionSubmit = mountPoint.querySelector("[data-video-selection] button[type=submit]");
+  const selections = [...mountPoint.querySelectorAll("[data-video-selection] input[name=sourceId]")];
+  const updateSelection = () => {
+    const allSelected = selections.length > 0 && selections.every((input) => input.checked);
+    const selectedCount = selections.filter((input) => input.checked).length;
+    if (selectAll) selectAll.textContent = allSelected ? "Clear All" : "Select All";
+    if (selectionSubmit) selectionSubmit.disabled = selectedCount === 0;
+  };
+  selectAll?.addEventListener("click", () => {
+    const select = !selections.every((input) => input.checked);
+    selections.forEach((input) => { input.checked = select; });
+    updateSelection();
+  });
+  selections.forEach((input) => input.addEventListener("change", updateSelection));
+  mountPoint.querySelector("[data-no-highlights-close]")?.addEventListener("click", () => {
+    const state = mountPoint.querySelector(".ride-detail-tab-content");
+    if (state) state.replaceChildren();
+  });
+  mountPoint.querySelector("[data-video-retry]")?.addEventListener("click", async (event) => {
+    const retry = event.currentTarget;
+    try {
+      retry.disabled = true;
+      const response = await fetch(`/api/activities/${encodeURIComponent(activity.id)}/video`, { method: "DELETE" });
+      if (!response.ok) {
+        const body = await response.json();
+        throw new Error(body.error);
+      }
+      onActivityUpdated({ ...activity, video: undefined });
+    } catch (error) {
+      retry.disabled = false;
       showError(error);
     }
   });

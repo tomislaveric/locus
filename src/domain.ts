@@ -127,7 +127,7 @@ export interface PersistedActivity extends ActivityHistoryItem {
   video?: ActivityVideo;
 }
 
-export type ActivityVideoState = "syncing" | "sync_failed" | "awaiting_selection" | "rendering" | "succeeded" | "render_failed";
+export type ActivityVideoState = "syncing" | "sync_failed" | "no_highlights" | "awaiting_selection" | "rendering" | "succeeded" | "render_failed";
 
 export interface ActivityVideo {
   mediaId: string;

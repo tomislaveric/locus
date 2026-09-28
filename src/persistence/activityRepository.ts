@@ -293,6 +293,20 @@ export class ActivityRepository {
     return { sourcePath: result.rows[0].source_path, ...(result.rows[0].output_path ? { outputPath: result.rows[0].output_path } : {}) };
   }
 
+  async removeRetryableActivityVideo(activityId: string): Promise<string | undefined> {
+    const result = await this.pool.query<{ source_path: string }>(
+      `DELETE FROM activity_videos AS video
+       USING activities
+       WHERE video.activity_id = activities.id
+         AND video.activity_id = $1
+         AND activities.player_id = $2
+         AND video.state IN ('sync_failed', 'no_highlights')
+       RETURNING video.source_path`,
+      [activityId, this.defaultPlayerId]
+    );
+    return result.rows[0]?.source_path;
+  }
+
   private async getProgressWithClient(client: PoolClient): Promise<PlayerProgress> {
     const result = await client.query<{ total_xp: number }>(
       "SELECT total_xp FROM players WHERE id = $1",

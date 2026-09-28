@@ -323,20 +323,41 @@ button, input { font: inherit; }
 .ride-tabs button.is-active { background: #181b22; color: var(--text-primary); }
 .ride-tabs button:not(:disabled) { cursor: pointer; }
 .ride-tabs button:disabled { cursor: default; }
-.video-empty-state, .video-processing-state, .video-error-state, .video-selection {
+.video-empty-state, .video-processing-state, .video-error-state, .video-selection, .video-no-highlights {
   background: var(--surface-background); border: 1px solid var(--border-faint); border-radius: var(--radius-card);
   color: var(--text-muted); font-family: var(--font-display); margin-top: 16px; padding: 24px;
 }
-.video-empty-state > p, .video-processing-state > p, .video-error-state > p, .video-selection > p { color: var(--accent-yellow); font-size: 10px; letter-spacing: .2em; margin: 0; }
-.video-empty-state h2, .video-processing-state h2, .video-error-state h2, .video-selection h2 { color: var(--text-primary); font-size: 24px; margin: 8px 0; }
-.video-empty-state > span, .video-processing-state > span, .video-error-state > span, .video-selection > span { display: block; font-family: var(--font-mono); font-size: 12px; line-height: 1.5; }
+.video-empty-state > p, .video-processing-state > p, .video-error-state > p, .video-no-highlights p { color: var(--accent-yellow); font-size: 10px; letter-spacing: .2em; margin: 0; }
+.video-empty-state h2, .video-processing-state h2, .video-error-state h2, .video-selection h2, .video-no-highlights h2 { color: var(--text-primary); font-size: 24px; margin: 8px 0; }
+.video-empty-state > span, .video-processing-state > span, .video-error-state > span, .video-no-highlights span { display: block; font-family: var(--font-mono); font-size: 12px; line-height: 1.5; }
 .video-empty-state form, .video-selection form { display: grid; gap: 12px; margin-top: 20px; }
 .video-error-state .video-attach-button { margin-top: 20px; }
 .video-attach-button, .video-download { background: var(--accent-yellow); border: 0; border-radius: 8px; color: #0b0c0f; cursor: pointer; font-family: var(--font-display); font-size: 12px; font-weight: 700; letter-spacing: .1em; padding: 12px 16px; text-decoration: none; width: fit-content; }
+.video-attach-button:disabled { background: #181b22; color: var(--text-subtle); cursor: not-allowed; }
 .video-error-state { border-color: rgb(255 154 154 / 30%); }
 .video-selection ul, .video-event-list { display: grid; gap: 8px; list-style: none; margin: 0; padding: 0; }
 .video-selection li, .video-event-list li { align-items: center; background: var(--surface-background); border: 1px solid var(--border-faint); border-radius: 8px; display: flex; min-height: 46px; padding: 12px; }
-.video-selection label { display: flex; gap: 12px; width: 100%; }.video-selection em { color: var(--accent-yellow); font-family: var(--font-mono); font-size: 12px; font-style: normal; margin-left: auto; }
+.video-selection-heading { align-items: start; display: flex; justify-content: space-between; }
+.video-selection-heading h2 { font-size: 16px; line-height: 24px; margin: 0; }
+.video-selection-heading span { color: var(--text-muted); display: block; font-family: var(--font-display); font-size: 12px; margin-top: 3px; }
+.video-selection-heading button { background: transparent; border: 0; color: var(--accent-yellow); cursor: pointer; font-family: var(--font-display); font-size: 12px; padding: 3px 0; }
+.video-selection label { align-items: center; display: flex; gap: 12px; width: 100%; }
+.video-selection label > i { background: var(--text-muted); border-radius: 50%; height: 6px; width: 6px; }
+.video-selection label > span { display: grid; gap: 2px; }
+.video-selection label b { color: var(--text-primary); font-family: var(--font-display); font-size: 14px; }
+.video-selection label small { color: var(--text-subtle); font-family: var(--font-mono); font-size: 9px; text-transform: uppercase; }
+.video-selection em { color: var(--accent-yellow); font-family: var(--font-display); font-size: 12px; font-style: normal; margin-left: auto; }
+.video-analysis-steps { display: grid; gap: 12px; list-style: none; margin: 8px 0 0; padding: 0; text-align: left; width: 230px; }
+.video-analysis-steps li { align-items: center; color: var(--text-subtle); display: flex; font-family: var(--font-display); font-size: 14px; gap: 12px; }
+.video-analysis-steps i { background: #181b22; border: 1px solid var(--border-faint); border-radius: 50%; height: 20px; width: 20px; }
+.video-analysis-steps .is-complete { color: var(--text-primary); }
+.video-analysis-steps .is-complete i { background: rgb(52 199 111 / 20%); border-color: rgb(52 199 111 / 40%); }
+.video-analysis-steps .is-active { color: #e4e0da; }
+.video-analysis-steps .is-active i { animation: processing-active-step 900ms ease-in-out infinite alternate; border-color: rgb(232 184 10 / 45%); }
+.video-no-highlights { align-items: start; display: flex; gap: 24px; justify-content: space-between; }
+.video-no-highlights h2 { font-size: 20px; margin-top: 6px; }
+.video-no-highlights button { background: transparent; border: 0; color: var(--text-muted); cursor: pointer; font-family: var(--font-display); font-size: 11px; letter-spacing: .1em; padding: 4px 0; }
+.video-no-highlights button:hover { color: var(--text-primary); }
 .video-player { margin-top: 16px; }.video-player-frame { aspect-ratio: 794 / 445.75; background: linear-gradient(151deg, #111318, #0b0c0f); border: 1px solid var(--border-faint); border-radius: var(--radius-card); overflow: hidden; position: relative; }
 .video-player-frame video { height: 100%; object-fit: contain; width: 100%; }.video-rec, .video-duration { font-family: var(--font-mono); font-size: 10px; position: absolute; top: 16px; }.video-rec { color: var(--accent-yellow); left: 16px; }.video-duration { color: var(--text-muted); right: 16px; }
 .video-player-title { display: grid; gap: 2px; margin: 12px 0; text-align: center; }.video-player-title strong { color: var(--text-primary); font-family: var(--font-display); font-size: 14px; }.video-player-title span { color: var(--text-muted); font-family: var(--font-mono); font-size: 12px; }

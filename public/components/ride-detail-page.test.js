@@ -93,14 +93,37 @@ describe("Ride detail data transformation", () => {
     expect(page).not.toContain("Castle Gate");
   });
 
-  it("preserves the failed source video and does not expose replacement", () => {
+  it("renders immediate analysis, selectable highlights, and no-highlight dismissal states", () => {
+    const progress = { level: 1, currentLevelXp: 0, nextLevelXp: 100, progressToNextLevel: 0 };
+    const base = { id: "ride-1", distanceMeters: 1_000, durationSeconds: 600, xpEarned: 25, collectedCount: 1 };
+    const analysing = RideDetailPage({ ...base, video: { state: "uploading" } }, progress, "video");
+    const selection = RideDetailPage({
+      ...base,
+      video: {
+        state: "awaiting_selection",
+        events: [{ sourceId: "coin-a", collectible: { name: "Coin A", rarity: "rare", type: "coin" }, value: 100 }]
+      }
+    }, progress, "video");
+    const noHighlights = RideDetailPage({ ...base, video: { state: "no_highlights" } }, progress, "video");
+
+    expect(analysing).toContain("Analysing Video");
+    expect(analysing).toContain("Reading Video");
+    expect(selection).toContain("1 Collectibles Found");
+    expect(selection).toContain("Select All");
+    expect(selection).toContain("GENERATE HIGHLIGHTS");
+    expect(selection).toContain("disabled");
+    expect(noHighlights).toContain("NO HIGHLIGHTS FOUND");
+    expect(noHighlights).toContain("data-no-highlights-close");
+  });
+
+  it("lets an unavailable source video return to the initial upload state", () => {
     const page = RideDetailPage({
       id: "ride-1", distanceMeters: 1_000, durationSeconds: 600, xpEarned: 25, collectedCount: 1,
       video: { state: "sync_failed", error: "The FIT activity and video do not overlap in time." }
     }, { level: 1, currentLevelXp: 0, nextLevelXp: 100, progressToNextLevel: 0 }, "video");
-    expect(page).toContain("VIDEO SYNC FAILED");
-    expect(page).toContain("Replacing a source video is not supported yet.");
-    expect(page).not.toContain("TRY ANOTHER VIDEO");
-    expect(page).not.toContain("data-video-retry");
+    expect(page).toContain("NO HIGHLIGHTS FOUND");
+    expect(page).toContain("TRY AGAIN");
+    expect(page).toContain("data-video-retry");
+    expect(page).not.toContain("The FIT activity and video do not overlap in time.");
   });
 });

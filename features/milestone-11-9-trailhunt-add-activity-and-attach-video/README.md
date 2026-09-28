@@ -22,9 +22,9 @@ without recreating it or changing progression.
   GameEvents, progression, replay, synchronization, planning, HUD, and FFmpeg
   rendering behavior.
 
-Out of scope: FIT re-upload during video attachment, a second source video,
-replacement/deletion workflows, mobile UI, changing accepted source formats,
-and changing any gameplay/progression semantics.
+Out of scope: FIT re-upload during video attachment, replacement of a successful
+source video, mobile UI, changing accepted source formats, and changing any
+gameplay/progression semantics.
 
 ## Figma references
 
@@ -54,7 +54,10 @@ product truth.
 - An idempotency key identifies one logical import. Repeated UI requests return
   its existing result instead of inserting a second activity, events, or XP award.
 - An activity owns at most one canonical source video. A second upload is an
-  explicit conflict; it preserves the current source and rendered highlight.
+  explicit conflict when processing or highlights are ready. A failed or
+  no-highlight source can be cleared through the Video tab’s retry action; that
+  removes only failed media and returns the existing ride to its initial upload
+  state.
 - Media metadata belongs in PostgreSQL while MP4 source/output data belongs in
   durable filesystem/object-style storage outside the temporary job TTL root.
 - Interrupted sync/render work must not remain indefinitely active after restart:

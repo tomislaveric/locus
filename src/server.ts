@@ -321,7 +321,12 @@ const processAttachedVideo = async (
       return videoSecond < 0 || videoSecond > sourceDuration ? [] : [{ ...event, videoSecond: Number(videoSecond.toFixed(3)) }];
     }).sort((left, right) => left.videoSecond - right.videoSecond);
     const synchronization = withEventAvailability(assessment, replay.activityResult.events.map((event) => event.activityTimestamp));
-    if (mappedEvents.length === 0) throw new UserInputError("No configured coin passage maps to a time within the video.");
+    if (mappedEvents.length === 0) {
+      await activityRepository.updateActivityVideo(activity.id, {
+        ...video, mediaId, state: "no_highlights", sourceDuration, synchronization, events: []
+      });
+      return;
+    }
     await saveHudTimeline(
       path.join(mediaDirectory, "hud-timeline.json"),
       createHudTimeline(replay.activity.route, replay.activityResult.collectibles, mappedEvents, samples, sourceDuration)
@@ -625,6 +630,20 @@ app.post("/api/activities/:id/video/render", async (request, response) => {
   } catch (error) {
     const message = error instanceof Error ? error.message : "Could not render selected clips.";
     response.status(error instanceof UserInputError ? 400 : 500).json({ error: message });
+  }
+});
+
+app.delete("/api/activities/:id/video", async (request, response, next) => {
+  try {
+    const sourcePath = await activityRepository.removeRetryableActivityVideo(String(request.params.id));
+    if (!sourcePath) {
+      response.status(409).json({ error: "Only an unavailable video can be cleared for another upload." });
+      return;
+    }
+    await rm(path.dirname(sourcePath), { recursive: true, force: true });
+    response.status(204).end();
+  } catch (error) {
+    next(error);
   }
 });
 

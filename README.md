@@ -275,6 +275,8 @@ failure does not remove its history or XP.
 - `POST /api/activities/:id/video/render` submits selected persisted event
   `sourceIds`; preview and download are available at the corresponding
   `/video/preview` and `/video/download` routes once highlights are ready.
+- `DELETE /api/activities/:id/video` clears only a failed or no-highlight
+  source-video attachment so the existing ride can accept another upload.
 - `GET /api/world` returns the complete configured collectible catalog with
   player-scoped persisted discovery state and catalog-derived World statistics.
 - `GET /api/player/progress` returns durable `totalXp` and the derived level

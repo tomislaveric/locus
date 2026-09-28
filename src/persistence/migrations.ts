@@ -91,4 +91,13 @@ export const migrations: Migration[] = [{
       );
     `);
   }
+}, {
+  id: "005_activity_video_no_highlights",
+  async up(client) {
+    await client.query(`
+      ALTER TABLE activity_videos DROP CONSTRAINT activity_videos_state_check;
+      ALTER TABLE activity_videos ADD CONSTRAINT activity_videos_state_check
+        CHECK (state IN ('syncing', 'sync_failed', 'no_highlights', 'awaiting_selection', 'rendering', 'succeeded', 'render_failed'));
+    `);
+  }
 }];
