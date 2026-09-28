@@ -6,4 +6,8 @@ describe("AppShell routing", () => {
     expect(navigableScreens.has("add-activity")).toBe(true);
     expect(navigableScreens.has("add-ride")).toBe(false);
   });
+
+  it("allows the sidebar Progress item to navigate to Progress", () => {
+    expect(navigableScreens.has("progress")).toBe(true);
+  });
 });

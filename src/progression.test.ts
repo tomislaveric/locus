@@ -3,6 +3,7 @@ import {
   applyActivityXp,
   getLevelForXp,
   getLevelProgress,
+  getTotalXpRequiredForLevel,
   getXpRequiredForLevel
 } from "./progression.js";
 
@@ -10,6 +11,8 @@ describe("progression", () => {
   it("derives the centralized level curve and progress", () => {
     expect(getXpRequiredForLevel(1)).toBe(100);
     expect(getXpRequiredForLevel(4)).toBe(400);
+    expect(getTotalXpRequiredForLevel(1)).toBe(0);
+    expect(getTotalXpRequiredForLevel(4)).toBe(600);
     expect(getLevelForXp(0)).toBe(1);
     expect(getLevelForXp(99)).toBe(1);
     expect(getLevelForXp(100)).toBe(2);
@@ -39,5 +42,7 @@ describe("progression", () => {
     }
     expect(() => getXpRequiredForLevel(0)).toThrow(RangeError);
     expect(() => getXpRequiredForLevel(1.5)).toThrow(RangeError);
+    expect(() => getTotalXpRequiredForLevel(0)).toThrow(RangeError);
+    expect(() => getTotalXpRequiredForLevel(1.5)).toThrow(RangeError);
   });
 });

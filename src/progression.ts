@@ -8,7 +8,12 @@ const assertNonNegativeFinite = (value: number, name: string): void => {
   }
 };
 
-const getLevelThreshold = (level: number): number => XP_PER_LEVEL * (level - 1) * level / 2;
+export const getTotalXpRequiredForLevel = (level: number): number => {
+  if (!Number.isSafeInteger(level) || level < 1) {
+    throw new RangeError("level must be a positive safe integer.");
+  }
+  return XP_PER_LEVEL * (level - 1) * level / 2;
+};
 
 export const getXpRequiredForLevel = (level: number): number => {
   if (!Number.isSafeInteger(level) || level < 1) {
@@ -20,15 +25,15 @@ export const getXpRequiredForLevel = (level: number): number => {
 export const getLevelForXp = (totalXp: number): number => {
   assertNonNegativeFinite(totalXp, "totalXp");
   let level = Math.max(1, Math.floor((1 + Math.sqrt(1 + 8 * totalXp / XP_PER_LEVEL)) / 2));
-  while (getLevelThreshold(level + 1) <= totalXp) level += 1;
-  while (getLevelThreshold(level) > totalXp) level -= 1;
+  while (getTotalXpRequiredForLevel(level + 1) <= totalXp) level += 1;
+  while (getTotalXpRequiredForLevel(level) > totalXp) level -= 1;
   return level;
 };
 
 export const getLevelProgress = (totalXp: number): PlayerProgress => {
   assertNonNegativeFinite(totalXp, "totalXp");
   const level = getLevelForXp(totalXp);
-  const currentLevelXp = totalXp - getLevelThreshold(level);
+  const currentLevelXp = totalXp - getTotalXpRequiredForLevel(level);
   const nextLevelXp = getXpRequiredForLevel(level);
   return {
     totalXp,

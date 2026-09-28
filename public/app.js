@@ -1,6 +1,7 @@
 import { mountAppShell } from "./components/app-shell.js";
 import { mountAddActivityPage } from "./components/add-activity-page.js";
 import { mountHomePage } from "./components/home-page.js";
+import { mountProgressPage } from "./components/progress-page.js";
 import { mountRideDetailPage } from "./components/ride-detail-page.js";
 import { mountRidesPage } from "./components/rides-page.js";
 import { mountWorldPage } from "./components/world-page.js";
@@ -13,6 +14,7 @@ function selectScreen(screen) {
   else if (screen === "rides") mountRidesPage(shell.content, selectRide);
   else if (screen === "ride-detail") mountRideDetailPage(shell.content, selectedActivityId, () => selectScreen("rides"));
   else if (screen === "world") mountWorldPage(shell.content);
+  else if (screen === "progress") mountProgressPage(shell.content);
   else mountHomePage(shell.content, selectRide);
   shell.content.focus({ preventScroll: true });
 }

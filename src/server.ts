@@ -683,6 +683,14 @@ app.get("/api/player/progress", async (_request, response, next) => {
   }
 });
 
+app.get("/api/player/progress-dashboard", async (_request, response, next) => {
+  try {
+    response.json(await activityRepository.getProgressDashboard());
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.get("/api/jobs/:token", async (request, response) => {
   try {
     const { job } = await loadJob(request.params.token);

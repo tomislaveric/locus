@@ -25,6 +25,8 @@ Single-container POC for turning a FIT ride into collectible game events and an 
   Coin passages and combine them into one chronological highlight video.
 - [Milestone 11.1 — Trailhunt application shell](features/milestone-11-1-trailhunt-application-shell/README.md)
   — establish Figma-derived desktop tokens, application shell, sidebar, and main-content layout while preserving current activity behavior.
+- [Milestone 11.10 — Trailhunt Progress Desktop](features/milestone-11-10-trailhunt-progress-desktop/README.md)
+  — implement the Figma-aligned, canonical-data Progress Desktop without changing progression or Ride terminology.
 - [Milestone 11.2 — Trailhunt Home Desktop](features/milestone-11-2-trailhunt-home-desktop/README.md)
   — implement the real-data-backed Figma Home content surface while retaining the legacy Add Ride workflow.
 - [Milestone 11.3 — Trailhunt Rides Desktop](features/milestone-11-3-trailhunt-rides-desktop/README.md)
@@ -282,3 +284,7 @@ failure does not remove its history or XP.
 - `GET /api/player/progress` returns durable `totalXp` and the derived level
   curve values `level`, `currentLevelXp`, `nextLevelXp`, and
   `progressToNextLevel`.
+- `GET /api/player/progress-dashboard` returns the same canonical player
+  progress together with player-scoped lifetime distance, unique collectible and
+  rare-or-better totals, canonical nearby level thresholds, and the four newest
+  persisted Ride summaries for the Progress Desktop.

@@ -102,6 +102,24 @@ export interface PlayerProgress {
   progressToNextLevel: number;
 }
 
+export interface ProgressLevel {
+  level: number;
+  totalXpRequired: number;
+}
+
+export interface ProgressLifetimeStats {
+  distanceMeters: number;
+  totalCollectibles: number;
+  rareOrBetterCollectibles: number;
+}
+
+export interface ProgressDashboard {
+  progress: PlayerProgress;
+  lifetime: ProgressLifetimeStats;
+  levels: ProgressLevel[];
+  recentRides: ActivityHistoryItem[];
+}
+
 export interface ProgressionResult {
   previousTotalXp: number;
   xpEarned: number;

@@ -199,6 +199,65 @@ describePersistence("ActivityRepository", () => {
     expect(await repository!.listDiscoveredCollectibleSourceIds()).toEqual(["historic-coin"]);
   });
 
+  it("builds a read-only Progress dashboard from canonical persisted aggregates", async () => {
+    const rare = result("a".repeat(48), 25);
+    rare.events[0] = {
+      ...rare.events[0],
+      sourceId: "shared-rare",
+      collectible: { name: "Shared Rare", type: "coin", rarity: "rare" }
+    };
+    const duplicateRare = result("b".repeat(48), 25);
+    duplicateRare.events[0] = {
+      ...duplicateRare.events[0],
+      sourceId: "shared-rare",
+      collectible: { name: "Shared Rare", type: "coin", rarity: "rare" }
+    };
+    const epic = result("c".repeat(48), 25);
+    epic.events[0] = {
+      ...epic.events[0],
+      sourceId: "epic-landmark",
+      collectible: { name: "Epic Landmark", type: "landmark", rarity: "epic" }
+    };
+    const common = result("d".repeat(48), 25);
+    common.events[0] = {
+      ...common.events[0],
+      sourceId: "common-coin",
+      collectible: { name: "Common Coin", type: "coin", rarity: "common" }
+    };
+    const empty = result("e".repeat(48), 25);
+    empty.events = [];
+    empty.collectibles = [];
+    empty.collectedCount = 0;
+    const noDistance = { ...activity("e".repeat(48)), distance: undefined };
+
+    await repository!.persistCompletedActivity(activity("a".repeat(48)), rare);
+    await repository!.persistCompletedActivity(activity("b".repeat(48)), duplicateRare);
+    await repository!.persistCompletedActivity(activity("c".repeat(48)), epic);
+    await repository!.persistCompletedActivity(activity("d".repeat(48)), common);
+    await repository!.persistCompletedActivity(noDistance, empty);
+    const before = await repository!.getProgress();
+
+    const dashboard = await repository!.getProgressDashboard();
+
+    expect(dashboard.progress).toEqual(before);
+    expect(dashboard.lifetime).toEqual({
+      distanceMeters: 49_380,
+      totalCollectibles: 3,
+      rareOrBetterCollectibles: 2
+    });
+    expect(dashboard.levels).toEqual([
+      { level: 1, totalXpRequired: 0 },
+      { level: 2, totalXpRequired: 100 },
+      { level: 3, totalXpRequired: 300 },
+      { level: 4, totalXpRequired: 600 },
+      { level: 5, totalXpRequired: 1_000 }
+    ]);
+    expect(dashboard.recentRides.map((item) => item.id)).toEqual([
+      "e".repeat(48), "d".repeat(48), "c".repeat(48), "b".repeat(48)
+    ]);
+    expect(await repository!.getProgress()).toEqual(before);
+  });
+
   it("rolls back the activity and XP when an event insert fails", async () => {
     const id = "d".repeat(48);
     const invalid = result(id, 30);

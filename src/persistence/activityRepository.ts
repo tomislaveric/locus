@@ -9,10 +9,11 @@ import type {
   ActivityVideoState,
   PersistedActivity,
   PersistedActivityEvent,
+  ProgressDashboard,
   PlayerProgress,
   ReplaySnapshot
 } from "../domain.js";
-import { getLevelProgress } from "../progression.js";
+import { getLevelProgress, getTotalXpRequiredForLevel } from "../progression.js";
 
 interface ActivityRow {
   id: string;
@@ -49,6 +50,12 @@ interface VideoRow {
   render: ActivityVideo["render"] | null;
   output_path: string | null;
   error: string | null;
+}
+
+interface ProgressLifetimeRow {
+  distance_meters: number;
+  total_collectibles: string;
+  rare_or_better_collectibles: string;
 }
 
 const mapActivity = (row: ActivityRow): ActivityHistoryItem => ({
@@ -226,6 +233,61 @@ export class ActivityRepository {
     );
     if (result.rowCount !== 1) throw new Error("Default player does not exist.");
     return getLevelProgress(result.rows[0].total_xp);
+  }
+
+  async getProgressDashboard(): Promise<ProgressDashboard> {
+    const client = await this.pool.connect();
+    try {
+      await client.query("BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY");
+      const progress = await this.getProgressWithClient(client);
+      const lifetimeResult = await client.query<ProgressLifetimeRow>(
+        `SELECT
+           COALESCE((
+             SELECT SUM(distance_meters)
+             FROM activities
+             WHERE player_id = $1
+           ), 0) AS distance_meters,
+           COUNT(DISTINCT events.source_id) AS total_collectibles,
+           COUNT(DISTINCT events.source_id) FILTER (
+             WHERE events.collectible_rarity IN ('rare', 'epic')
+           ) AS rare_or_better_collectibles
+         FROM activity_events AS events
+         INNER JOIN activities ON activities.id = events.activity_id
+         WHERE activities.player_id = $1`,
+        [this.defaultPlayerId]
+      );
+      const recentRidesResult = await client.query<ActivityRow>(
+        `SELECT id, started_at, distance_meters, duration_seconds, xp_earned, collected_count, has_video, replay_snapshot
+         FROM activities
+         WHERE player_id = $1
+         ORDER BY created_at DESC, id DESC
+         LIMIT 4`,
+        [this.defaultPlayerId]
+      );
+      await client.query("COMMIT");
+      const lifetime = lifetimeResult.rows[0];
+      const firstLevel = Math.max(1, progress.level - 2);
+      const lastLevel = progress.level + 3;
+
+      return {
+        progress,
+        lifetime: {
+          distanceMeters: Number(lifetime.distance_meters),
+          totalCollectibles: Number(lifetime.total_collectibles),
+          rareOrBetterCollectibles: Number(lifetime.rare_or_better_collectibles)
+        },
+        levels: Array.from({ length: lastLevel - firstLevel + 1 }, (_, index) => {
+          const level = firstLevel + index;
+          return { level, totalXpRequired: getTotalXpRequiredForLevel(level) };
+        }),
+        recentRides: recentRidesResult.rows.map(mapActivity)
+      };
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 
   async listDiscoveredCollectibleSourceIds(): Promise<string[]> {
