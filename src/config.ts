@@ -30,6 +30,16 @@ const booleanEnv = (name: string, fallback: boolean): boolean => {
   throw new Error(`${name} must be true or false.`);
 };
 
+const optionalUrlEnv = (name: string): string | undefined => {
+  const value = process.env[name]?.trim();
+  if (!value) return undefined;
+  try {
+    return new URL(value).origin;
+  } catch {
+    throw new Error(`${name} must be a valid origin URL.`);
+  }
+};
+
 const uuidEnv = (name: string, fallback: string): string => {
   const value = process.env[name] ?? fallback;
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)) {
@@ -62,5 +72,19 @@ export const config = {
   worldQueryPaddingMeters: decimalEnv("WORLD_QUERY_PADDING_METERS", 500),
   databaseUrl: process.env.DATABASE_URL?.trim(),
   defaultPlayerId: uuidEnv("DEFAULT_PLAYER_ID", "00000000-0000-4000-8000-000000000001"),
-  defaultPlayerName: process.env.DEFAULT_PLAYER_NAME?.trim() || "Local player"
+  defaultPlayerName: process.env.DEFAULT_PLAYER_NAME?.trim() || "Local player",
+  nodeEnv: process.env.NODE_ENV ?? "development",
+  webauthnRpId: process.env.WEBAUTHN_RP_ID?.trim(),
+  webauthnRpName: process.env.WEBAUTHN_RP_NAME?.trim(),
+  webauthnOrigin: optionalUrlEnv("WEBAUTHN_ORIGIN"),
+  devAuthEmail: process.env.DEV_AUTH_EMAIL?.trim().toLowerCase(),
+  devAuthPlayerId: process.env.DEV_AUTH_PLAYER_ID?.trim(),
+  devAuthPlayerName: process.env.DEV_AUTH_PLAYER_NAME?.trim() || "Development player"
 };
+
+if (config.nodeEnv === "production") {
+  if (!config.webauthnRpId || !config.webauthnRpName || !config.webauthnOrigin || !config.webauthnOrigin.startsWith("https://")) {
+    throw new Error("Production requires HTTPS WEBAUTHN_RP_ID, WEBAUTHN_RP_NAME, and WEBAUTHN_ORIGIN.");
+  }
+  if (config.devAuthEmail || config.devAuthPlayerId) throw new Error("Development authentication bootstrap is not allowed in production.");
+}

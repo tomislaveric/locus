@@ -1,5 +1,8 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import express, { type NextFunction, type Request, type Response } from "express";
+import helmet from "helmet";
+import { rateLimit } from "express-rate-limit";
+import type { AuthenticationResponseJSON, RegistrationResponseJSON } from "@simplewebauthn/server";
 import { access, mkdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import multer from "multer";
@@ -22,10 +25,13 @@ import { migrate } from "./persistence/migrate.js";
 import { buildClipIntervals, gpmfStreamIndex, probeDuration, renderSelectedClips } from "./video.js";
 import { getRelevantCollectibles } from "./worldQuery.js";
 import { createWorldSnapshot } from "./world.js";
+import { AuthService, EmailSender, type SessionUser } from "./auth.js";
 
 interface UploadRequest extends Request {
   job?: Job;
   jobDir?: string;
+  user?: SessionUser;
+  sessionToken?: string;
 }
 
 let busy = false;
@@ -33,12 +39,13 @@ let busy = false;
 if (!config.databaseUrl) throw new Error("DATABASE_URL is required.");
 const databasePool = createDatabasePool(config.databaseUrl);
 await migrate(databasePool);
-const activityRepository = new ActivityRepository(
-  databasePool,
-  config.defaultPlayerId,
-  config.defaultPlayerName
-);
-await activityRepository.initializeDefaultPlayer();
+const activityRepository = new ActivityRepository(databasePool);
+const authService = new AuthService(databasePool, {
+  rpId: config.webauthnRpId,
+  rpName: config.webauthnRpName,
+  origin: config.webauthnOrigin,
+  production: config.nodeEnv === "production"
+}, new EmailSender(config.nodeEnv === "production"));
 await activityRepository.markInterruptedActivityVideos();
 
 const jobFile = (directory: string): string => path.join(directory, "job.json");
@@ -53,11 +60,12 @@ const saveJob = async (directory: string, job: Job): Promise<void> => {
 
 const validToken = (token: string): boolean => /^[a-f0-9]{48}$/.test(token);
 
-const loadJob = async (token: string): Promise<{ job: Job; directory: string }> => {
+const loadJob = async (token: string, playerId: string): Promise<{ job: Job; directory: string }> => {
   if (!validToken(token)) throw new UserInputError("Unknown job.");
   const directory = path.join(config.dataDir, token);
   try {
     const job = JSON.parse(await readFile(jobFile(directory), "utf8")) as Job;
+    if (job.playerId !== playerId) throw new UserInputError("Unknown or expired job.");
     return { job, directory };
   } catch {
     throw new UserInputError("Unknown or expired job.");
@@ -106,6 +114,7 @@ const reserveJob = async (request: UploadRequest, response: Response, next: Next
   const directory = path.join(config.dataDir, token);
   const job: Job = {
     token,
+    playerId: request.user!.playerId,
     state: "processing",
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
@@ -131,7 +140,8 @@ const processDetection = async (
   directory: string,
   job: Job,
   hasVideo: boolean,
-  repository: ActivityRepository
+  repository: ActivityRepository,
+  playerId: string
 ): Promise<void> => {
   try {
     const collectibles = await readCollectibles(config.coinsFile);
@@ -147,7 +157,7 @@ const processDetection = async (
       relevantCollectibles: relevantCollectibles.length
     };
     job.resultMode = hasVideo ? "video" : "activity";
-    await repository.persistCompletedActivity(activity, activityResult);
+    await repository.persistCompletedActivity(playerId, activity, activityResult);
 
     if (!hasVideo) {
       job.state = "succeeded";
@@ -217,7 +227,8 @@ const renderSelection = async (
   directory: string,
   job: Job,
   events: MappedGameEvent[],
-  repository: ActivityRepository
+  repository: ActivityRepository,
+  playerId: string
 ): Promise<void> => {
   try {
     if (job.sourceDuration === undefined) throw new UserInputError("Job has no source video duration.");
@@ -234,7 +245,7 @@ const renderSelection = async (
       config.processTimeoutMs,
       hudTimeline
     );
-    await repository.markActivityHasVideo(job.token);
+    await repository.markActivityHasVideo(playerId, job.token);
     job.state = "succeeded";
     job.outputFile = outputFile;
   } catch (error) {
@@ -303,6 +314,7 @@ const attachVideoUrls = (activity: PersistedActivity): PersistedActivity => {
 };
 
 const processAttachedVideo = async (
+  playerId: string,
   activity: PersistedActivity,
   mediaId: string,
   mediaDirectory: string
@@ -322,7 +334,7 @@ const processAttachedVideo = async (
     }).sort((left, right) => left.videoSecond - right.videoSecond);
     const synchronization = withEventAvailability(assessment, replay.activityResult.events.map((event) => event.activityTimestamp));
     if (mappedEvents.length === 0) {
-      await activityRepository.updateActivityVideo(activity.id, {
+      await activityRepository.updateActivityVideo(playerId, activity.id, {
         ...video, mediaId, state: "no_highlights", sourceDuration, synchronization, events: []
       });
       return;
@@ -331,12 +343,12 @@ const processAttachedVideo = async (
       path.join(mediaDirectory, "hud-timeline.json"),
       createHudTimeline(replay.activity.route, replay.activityResult.collectibles, mappedEvents, samples, sourceDuration)
     );
-    await activityRepository.updateActivityVideo(activity.id, {
+    await activityRepository.updateActivityVideo(playerId, activity.id, {
       ...video, mediaId, state: "awaiting_selection", sourceDuration, synchronization, events: mappedEvents
     });
   } catch (error) {
     const synchronization = error instanceof SynchronizationError ? error.summary : undefined;
-    await activityRepository.updateActivityVideo(activity.id, {
+    await activityRepository.updateActivityVideo(playerId, activity.id, {
       ...video, mediaId, state: "sync_failed", synchronization,
       error: error instanceof Error ? error.message : "Unexpected video synchronization failure."
     });
@@ -347,6 +359,7 @@ const processAttachedVideo = async (
 };
 
 const attachUploadedVideo = async (
+  playerId: string,
   activity: PersistedActivity,
   uploaded: Express.Multer.File
 ): Promise<{ video?: ActivityVideo; videoError?: string }> => {
@@ -356,14 +369,14 @@ const attachUploadedVideo = async (
   await mkdir(directory, { recursive: true });
   try {
     await rename(uploaded.path, sourcePath);
-    const video = await activityRepository.createActivityVideo(activity.id, mediaId, uploaded.originalname, sourcePath);
+    const video = await activityRepository.createActivityVideo(playerId, activity.id, mediaId, uploaded.originalname, sourcePath);
     if (busy) {
       const videoError = "Video processing is busy. Attach this video again after the current processing finishes.";
-      await activityRepository.updateActivityVideo(activity.id, { ...video, state: "sync_failed", error: videoError });
+      await activityRepository.updateActivityVideo(playerId, activity.id, { ...video, state: "sync_failed", error: videoError });
       return { video: { ...video, state: "sync_failed", error: videoError }, videoError };
     }
     busy = true;
-    void processAttachedVideo({ ...activity, video }, mediaId, directory);
+    void processAttachedVideo(playerId, { ...activity, video }, mediaId, directory);
     return { video: { ...video, state: "syncing" } };
   } catch (error) {
     await rm(directory, { recursive: true, force: true });
@@ -372,11 +385,12 @@ const attachUploadedVideo = async (
 };
 
 const importActivity = async (
+  playerId: string,
   importKey: string,
   fit: Express.Multer.File,
   uploadedVideo?: Express.Multer.File
 ): Promise<ActivityImportResult> => {
-  const existing = await activityRepository.getActivityByImportKey(importKey);
+  const existing = await activityRepository.getActivityByImportKey(playerId, importKey);
   if (existing) {
     await Promise.all([rm(fit.path, { force: true }), uploadedVideo ? rm(uploadedVideo.path, { force: true }) : Promise.resolve()]);
     return { activity: attachVideoUrls(existing), inserted: false };
@@ -390,12 +404,12 @@ const importActivity = async (
     const activity = deriveActivity(randomUUID(), track);
     const relevantCollectibles = getRelevantCollectibles(collectibles, track, config.worldQueryPaddingMeters);
     const activityResult = deriveActivityResult(activity, relevantCollectibles);
-    const persisted = await activityRepository.persistCompletedActivity(activity, activityResult, importKey);
+    const persisted = await activityRepository.persistCompletedActivity(playerId, activity, activityResult, importKey);
     let importedActivity = persisted.activity;
     let videoError: string | undefined;
     if (persisted.inserted && uploadedVideo) {
       try {
-        const attachment = await attachUploadedVideo(importedActivity, uploadedVideo);
+        const attachment = await attachUploadedVideo(playerId, importedActivity, uploadedVideo);
         if (attachment.video) importedActivity = { ...importedActivity, video: attachment.video };
         videoError = attachment.videoError;
       } catch (error) {
@@ -411,7 +425,7 @@ const importActivity = async (
   }
 };
 
-const renderAttachedVideo = async (activity: PersistedActivity, events: MappedGameEvent[]): Promise<void> => {
+const renderAttachedVideo = async (playerId: string, activity: PersistedActivity, events: MappedGameEvent[]): Promise<void> => {
   const video = activity.video;
   if (!video) return;
   const mediaDirectory = activityMediaDirectory(activity.id, video.mediaId);
@@ -425,12 +439,12 @@ const renderAttachedVideo = async (activity: PersistedActivity, events: MappedGa
       path.join(mediaDirectory, "source.mp4"), outputPath, events, video.sourceDuration, mediaDirectory,
       config.processTimeoutMs, hudTimeline
     );
-    await activityRepository.updateActivityVideo(activity.id, {
+    await activityRepository.updateActivityVideo(playerId, activity.id, {
       ...video, state: "succeeded", selectedSourceIds: events.map((event) => event.sourceId), render
     }, undefined, outputPath);
-    await activityRepository.markActivityHasVideo(activity.id);
+    await activityRepository.markActivityHasVideo(playerId, activity.id);
   } catch (error) {
-    await activityRepository.updateActivityVideo(activity.id, {
+    await activityRepository.updateActivityVideo(playerId, activity.id, {
       ...video, state: "render_failed", error: error instanceof Error ? error.message : "Unexpected highlight rendering failure."
     });
     console.error(`Activity video ${video.mediaId} rendering failed:`, error);
@@ -478,16 +492,167 @@ await cleanExpiredJobs();
 setInterval(() => void cleanExpiredJobs(), Math.min(config.jobTtlMs, 60_000)).unref();
 
 const app = express();
+app.set("trust proxy", 1);
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'"],
+      styleSrc: ["'self'"],
+      styleSrcAttr: ["'unsafe-inline'"],
+      imgSrc: ["'self'", "data:"],
+      connectSrc: ["'self'"],
+      objectSrc: ["'none'"],
+      baseUri: ["'self'"],
+      frameAncestors: ["'none'"]
+    }
+  },
+  hsts: config.nodeEnv === "production" ? { maxAge: 31_536_000, includeSubDomains: true } : false,
+  referrerPolicy: { policy: "same-origin" }
+}));
+app.use(express.json({ limit: "16kb" }));
+
+const cookieValue = (request: Request, name: string): string | undefined => {
+  const encoded = request.headers.cookie?.split(";").map((part) => part.trim()).find((part) => part.startsWith(`${name}=`))?.slice(name.length + 1);
+  return encoded ? decodeURIComponent(encoded) : undefined;
+};
+const sessionCookieName = config.nodeEnv === "production" ? "__Host-session" : "session";
+const expectedOrigin = config.webauthnOrigin ?? "http://localhost:3000";
+const setSession = (response: Response, value: string): void => {
+  response.cookie(sessionCookieName, value, {
+    httpOnly: true, secure: config.nodeEnv === "production", sameSite: "lax", path: "/", maxAge: 30 * 24 * 60 * 60 * 1000
+  });
+};
+const clearSession = (response: Response): void => {
+  response.clearCookie(sessionCookieName, {
+    httpOnly: true, secure: config.nodeEnv === "production", sameSite: "lax", path: "/"
+  });
+};
+const optionalUser = async (request: UploadRequest, _response: Response, next: NextFunction): Promise<void> => {
+  try {
+    request.sessionToken = cookieValue(request, sessionCookieName);
+    request.user = await authService.getSessionUser(request.sessionToken);
+    next();
+  } catch (error) {
+    next(error);
+  }
+};
+const requireUser = (request: UploadRequest, response: Response, next: NextFunction): void => {
+  if (!request.user) {
+    response.status(401).json({ error: "Sign in is required." });
+    return;
+  }
+  next();
+};
+const requirePlayer = requireUser;
+const requireCsrf = (request: UploadRequest, response: Response, next: NextFunction): void => {
+  if (!request.user || request.header("X-CSRF-Token") !== request.user.csrfToken || request.header("Origin") !== expectedOrigin) {
+    response.status(403).json({ error: "The request could not be verified." });
+    return;
+  }
+  next();
+};
+const authLimiter = rateLimit({ windowMs: 10 * 60_000, limit: 20, standardHeaders: "draft-7", legacyHeaders: false });
+
+app.post("/api/auth/register/code", authLimiter, async (request, response, next) => {
+  try {
+    await authService.requestEmailCode(request.body?.email, "register");
+    response.status(202).json({ message: "If the address can receive a code, it will arrive shortly." });
+  } catch (error) { next(error); }
+});
+app.post("/api/auth/register/verify", authLimiter, async (request, response, next) => {
+  try {
+    const session = await authService.register(request.body?.email, request.body?.code);
+    setSession(response, session.sessionToken);
+    response.status(201).json({ user: { email: session.user.email }, csrfToken: session.user.csrfToken, passkeySetupRequired: true });
+  } catch (error) { next(error); }
+});
+app.post("/api/auth/email-code/request", authLimiter, async (request, response, next) => {
+  try {
+    await authService.requestEmailCode(request.body?.email, "login");
+    response.status(202).json({ message: "If the address can receive a code, it will arrive shortly." });
+  } catch (error) { next(error); }
+});
+app.post("/api/auth/email-code/verify", authLimiter, async (request, response, next) => {
+  try {
+    const session = await authService.emailLogin(request.body?.email, request.body?.code);
+    if (session.sessionToken && session.user) setSession(response, session.sessionToken);
+    response.json(session.user ? { authenticated: true, user: { email: session.user.email }, csrfToken: session.user.csrfToken } : { authenticated: false });
+  } catch (error) { next(error); }
+});
+app.post("/api/auth/passkeys/login/options", authLimiter, async (_request, response, next) => {
+  try { response.json(await authService.loginOptions()); } catch (error) { next(error); }
+});
+app.post("/api/auth/passkeys/login/verify", authLimiter, async (request, response, next) => {
+  try {
+    const session = await authService.verifyLogin(request.body as AuthenticationResponseJSON);
+    setSession(response, session.sessionToken);
+    response.json({ user: { email: session.user.email }, csrfToken: session.user.csrfToken });
+  } catch (error) { next(error); }
+});
+app.use("/api", optionalUser);
+app.get("/api/auth/session", (request: UploadRequest, response) => {
+  response.json(request.user ? { authenticated: true, user: { email: request.user.email }, csrfToken: request.user.csrfToken } : { authenticated: false });
+});
+app.post("/api/auth/logout", requireUser, requireCsrf, async (request: UploadRequest, response, next) => {
+  try { await authService.logout(request.sessionToken); clearSession(response); response.status(204).end(); } catch (error) { next(error); }
+});
+app.post("/api/auth/logout-all", requireUser, requireCsrf, async (request: UploadRequest, response, next) => {
+  try { await authService.logoutAll(request.user!.id); clearSession(response); response.status(204).end(); } catch (error) { next(error); }
+});
+app.post("/api/auth/passkeys/register/options", requireUser, requireCsrf, async (request: UploadRequest, response, next) => {
+  try { response.json(await authService.registrationOptions(request.user!)); } catch (error) { next(error); }
+});
+app.post("/api/auth/passkeys/register/verify", requireUser, requireCsrf, async (request: UploadRequest, response, next) => {
+  try { await authService.verifyRegistration(request.user!, request.body as RegistrationResponseJSON, request.body?.name); response.status(204).end(); } catch (error) { next(error); }
+});
+app.get("/api/auth/passkeys", requireUser, async (request: UploadRequest, response, next) => {
+  try { response.json(await authService.listPasskeys(request.user!.id)); } catch (error) { next(error); }
+});
+app.delete("/api/auth/passkeys/:id", requireUser, requireCsrf, async (request: UploadRequest, response, next) => {
+  try { await authService.deletePasskey(request.user!, String(request.params.id)); response.status(204).end(); } catch (error) { next(error); }
+});
+app.post("/api/auth/step-up/email/request", requireUser, requireCsrf, authLimiter, async (request: UploadRequest, response, next) => {
+  try {
+    await authService.requestEmailCode(request.user!.email, "step_up");
+    response.status(202).json({ message: "A verification code has been sent." });
+  } catch (error) { next(error); }
+});
+app.post("/api/auth/step-up/email/verify", requireUser, requireCsrf, authLimiter, async (request: UploadRequest, response, next) => {
+  try {
+    await authService.verifyStepUp(request.user!, request.sessionToken!, request.body?.code);
+    response.status(204).end();
+  } catch (error) { next(error); }
+});
+app.get("/api/account/export", requireUser, async (request: UploadRequest, response, next) => {
+  try {
+    if (!authService.isFreshStepUp(request.user!)) throw new UserInputError("Recent step-up authentication is required.");
+    response.attachment("trailhunt-account-export.json").json(await authService.exportAccount(request.user!));
+  } catch (error) { next(error); }
+});
+app.post("/api/account/deletion-intent", requireUser, requireCsrf, async (request: UploadRequest, response, next) => {
+  try { response.status(201).json(await authService.createDeletionIntent(request.user!)); } catch (error) { next(error); }
+});
+app.post("/api/account/delete", requireUser, requireCsrf, async (request: UploadRequest, response, next) => {
+  try {
+    const paths = await authService.confirmDeletion(request.user!, request.body?.confirmationToken);
+    await Promise.all(paths.map((mediaPath) => rm(path.dirname(mediaPath), { recursive: true, force: true })));
+    clearSession(response);
+    response.status(204).end();
+  } catch (error) { next(error); }
+});
 app.get("/shared/progression.js", (_request, response) => {
   response.sendFile(path.resolve("dist/progression.js"));
 });
+app.use("/shared/webauthn", express.static(path.resolve("node_modules/@simplewebauthn/browser/esm")));
 app.use(express.static(path.resolve("public")));
-app.use(express.json({ limit: "16kb" }));
 
 app.post(
   "/api/activities/import",
+  requirePlayer,
+  requireCsrf,
   importUpload.fields([{ name: "fit", maxCount: 1 }, { name: "video", maxCount: 1 }]),
-  async (request, response, next) => {
+  async (request: UploadRequest, response, next) => {
     const files = request.files as Record<string, Express.Multer.File[]> | undefined;
     const fit = files?.fit?.[0];
     const video = files?.video?.[0];
@@ -502,7 +667,7 @@ app.post(
       return;
     }
     try {
-      response.status(201).json(await importActivity(importKey, fit, video));
+      response.status(201).json(await importActivity(request.user!.playerId, importKey, fit, video));
     } catch (error) {
       await Promise.all([rm(fit.path, { force: true }), video ? rm(video.path, { force: true }) : Promise.resolve()]);
       next(error);
@@ -512,6 +677,8 @@ app.post(
 
 app.post(
   "/api/jobs",
+  requirePlayer,
+  requireCsrf,
   reserveJob,
   upload.fields([{ name: "fit", maxCount: 1 }, { name: "video", maxCount: 1 }]),
   async (request: UploadRequest, response, next) => {
@@ -521,13 +688,13 @@ app.post(
       response.status(400).json({ error: "One FIT file is required." });
       return;
     }
-    void processDetection(request.jobDir, request.job, Boolean(files.video?.[0]), activityRepository);
+    void processDetection(request.jobDir, request.job, Boolean(files.video?.[0]), activityRepository, request.user!.playerId);
     response.status(202).json({ token: request.job.token });
     next();
   }
 );
 
-app.post("/api/activities/:id/video", lateVideoUpload.single("video"), async (request, response, next) => {
+app.post("/api/activities/:id/video", requirePlayer, requireCsrf, lateVideoUpload.single("video"), async (request: UploadRequest, response, next) => {
   const uploaded = request.file;
   try {
     if (!uploaded) throw new UserInputError("One video file is required.");
@@ -536,7 +703,7 @@ app.post("/api/activities/:id/video", lateVideoUpload.single("video"), async (re
       await rm(uploaded.path, { force: true });
       return;
     }
-    const activity = await activityRepository.getActivity(String(request.params.id));
+    const activity = await activityRepository.getActivity(request.user!.playerId, String(request.params.id));
     if (!activity) {
       await rm(uploaded.path, { force: true });
       response.status(404).json({ error: "Activity not found." });
@@ -552,9 +719,9 @@ app.post("/api/activities/:id/video", lateVideoUpload.single("video"), async (re
     const sourcePath = path.join(directory, "source.mp4");
     await mkdir(directory, { recursive: true });
     await rename(uploaded.path, sourcePath);
-    const video = await activityRepository.createActivityVideo(activity.id, mediaId, uploaded.originalname, sourcePath);
+    const video = await activityRepository.createActivityVideo(request.user!.playerId, activity.id, mediaId, uploaded.originalname, sourcePath);
     busy = true;
-    void processAttachedVideo({ ...activity, video }, mediaId, directory);
+    void processAttachedVideo(request.user!.playerId, { ...activity, video }, mediaId, directory);
     response.status(202).json({ activityId: activity.id, video: { ...video, state: "syncing" } });
   } catch (error) {
     if (uploaded) await rm(uploaded.path, { force: true });
@@ -566,19 +733,19 @@ app.post("/api/activities/:id/video", lateVideoUpload.single("video"), async (re
   }
 });
 
-app.get("/api/activities", async (_request, response, next) => {
+app.get("/api/activities", requirePlayer, async (request: UploadRequest, response, next) => {
   try {
-    response.json(await activityRepository.listActivities());
+    response.json(await activityRepository.listActivities(request.user!.playerId));
   } catch (error) {
     next(error);
   }
 });
 
-app.get("/api/world", async (_request, response, next) => {
+app.get("/api/world", requirePlayer, async (request: UploadRequest, response, next) => {
   try {
     const [collectibles, discoveredSourceIds] = await Promise.all([
       readCollectibles(config.coinsFile),
-      activityRepository.listDiscoveredCollectibleSourceIds()
+      activityRepository.listDiscoveredCollectibleSourceIds(request.user!.playerId)
     ]);
     response.json(createWorldSnapshot(collectibles, discoveredSourceIds));
   } catch (error) {
@@ -586,9 +753,9 @@ app.get("/api/world", async (_request, response, next) => {
   }
 });
 
-app.get("/api/activities/:id", async (request, response, next) => {
+app.get("/api/activities/:id", requirePlayer, async (request: UploadRequest, response, next) => {
   try {
-    const activity = await activityRepository.getActivity(String(request.params.id));
+    const activity = await activityRepository.getActivity(request.user!.playerId, String(request.params.id));
     if (!activity) {
       response.status(404).json({ error: "Activity not found." });
       return;
@@ -599,9 +766,9 @@ app.get("/api/activities/:id", async (request, response, next) => {
   }
 });
 
-app.post("/api/activities/:id/video/render", async (request, response) => {
+app.post("/api/activities/:id/video/render", requirePlayer, requireCsrf, async (request: UploadRequest, response) => {
   try {
-    const activity = await activityRepository.getActivity(String(request.params.id));
+    const activity = await activityRepository.getActivity(request.user!.playerId, String(request.params.id));
     if (!activity?.video) {
       response.status(404).json({ error: "Activity video not found." });
       return;
@@ -624,8 +791,8 @@ app.post("/api/activities/:id/video/render", async (request, response) => {
     }
     busy = true;
     const video = { ...activity.video, state: "rendering" as const, selectedSourceIds: events.map((event) => event.sourceId) };
-    await activityRepository.updateActivityVideo(activity.id, video);
-    void renderAttachedVideo({ ...activity, video }, events);
+    await activityRepository.updateActivityVideo(request.user!.playerId, activity.id, video);
+    void renderAttachedVideo(request.user!.playerId, { ...activity, video }, events);
     response.status(202).json({ activityId: activity.id, video });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Could not render selected clips.";
@@ -633,9 +800,9 @@ app.post("/api/activities/:id/video/render", async (request, response) => {
   }
 });
 
-app.delete("/api/activities/:id/video", async (request, response, next) => {
+app.delete("/api/activities/:id/video", requirePlayer, requireCsrf, async (request: UploadRequest, response, next) => {
   try {
-    const sourcePath = await activityRepository.removeRetryableActivityVideo(String(request.params.id));
+    const sourcePath = await activityRepository.removeRetryableActivityVideo(request.user!.playerId, String(request.params.id));
     if (!sourcePath) {
       response.status(409).json({ error: "Only an unavailable video can be cleared for another upload." });
       return;
@@ -647,9 +814,9 @@ app.delete("/api/activities/:id/video", async (request, response, next) => {
   }
 });
 
-app.get("/api/activities/:id/video/preview", async (request, response) => {
+app.get("/api/activities/:id/video/preview", requirePlayer, async (request: UploadRequest, response) => {
   try {
-    const paths = await activityRepository.getActivityVideoPaths(String(request.params.id));
+    const paths = await activityRepository.getActivityVideoPaths(request.user!.playerId, String(request.params.id));
     if (!paths?.outputPath) {
       response.status(409).json({ error: "Highlights are not ready." });
       return;
@@ -661,9 +828,9 @@ app.get("/api/activities/:id/video/preview", async (request, response) => {
   }
 });
 
-app.get("/api/activities/:id/video/download", async (request, response) => {
+app.get("/api/activities/:id/video/download", requirePlayer, async (request: UploadRequest, response) => {
   try {
-    const paths = await activityRepository.getActivityVideoPaths(String(request.params.id));
+    const paths = await activityRepository.getActivityVideoPaths(request.user!.playerId, String(request.params.id));
     if (!paths?.outputPath) {
       response.status(409).json({ error: "Highlights are not ready." });
       return;
@@ -675,25 +842,25 @@ app.get("/api/activities/:id/video/download", async (request, response) => {
   }
 });
 
-app.get("/api/player/progress", async (_request, response, next) => {
+app.get("/api/player/progress", requirePlayer, async (request: UploadRequest, response, next) => {
   try {
-    response.json(await activityRepository.getProgress());
+    response.json(await activityRepository.getProgress(request.user!.playerId));
   } catch (error) {
     next(error);
   }
 });
 
-app.get("/api/player/progress-dashboard", async (_request, response, next) => {
+app.get("/api/player/progress-dashboard", requirePlayer, async (request: UploadRequest, response, next) => {
   try {
-    response.json(await activityRepository.getProgressDashboard());
+    response.json(await activityRepository.getProgressDashboard(request.user!.playerId));
   } catch (error) {
     next(error);
   }
 });
 
-app.get("/api/jobs/:token", async (request, response) => {
+app.get("/api/jobs/:token", requirePlayer, async (request: UploadRequest, response) => {
   try {
-    const { job } = await loadJob(request.params.token);
+    const { job } = await loadJob(String(request.params.token), request.user!.playerId);
     response.json({
       token: job.token,
       state: job.state,
@@ -711,9 +878,9 @@ app.get("/api/jobs/:token", async (request, response) => {
   }
 });
 
-app.get("/api/jobs/:token/activity", async (request, response) => {
+app.get("/api/jobs/:token/activity", requirePlayer, async (request: UploadRequest, response) => {
   try {
-    const { job } = await loadJob(request.params.token);
+    const { job } = await loadJob(String(request.params.token), request.user!.playerId);
     if (!job.activity || !job.activityResult || job.state === "processing") {
       response.status(409).json({ error: "Activity results are not ready." });
       return;
@@ -724,9 +891,9 @@ app.get("/api/jobs/:token/activity", async (request, response) => {
   }
 });
 
-app.post("/api/jobs/:token/render", async (request, response) => {
+app.post("/api/jobs/:token/render", requirePlayer, requireCsrf, async (request: UploadRequest, response) => {
   try {
-    const { job, directory } = await loadJob(request.params.token);
+    const { job, directory } = await loadJob(String(request.params.token), request.user!.playerId);
     if (job.state !== "awaiting_selection") {
       response.status(409).json({ error: "This job is not ready for selection rendering." });
       return;
@@ -754,7 +921,7 @@ app.post("/api/jobs/:token/render", async (request, response) => {
       busy = false;
       throw error;
     }
-    void renderSelection(directory, job, events, activityRepository);
+    void renderSelection(directory, job, events, activityRepository, request.user!.playerId);
     response.status(202).json({ token: job.token, state: job.state });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Could not render the selected clips.";
@@ -762,9 +929,9 @@ app.post("/api/jobs/:token/render", async (request, response) => {
   }
 });
 
-app.get("/api/jobs/:token/download", async (request, response) => {
+app.get("/api/jobs/:token/download", requirePlayer, async (request: UploadRequest, response) => {
   try {
-    const { job, directory } = await loadJob(request.params.token);
+    const { job, directory } = await loadJob(String(request.params.token), request.user!.playerId);
     if (job.state !== "succeeded" || !job.outputFile) {
       response.status(409).json({ error: "The clip is not ready." });
       return;

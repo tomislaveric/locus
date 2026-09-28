@@ -102,22 +102,10 @@ const mapVideo = (row: VideoRow): ActivityVideo => ({
 });
 
 export class ActivityRepository {
-  constructor(
-    private readonly pool: Pool,
-    private readonly defaultPlayerId: string,
-    private readonly defaultPlayerName: string
-  ) {}
-
-  async initializeDefaultPlayer(): Promise<void> {
-    await this.pool.query(
-      `INSERT INTO players (id, display_name)
-       VALUES ($1, $2)
-       ON CONFLICT (id) DO UPDATE SET display_name = EXCLUDED.display_name`,
-      [this.defaultPlayerId, this.defaultPlayerName]
-    );
-  }
+  constructor(private readonly pool: Pool) {}
 
   async persistCompletedActivity(
+    playerId: string,
     activity: Activity,
     result: ActivityResult,
     importKey?: string
@@ -134,7 +122,7 @@ export class ActivityRepository {
         RETURNING id, started_at, distance_meters, duration_seconds, xp_earned, collected_count, has_video, replay_snapshot`,
         [
           activity.id,
-          this.defaultPlayerId,
+          playerId,
           activity.source,
           new Date(activity.startedAt),
           activity.distance ?? null,
@@ -148,12 +136,12 @@ export class ActivityRepository {
 
       if (inserted.rowCount === 0) {
         const persisted = await this.getActivityWithClient(
-          client,
+          client, playerId,
           importKey
-            ? await this.getActivityIdByImportKeyWithClient(client, importKey)
+            ? await this.getActivityIdByImportKeyWithClient(client, playerId, importKey)
             : activity.id
         );
-        const progress = await this.getProgressWithClient(client);
+        const progress = await this.getProgressWithClient(client, playerId);
         await client.query("COMMIT");
         return { activity: persisted, progress, inserted: false };
       }
@@ -181,10 +169,10 @@ export class ActivityRepository {
       }
       const player = await client.query<{ total_xp: number }>(
         "UPDATE players SET total_xp = total_xp + $1 WHERE id = $2 RETURNING total_xp",
-        [result.totalPoints, this.defaultPlayerId]
+        [result.totalPoints, playerId]
       );
       if (player.rowCount !== 1) throw new Error("Default player does not exist.");
-      const persisted = await this.getActivityWithClient(client, activity.id);
+      const persisted = await this.getActivityWithClient(client, playerId, activity.id);
       await client.query("COMMIT");
       return { activity: persisted, progress: getLevelProgress(player.rows[0].total_xp), inserted: true };
     } catch (error) {
@@ -195,29 +183,29 @@ export class ActivityRepository {
     }
   }
 
-  async getActivityByImportKey(importKey: string): Promise<PersistedActivity | undefined> {
+  async getActivityByImportKey(playerId: string, importKey: string): Promise<PersistedActivity | undefined> {
     const result = await this.pool.query<{ id: string }>(
       `SELECT id FROM activities
        WHERE player_id = $1 AND source_type = 'fit' AND source_external_id = $2`,
-      [this.defaultPlayerId, importKey]
+      [playerId, importKey]
     );
     if (result.rowCount !== 1) return undefined;
-    return this.getActivity(result.rows[0].id);
+    return this.getActivity(playerId, result.rows[0].id);
   }
 
-  async listActivities(): Promise<ActivityHistoryItem[]> {
+  async listActivities(playerId: string): Promise<ActivityHistoryItem[]> {
     const result = await this.pool.query<ActivityRow>(
       `SELECT id, started_at, distance_meters, duration_seconds, xp_earned, collected_count, has_video, replay_snapshot
        FROM activities WHERE player_id = $1 ORDER BY created_at DESC, id DESC`,
-      [this.defaultPlayerId]
+      [playerId]
     );
     return result.rows.map(mapActivity);
   }
 
-  async getActivity(id: string): Promise<PersistedActivity | undefined> {
+  async getActivity(playerId: string, id: string): Promise<PersistedActivity | undefined> {
     const client = await this.pool.connect();
     try {
-      return await this.getActivityWithClient(client, id);
+      return await this.getActivityWithClient(client, playerId, id);
     } catch (error) {
       if (error instanceof Error && error.message === "Activity not found.") return undefined;
       throw error;
@@ -226,20 +214,20 @@ export class ActivityRepository {
     }
   }
 
-  async getProgress(): Promise<PlayerProgress> {
+  async getProgress(playerId: string): Promise<PlayerProgress> {
     const result = await this.pool.query<{ total_xp: number }>(
       "SELECT total_xp FROM players WHERE id = $1",
-      [this.defaultPlayerId]
+      [playerId]
     );
     if (result.rowCount !== 1) throw new Error("Default player does not exist.");
     return getLevelProgress(result.rows[0].total_xp);
   }
 
-  async getProgressDashboard(): Promise<ProgressDashboard> {
+  async getProgressDashboard(playerId: string): Promise<ProgressDashboard> {
     const client = await this.pool.connect();
     try {
       await client.query("BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY");
-      const progress = await this.getProgressWithClient(client);
+      const progress = await this.getProgressWithClient(client, playerId);
       const lifetimeResult = await client.query<ProgressLifetimeRow>(
         `SELECT
            COALESCE((
@@ -254,7 +242,7 @@ export class ActivityRepository {
          FROM activity_events AS events
          INNER JOIN activities ON activities.id = events.activity_id
          WHERE activities.player_id = $1`,
-        [this.defaultPlayerId]
+        [playerId]
       );
       const recentRidesResult = await client.query<ActivityRow>(
         `SELECT id, started_at, distance_meters, duration_seconds, xp_earned, collected_count, has_video, replay_snapshot
@@ -262,7 +250,7 @@ export class ActivityRepository {
          WHERE player_id = $1
          ORDER BY created_at DESC, id DESC
          LIMIT 4`,
-        [this.defaultPlayerId]
+        [playerId]
       );
       await client.query("COMMIT");
       const lifetime = lifetimeResult.rows[0];
@@ -290,49 +278,49 @@ export class ActivityRepository {
     }
   }
 
-  async listDiscoveredCollectibleSourceIds(): Promise<string[]> {
+  async listDiscoveredCollectibleSourceIds(playerId: string): Promise<string[]> {
     const result = await this.pool.query<{ source_id: string }>(
       `SELECT DISTINCT events.source_id
        FROM activity_events AS events
        INNER JOIN activities ON activities.id = events.activity_id
        WHERE activities.player_id = $1
        ORDER BY events.source_id`,
-      [this.defaultPlayerId]
+      [playerId]
     );
     return result.rows.map((row) => row.source_id);
   }
 
-  async markActivityHasVideo(id: string): Promise<void> {
+  async markActivityHasVideo(playerId: string, id: string): Promise<void> {
     const result = await this.pool.query(
       "UPDATE activities SET has_video = true WHERE id = $1 AND player_id = $2",
-      [id, this.defaultPlayerId]
+      [id, playerId]
     );
     if (result.rowCount !== 1) throw new Error("Persisted activity not found.");
   }
 
-  async createActivityVideo(activityId: string, mediaId: string, sourceFilename: string, sourcePath: string): Promise<ActivityVideo> {
+  async createActivityVideo(playerId: string, activityId: string, mediaId: string, sourceFilename: string, sourcePath: string): Promise<ActivityVideo> {
     const result = await this.pool.query<VideoRow>(
       `INSERT INTO activity_videos (activity_id, media_id, source_filename, source_path, state)
        SELECT id, $2, $3, $4, 'syncing' FROM activities WHERE id = $1 AND player_id = $5
        ON CONFLICT (activity_id) DO NOTHING
        RETURNING media_id, source_filename, state, source_duration, synchronization, mapped_events, selected_source_ids, render, output_path, error`,
-      [activityId, mediaId, sourceFilename, sourcePath, this.defaultPlayerId]
+      [activityId, mediaId, sourceFilename, sourcePath, playerId]
     );
     if (result.rowCount === 1) return mapVideo(result.rows[0]);
-    const activity = await this.getActivity(activityId);
+    const activity = await this.getActivity(playerId, activityId);
     if (!activity) throw new Error("Activity not found.");
     if (activity.video) throw new Error("A video is already attached to this ride. Replacing it is not supported.");
     throw new Error("Could not attach video.");
   }
 
-  async updateActivityVideo(activityId: string, video: ActivityVideo, sourcePath?: string, outputPath?: string): Promise<void> {
+  async updateActivityVideo(playerId: string, activityId: string, video: ActivityVideo, sourcePath?: string, outputPath?: string): Promise<void> {
     const result = await this.pool.query(
       `UPDATE activity_videos SET state = $2, source_duration = $3, synchronization = $4, mapped_events = $5,
        selected_source_ids = $6, render = $7, output_path = COALESCE($8, output_path), error = $9, updated_at = now()
-       WHERE activity_id = $1`,
+       WHERE activity_id = $1 AND EXISTS (SELECT 1 FROM activities WHERE activities.id = activity_videos.activity_id AND activities.player_id = $10)`,
       [activityId, video.state, video.sourceDuration ?? null, video.synchronization ? JSON.stringify(video.synchronization) : null,
         video.events ? JSON.stringify(video.events) : null, video.selectedSourceIds ? JSON.stringify(video.selectedSourceIds) : null,
-        video.render ? JSON.stringify(video.render) : null, outputPath ?? sourcePath ?? null, video.error ?? null]
+        video.render ? JSON.stringify(video.render) : null, outputPath ?? sourcePath ?? null, video.error ?? null, playerId]
     );
     if (result.rowCount !== 1) throw new Error("Activity video not found.");
   }
@@ -347,15 +335,17 @@ export class ActivityRepository {
     );
   }
 
-  async getActivityVideoPaths(activityId: string): Promise<{ sourcePath: string; outputPath?: string } | undefined> {
+  async getActivityVideoPaths(playerId: string, activityId: string): Promise<{ sourcePath: string; outputPath?: string } | undefined> {
     const result = await this.pool.query<{ source_path: string; output_path: string | null }>(
-      "SELECT source_path, output_path FROM activity_videos WHERE activity_id = $1", [activityId]
+      `SELECT source_path, output_path FROM activity_videos
+       INNER JOIN activities ON activities.id = activity_videos.activity_id
+       WHERE activity_id = $1 AND activities.player_id = $2`, [activityId, playerId]
     );
     if (result.rowCount !== 1) return undefined;
     return { sourcePath: result.rows[0].source_path, ...(result.rows[0].output_path ? { outputPath: result.rows[0].output_path } : {}) };
   }
 
-  async removeRetryableActivityVideo(activityId: string): Promise<string | undefined> {
+  async removeRetryableActivityVideo(playerId: string, activityId: string): Promise<string | undefined> {
     const result = await this.pool.query<{ source_path: string }>(
       `DELETE FROM activity_videos AS video
        USING activities
@@ -364,35 +354,35 @@ export class ActivityRepository {
          AND activities.player_id = $2
          AND video.state IN ('sync_failed', 'no_highlights')
        RETURNING video.source_path`,
-      [activityId, this.defaultPlayerId]
+      [activityId, playerId]
     );
     return result.rows[0]?.source_path;
   }
 
-  private async getProgressWithClient(client: PoolClient): Promise<PlayerProgress> {
+  private async getProgressWithClient(client: PoolClient, playerId: string): Promise<PlayerProgress> {
     const result = await client.query<{ total_xp: number }>(
       "SELECT total_xp FROM players WHERE id = $1",
-      [this.defaultPlayerId]
+      [playerId]
     );
     if (result.rowCount !== 1) throw new Error("Default player does not exist.");
     return getLevelProgress(result.rows[0].total_xp);
   }
 
-  private async getActivityIdByImportKeyWithClient(client: PoolClient, importKey: string): Promise<string> {
+  private async getActivityIdByImportKeyWithClient(client: PoolClient, playerId: string, importKey: string): Promise<string> {
     const result = await client.query<{ id: string }>(
       `SELECT id FROM activities
        WHERE player_id = $1 AND source_type = 'fit' AND source_external_id = $2`,
-      [this.defaultPlayerId, importKey]
+      [playerId, importKey]
     );
     if (result.rowCount !== 1) throw new Error("Persisted import not found.");
     return result.rows[0].id;
   }
 
-  private async getActivityWithClient(client: PoolClient, id: string): Promise<PersistedActivity> {
+  private async getActivityWithClient(client: PoolClient, playerId: string, id: string): Promise<PersistedActivity> {
     const activityResult = await client.query<ActivityRow>(
       `SELECT id, started_at, distance_meters, duration_seconds, xp_earned, collected_count, has_video, replay_snapshot
        FROM activities WHERE id = $1 AND player_id = $2`,
-      [id, this.defaultPlayerId]
+      [id, playerId]
     );
     if (activityResult.rowCount !== 1) throw new Error("Activity not found.");
     const events = await client.query<EventRow>(

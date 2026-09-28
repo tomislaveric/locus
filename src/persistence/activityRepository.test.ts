@@ -8,7 +8,7 @@ const databaseUrl = process.env.TEST_DATABASE_URL;
 const describePersistence = databaseUrl ? describe : describe.skip;
 const playerId = "00000000-0000-4000-8000-000000000099";
 const pool = databaseUrl ? createDatabasePool(databaseUrl) : undefined;
-const repository = pool ? new ActivityRepository(pool, playerId, "Persistence test player") : undefined;
+const repository = pool ? new ActivityRepository(pool) : undefined;
 
 const activity = (id: string): Activity => ({
   id,
@@ -56,7 +56,7 @@ describePersistence("ActivityRepository", () => {
   beforeEach(async () => {
     await migrate(pool!);
     await pool!.query("TRUNCATE activity_events, activities, players CASCADE");
-    await repository!.initializeDefaultPlayer();
+    await pool!.query("INSERT INTO players (id, display_name) VALUES ($1, $2)", [playerId, "Persistence test player"]);
   });
 
   afterAll(async () => {
@@ -65,20 +65,20 @@ describePersistence("ActivityRepository", () => {
 
   it("persists snapshots, orders history, and only awards an activity once", async () => {
     const firstId = "a".repeat(48);
-    const first = await repository!.persistCompletedActivity(activity(firstId), result(firstId));
-    const repeated = await repository!.persistCompletedActivity(activity(firstId), result(firstId));
+    const first = await repository!.persistCompletedActivity(playerId, activity(firstId), result(firstId));
+    const repeated = await repository!.persistCompletedActivity(playerId, activity(firstId), result(firstId));
     const secondId = "b".repeat(48);
-    await repository!.persistCompletedActivity(activity(secondId), result(secondId, 0));
+    await repository!.persistCompletedActivity(playerId, activity(secondId), result(secondId, 0));
 
     expect(first.inserted).toBe(true);
     expect(repeated.inserted).toBe(false);
     expect(repeated.progress.totalXp).toBe(25);
-    expect(await repository!.getProgress()).toMatchObject({ totalXp: 25, level: 1 });
-    expect(await repository!.listActivities()).toEqual([
+    expect(await repository!.getProgress(playerId)).toMatchObject({ totalXp: 25, level: 1 });
+    expect(await repository!.listActivities(playerId)).toEqual([
       expect.objectContaining({ id: secondId, xpEarned: 0, hasVideo: false }),
       expect.objectContaining({ id: firstId, distanceMeters: 12_345, durationSeconds: 600, collectedCount: 1 })
     ]);
-    expect(await repository!.getActivity(firstId)).toMatchObject({
+    expect(await repository!.getActivity(playerId, firstId)).toMatchObject({
       id: firstId,
       xpEarned: 25,
       events: [expect.objectContaining({
@@ -100,64 +100,63 @@ describePersistence("ActivityRepository", () => {
     const importKey = "73fa9c8d-2c12-4c11-9bd6-4000f8104001";
     const originalId = "i".repeat(48);
     const retryId = "j".repeat(48);
-    const first = await repository!.persistCompletedActivity(activity(originalId), result(originalId, 40), importKey);
-    const retried = await repository!.persistCompletedActivity(activity(retryId), result(retryId, 40), importKey);
+    const first = await repository!.persistCompletedActivity(playerId, activity(originalId), result(originalId, 40), importKey);
+    const retried = await repository!.persistCompletedActivity(playerId, activity(retryId), result(retryId, 40), importKey);
 
     expect(first.inserted).toBe(true);
     expect(retried.inserted).toBe(false);
     expect(retried.activity.id).toBe(originalId);
-    expect(await repository!.listActivities()).toHaveLength(1);
-    expect(await repository!.getProgress()).toMatchObject({ totalXp: 40 });
-    expect((await repository!.getActivity(originalId))?.events).toHaveLength(1);
+    expect(await repository!.listActivities(playerId)).toHaveLength(1);
+    expect(await repository!.getProgress(playerId)).toMatchObject({ totalXp: 40 });
+    expect((await repository!.getActivity(playerId, originalId))?.events).toHaveLength(1);
   });
 
   it("reconstructs durable state from a new repository and marks video separately", async () => {
     const id = "c".repeat(48);
-    await repository!.persistCompletedActivity(activity(id), result(id, 100));
-    await repository!.markActivityHasVideo(id);
-    const restartedRepository = new ActivityRepository(pool!, playerId, "Persistence test player");
+    await repository!.persistCompletedActivity(playerId, activity(id), result(id, 100));
+    await repository!.markActivityHasVideo(playerId, id);
+    const restartedRepository = new ActivityRepository(pool!);
 
-    expect(await restartedRepository.getProgress()).toMatchObject({
+    expect(await restartedRepository.getProgress(playerId)).toMatchObject({
       totalXp: 100, level: 2, currentLevelXp: 0, nextLevelXp: 200, progressToNextLevel: 0
     });
 
-    expect(await restartedRepository.getActivity(id)).toMatchObject({ hasVideo: true });
+    expect(await restartedRepository.getActivity(playerId, id)).toMatchObject({ hasVideo: true });
   });
 
   it("stores one durable source video per activity without changing activity truth", async () => {
     const id = "v".repeat(48);
-    await repository!.persistCompletedActivity(activity(id), result(id, 100));
-    const initialProgress = await repository!.getProgress();
-    const created = await repository!.createActivityVideo(id, "00000000-0000-4000-8000-000000000123", "source.mp4", "/durable/source.mp4");
-    await repository!.updateActivityVideo(id, {
+    await repository!.persistCompletedActivity(playerId, activity(id), result(id, 100));
+    const initialProgress = await repository!.getProgress(playerId);
+    const created = await repository!.createActivityVideo(playerId, id, "00000000-0000-4000-8000-000000000123", "source.mp4", "/durable/source.mp4");
+    await repository!.updateActivityVideo(playerId, id, {
       ...created,
       state: "sync_failed",
       error: "No GPS5 track was found."
     });
 
-    await expect(repository!.createActivityVideo(
-      id,
+    await expect(repository!.createActivityVideo(playerId, id,
       "00000000-0000-4000-8000-000000000124",
       "replacement.mp4",
       "/durable/replacement.mp4"
     )).rejects.toThrow("already attached");
-    const restartedRepository = new ActivityRepository(pool!, playerId, "Persistence test player");
-    expect(await restartedRepository.getActivity(id)).toMatchObject({
+    const restartedRepository = new ActivityRepository(pool!);
+    expect(await restartedRepository.getActivity(playerId, id)).toMatchObject({
       id,
       xpEarned: 100,
       events: [expect.objectContaining({ sourceId: "historic-coin" })],
       video: { state: "sync_failed", sourceFilename: "source.mp4", error: "No GPS5 track was found." }
     });
-    expect(await restartedRepository.getProgress()).toEqual(initialProgress);
+    expect(await restartedRepository.getProgress(playerId)).toEqual(initialProgress);
   });
 
   it("retains interrupted video work as an explicit durable failure after restart", async () => {
     const id = "r".repeat(48);
-    await repository!.persistCompletedActivity(activity(id), result(id));
-    await repository!.createActivityVideo(id, "00000000-0000-4000-8000-000000000125", "source.mp4", "/durable/source.mp4");
+    await repository!.persistCompletedActivity(playerId, activity(id), result(id));
+    await repository!.createActivityVideo(playerId, id, "00000000-0000-4000-8000-000000000125", "source.mp4", "/durable/source.mp4");
     await repository!.markInterruptedActivityVideos();
 
-    expect((await repository!.getActivity(id))?.video).toMatchObject({
+    expect((await repository!.getActivity(playerId, id))?.video).toMatchObject({
       state: "sync_failed",
       error: "Video processing was interrupted by a server restart."
     });
@@ -165,38 +164,34 @@ describePersistence("ActivityRepository", () => {
 
   it("clears only retryable video media without changing the activity result", async () => {
     const id = "t".repeat(48);
-    await repository!.persistCompletedActivity(activity(id), result(id, 55));
-    const before = await repository!.getProgress();
-    const created = await repository!.createActivityVideo(
-      id,
+    await repository!.persistCompletedActivity(playerId, activity(id), result(id, 55));
+    const before = await repository!.getProgress(playerId);
+    const created = await repository!.createActivityVideo(playerId, id,
       "00000000-0000-4000-8000-000000000126",
       "unmatched.mp4",
       "/durable/unmatched.mp4"
     );
-    await repository!.updateActivityVideo(id, { ...created, state: "no_highlights", events: [] });
+    await repository!.updateActivityVideo(playerId, id, { ...created, state: "no_highlights", events: [] });
 
-    await expect(repository!.removeRetryableActivityVideo(id)).resolves.toBe("/durable/unmatched.mp4");
-    expect(await repository!.getActivity(id)).toMatchObject({
+    await expect(repository!.removeRetryableActivityVideo(playerId, id)).resolves.toBe("/durable/unmatched.mp4");
+    expect(await repository!.getActivity(playerId, id)).toMatchObject({
       id,
       xpEarned: 55,
       events: [expect.objectContaining({ sourceId: "historic-coin" })]
     });
-    expect((await repository!.getActivity(id))?.video).toBeUndefined();
-    expect(await repository!.getProgress()).toEqual(before);
+    expect((await repository!.getActivity(playerId, id))?.video).toBeUndefined();
+    expect(await repository!.getProgress(playerId)).toEqual(before);
   });
 
   it("returns each discovered source ID once for the current player only", async () => {
-    await repository!.persistCompletedActivity(activity("e".repeat(48)), result("e".repeat(48)));
-    await repository!.persistCompletedActivity(activity("f".repeat(48)), result("f".repeat(48)));
-    const otherRepository = new ActivityRepository(
-      pool!,
-      "00000000-0000-4000-8000-000000000098",
-      "Other player"
-    );
-    await otherRepository.initializeDefaultPlayer();
-    await otherRepository.persistCompletedActivity(activity("g".repeat(48)), result("g".repeat(48)));
+    await repository!.persistCompletedActivity(playerId, activity("e".repeat(48)), result("e".repeat(48)));
+    await repository!.persistCompletedActivity(playerId, activity("f".repeat(48)), result("f".repeat(48)));
+    const otherPlayerId = "00000000-0000-4000-8000-000000000098";
+    const otherRepository = new ActivityRepository(pool!);
+    await pool!.query("INSERT INTO players (id, display_name) VALUES ($1, $2)", [otherPlayerId, "Other player"]);
+    await otherRepository.persistCompletedActivity(otherPlayerId, activity("g".repeat(48)), result("g".repeat(48)));
 
-    expect(await repository!.listDiscoveredCollectibleSourceIds()).toEqual(["historic-coin"]);
+    expect(await repository!.listDiscoveredCollectibleSourceIds(playerId)).toEqual(["historic-coin"]);
   });
 
   it("builds a read-only Progress dashboard from canonical persisted aggregates", async () => {
@@ -230,14 +225,14 @@ describePersistence("ActivityRepository", () => {
     empty.collectedCount = 0;
     const noDistance = { ...activity("e".repeat(48)), distance: undefined };
 
-    await repository!.persistCompletedActivity(activity("a".repeat(48)), rare);
-    await repository!.persistCompletedActivity(activity("b".repeat(48)), duplicateRare);
-    await repository!.persistCompletedActivity(activity("c".repeat(48)), epic);
-    await repository!.persistCompletedActivity(activity("d".repeat(48)), common);
-    await repository!.persistCompletedActivity(noDistance, empty);
-    const before = await repository!.getProgress();
+    await repository!.persistCompletedActivity(playerId, activity("a".repeat(48)), rare);
+    await repository!.persistCompletedActivity(playerId, activity("b".repeat(48)), duplicateRare);
+    await repository!.persistCompletedActivity(playerId, activity("c".repeat(48)), epic);
+    await repository!.persistCompletedActivity(playerId, activity("d".repeat(48)), common);
+    await repository!.persistCompletedActivity(playerId, noDistance, empty);
+    const before = await repository!.getProgress(playerId);
 
-    const dashboard = await repository!.getProgressDashboard();
+    const dashboard = await repository!.getProgressDashboard(playerId);
 
     expect(dashboard.progress).toEqual(before);
     expect(dashboard.lifetime).toEqual({
@@ -255,7 +250,7 @@ describePersistence("ActivityRepository", () => {
     expect(dashboard.recentRides.map((item) => item.id)).toEqual([
       "e".repeat(48), "d".repeat(48), "c".repeat(48), "b".repeat(48)
     ]);
-    expect(await repository!.getProgress()).toEqual(before);
+    expect(await repository!.getProgress(playerId)).toEqual(before);
   });
 
   it("rolls back the activity and XP when an event insert fails", async () => {
@@ -263,8 +258,8 @@ describePersistence("ActivityRepository", () => {
     const invalid = result(id, 30);
     invalid.events.push({ ...invalid.events[0], id: "duplicate", value: 5 });
 
-    await expect(repository!.persistCompletedActivity(activity(id), invalid)).rejects.toThrow();
-    expect(await repository!.listActivities()).toEqual([]);
-    expect(await repository!.getProgress()).toMatchObject({ totalXp: 0 });
+    await expect(repository!.persistCompletedActivity(playerId, activity(id), invalid)).rejects.toThrow();
+    expect(await repository!.listActivities(playerId)).toEqual([]);
+    expect(await repository!.getProgress(playerId)).toMatchObject({ totalXp: 0 });
   });
 });

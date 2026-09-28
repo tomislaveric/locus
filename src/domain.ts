@@ -206,6 +206,7 @@ export type JobState = "processing" | "awaiting_selection" | "rendering" | "succ
 
 export interface Job {
   token: string;
+  playerId: string;
   state: JobState;
   createdAt: string;
   updatedAt: string;

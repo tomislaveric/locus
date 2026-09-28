@@ -43,6 +43,8 @@ Single-container POC for turning a FIT ride into collectible game events and an 
   — add a Figma-aligned World browse surface from configured collectibles and persisted discovery truth, without altering collection behavior.
 - [Milestone 11.9 — Trailhunt Add Activity and Attach Video](features/milestone-11-9-trailhunt-add-activity-and-attach-video/README.md)
   — replace legacy activity upload with Figma-aligned, idempotent FIT import and reuse durable activity-scoped video attachment.
+- [Milestone 12 — Identity, Authentication & User Accounts](features/milestone-12-identity-authentication-user-accounts/README.md)
+  — establish passkey-first identity, email-code recovery, server-side sessions, and user-owned player authorization.
 - [Persistent activities player state v1](features/persistent-activities-player-state-v1/README.md)
   — persist compact activity/event history and single-player XP in PostgreSQL
   with transaction-safe exactly-once progression.

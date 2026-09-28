@@ -100,4 +100,107 @@ export const migrations: Migration[] = [{
         CHECK (state IN ('syncing', 'sync_failed', 'no_highlights', 'awaiting_selection', 'rendering', 'succeeded', 'render_failed'));
     `);
   }
+}, {
+  id: "006_users_and_player_ownership",
+  async up(client) {
+    await client.query(`
+      CREATE TABLE users (
+        id UUID PRIMARY KEY,
+        email TEXT NOT NULL UNIQUE CHECK (email = lower(trim(email))),
+        email_verified_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        deleted_at TIMESTAMPTZ
+      );
+      ALTER TABLE players ADD COLUMN user_id UUID REFERENCES users(id);
+      CREATE UNIQUE INDEX players_user_id_unique ON players (user_id) WHERE user_id IS NOT NULL;
+    `);
+  }
+}, {
+  id: "007_auth_credentials_and_sessions",
+  async up(client) {
+    await client.query(`
+      CREATE TABLE passkeys (
+        id UUID PRIMARY KEY,
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        credential_id TEXT NOT NULL UNIQUE,
+        public_key BYTEA NOT NULL,
+        counter BIGINT NOT NULL DEFAULT 0,
+        transports JSONB,
+        device_type TEXT,
+        backed_up BOOLEAN,
+        name TEXT NOT NULL DEFAULT 'Passkey',
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        last_used_at TIMESTAMPTZ
+      );
+      CREATE INDEX passkeys_user_id_index ON passkeys (user_id);
+      CREATE TABLE auth_challenges (
+        id UUID PRIMARY KEY,
+        user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+        purpose TEXT NOT NULL CHECK (purpose IN ('passkey_registration', 'passkey_login', 'step_up')),
+        challenge TEXT NOT NULL UNIQUE,
+        expires_at TIMESTAMPTZ NOT NULL,
+        used_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      );
+      CREATE INDEX auth_challenges_lookup_index ON auth_challenges (challenge, purpose, expires_at);
+      CREATE TABLE email_codes (
+        id UUID PRIMARY KEY,
+        email TEXT NOT NULL,
+        purpose TEXT NOT NULL CHECK (purpose IN ('register', 'login', 'step_up')),
+        code_hash TEXT NOT NULL,
+        attempts INTEGER NOT NULL DEFAULT 0 CHECK (attempts >= 0 AND attempts <= 5),
+        expires_at TIMESTAMPTZ NOT NULL,
+        used_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      );
+      CREATE INDEX email_codes_active_index ON email_codes (email, purpose, expires_at) WHERE used_at IS NULL;
+      CREATE TABLE sessions (
+        id UUID PRIMARY KEY,
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        token_hash TEXT NOT NULL UNIQUE,
+        csrf_token TEXT NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        last_seen_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        expires_at TIMESTAMPTZ NOT NULL,
+        absolute_expires_at TIMESTAMPTZ NOT NULL,
+        revoked_at TIMESTAMPTZ,
+        step_up_at TIMESTAMPTZ
+      );
+      CREATE INDEX sessions_active_token_index ON sessions (token_hash, expires_at) WHERE revoked_at IS NULL;
+      CREATE INDEX sessions_user_id_index ON sessions (user_id) WHERE revoked_at IS NULL;
+      CREATE TABLE security_events (
+        id UUID PRIMARY KEY,
+        user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+        event_type TEXT NOT NULL,
+        success BOOLEAN NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      );
+      CREATE TABLE auth_rate_limits (
+        scope TEXT PRIMARY KEY,
+        count INTEGER NOT NULL,
+        window_started_at TIMESTAMPTZ NOT NULL
+      );
+    `);
+  }
+}, {
+  id: "008_account_lifecycle",
+  async up(client) {
+    await client.query(`
+      CREATE TABLE deletion_intents (
+        id UUID PRIMARY KEY,
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        confirmation_token_hash TEXT NOT NULL UNIQUE,
+        expires_at TIMESTAMPTZ NOT NULL,
+        completed_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      );
+      CREATE TABLE media_cleanup_tasks (
+        id UUID PRIMARY KEY,
+        path TEXT NOT NULL UNIQUE,
+        attempts INTEGER NOT NULL DEFAULT 0,
+        completed_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      );
+    `);
+  }
 }];
