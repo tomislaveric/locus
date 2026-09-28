@@ -73,6 +73,8 @@ describe("Ride detail data transformation", () => {
     expect(page).toContain('aria-selected="true"');
     expect(page).toContain("NO VIDEO ATTACHED");
     expect(page).toContain("ATTACH VIDEO");
+    expect(page).toContain('data-upload-dropzone');
+    expect(page).toContain('name="video"');
   });
 
   it("uses only persisted video values in the completed Video tab", () => {

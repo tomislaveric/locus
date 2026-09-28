@@ -2,15 +2,20 @@ import { ActivityFileUpload } from "./activity-file-upload.js";
 import { ProcessingState } from "./processing-state.js";
 import { UploadError } from "./upload-error.js";
 import { UploadStatus } from "./upload-status.js";
-import { VideoFileUpload } from "./video-file-upload.js";
 import { mountUploadDropzone } from "./upload-dropzone.js";
 
 const importKey = () => crypto.randomUUID();
+export const PROCESSING_STEP_DURATION_MS = 1_000;
 
-const selectedFiles = ({ fit, video }) => `
+const delay = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
+
+const selectedFiles = ({ fit }) => `
   <div class="add-activity-files">
-    <section><p>REQUIRED</p>${ActivityFileUpload(fit)}</section>
-    <section><p>OPTIONAL</p>${VideoFileUpload({ file: video, optional: true })}</section>
+    <section>
+      <p>ACTIVITY</p>
+      <span>Your ride from Garmin, Wahoo, or any FIT-compatible device</span>
+      ${ActivityFileUpload(fit)}
+    </section>
   </div>
 `;
 
@@ -18,19 +23,20 @@ const content = (state) => {
   if (state.complete) {
     return `${UploadStatus({
       title: "Ride Ready",
-      detail: `${state.complete.collectedCount} collectible${state.complete.collectedCount === 1 ? "" : "s"} found along your route · +${state.complete.xpEarned} XP`,
+      detail: `${state.complete.collectedCount} collectible${state.complete.collectedCount === 1 ? "" : "s"} found along your route`,
+      xpEarned: state.complete.xpEarned,
       actionLabel: "VIEW RIDE"
     })}${state.error ? UploadError({ message: `Your ride was saved, but video processing could not start: ${state.error}` }) : ""}`;
   }
-  if (state.processing) return ProcessingState({ state: state.processing });
+  if (state.processing !== undefined) return ProcessingState({ step: state.processing });
   return `
     <header class="add-activity-header">
-      <div><h1 id="add-activity-title">Add Activity</h1><p>Import a FIT file to start discovering</p></div>
+      <div><h1 id="add-activity-title">Add Ride</h1><p>Import a FIT file to start discovering</p></div>
     </header>
     <form class="add-activity-form" novalidate>
       ${selectedFiles(state)}
       ${state.error ? UploadError({ message: state.error }) : ""}
-      <button class="upload-primary-button" type="submit">${state.fit ? "PROCESS ACTIVITY" : "SELECT ACTIVITY FILE"}</button>
+      <button class="upload-primary-button" type="submit">PROCESS RIDE</button>
     </form>
   `;
 };
@@ -42,7 +48,7 @@ export const AddActivityPage = (state = {}) => `
 `;
 
 export const mountAddActivityPage = (mountPoint, onActivityReady) => {
-  const state = { fit: undefined, video: undefined, importKey: importKey(), processing: undefined, error: undefined, complete: undefined };
+  const state = { fit: undefined, importKey: importKey(), processing: undefined, error: undefined, complete: undefined };
   const render = () => {
     mountPoint.innerHTML = AddActivityPage(state);
     if (state.complete) {
@@ -54,7 +60,6 @@ export const mountAddActivityPage = (mountPoint, onActivityReady) => {
       const input = dropzone.querySelector("input");
       mountUploadDropzone(dropzone, (file) => {
         if (input.name === "fit") state.fit = file;
-        else state.video = file;
         state.error = undefined;
         render();
       });
@@ -62,7 +67,6 @@ export const mountAddActivityPage = (mountPoint, onActivityReady) => {
     mountPoint.querySelectorAll("[data-remove-upload]").forEach((button) => {
       button.addEventListener("click", () => {
         if (button.dataset.removeUpload === "ACTIVITY FILE") state.fit = undefined;
-        else state.video = undefined;
         state.error = undefined;
         render();
       });
@@ -74,17 +78,20 @@ export const mountAddActivityPage = (mountPoint, onActivityReady) => {
         render();
         return;
       }
-      state.processing = "processing";
-      render();
       const data = new FormData();
       data.append("fit", state.fit);
-      if (state.video) data.append("video", state.video);
+      const request = fetch("/api/activities/import", {
+        method: "POST",
+        headers: { "Idempotency-Key": state.importKey },
+        body: data
+      });
       try {
-        const response = await fetch("/api/activities/import", {
-          method: "POST",
-          headers: { "Idempotency-Key": state.importKey },
-          body: data
-        });
+        for (let step = 0; step < 4; step += 1) {
+          state.processing = step;
+          render();
+          await delay(PROCESSING_STEP_DURATION_MS);
+        }
+        const response = await request;
         const body = await response.json();
         if (!response.ok) throw new Error(body.error ?? "Unable to import activity.");
         state.complete = body.activity;

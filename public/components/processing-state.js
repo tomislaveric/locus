@@ -1,17 +1,28 @@
-import { UploadProgress } from "./upload-progress.js";
+export const processingSteps = [
+  "Reading GPS route",
+  "Matching collectibles",
+  "Calculating XP",
+  "Building replay"
+];
 
-const labels = {
-  validating: "Validating selected files",
-  uploading: "Uploading files",
-  processing: "Processing activity",
-  persisting: "Saving your ride",
-  syncing: "Synchronizing video"
-};
-
-export const ProcessingState = ({ state }) => `
-  <section class="processing-state">
-    <p>ADD ACTIVITY</p>
-    <h1>${labels[state] ?? "Processing activity"}</h1>
-    ${UploadProgress({ label: "This can take a moment. Progress updates as each stage completes." })}
+export const ProcessingState = ({ step = 0 }) => `
+  <header class="add-activity-header">
+    <div><h1 id="add-activity-title">Add Ride</h1><p>Import a FIT file to start discovering</p></div>
+  </header>
+  <section class="processing-state" aria-labelledby="processing-title" aria-live="polite">
+    <div class="processing-activity-icon" aria-hidden="true"><img src="/assets/add-activity-processing.svg" width="20" height="20" alt=""></div>
+    <div>
+      <h2 id="processing-title">Processing Ride</h2>
+      <p>Discovering collectibles along your route</p>
+    </div>
+    <ol class="processing-steps">
+      ${processingSteps.map((label, index) => {
+        const status = index < step ? "complete" : index === step ? "active" : "pending";
+        return `<li class="is-${status}"${index === step ? ' aria-current="step"' : ""}>
+          <span class="processing-step-icon">${status === "complete" ? '<img src="/assets/add-activity-processing-check.svg" width="10" height="10" alt="">' : ""}</span>
+          <span>${label}</span>
+        </li>`;
+      }).join("")}
+    </ol>
   </section>
 `;

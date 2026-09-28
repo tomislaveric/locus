@@ -6,8 +6,8 @@ export const ActivityFileUpload = (file) => file
   : UploadDropzone({
     id: "activity-file",
     name: "fit",
-    label: "Upload activity",
-    detail: "Choose a FIT file from your device",
+    label: "Drop file here or click",
+    detail: ".fit files supported",
     accept: ".fit,application/octet-stream",
     required: true
   });
