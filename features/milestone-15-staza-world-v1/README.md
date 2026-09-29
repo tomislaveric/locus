@@ -46,7 +46,7 @@ Decisions confirmed while refining the plan:
 | Decision | Choice |
 |---|---|
 | Basemap provider | OpenFreeMap Liberty (`https://tiles.openfreemap.org/styles/liberty`) — keyless, real roads/paths/water/forest/labels — behind an env-configurable abstraction. |
-| Collectible catalog source of truth | Migrated into a PostgreSQL `collectibles` table in this milestone. `coins.json` is demoted to a seed/import source. |
+| Collectible catalog source of truth | Migrated into a PostgreSQL `collectibles` table in this milestone. The curated seed document `fixtures/world-v1-seed.json` is the import source. |
 | World header `Discovered X / Y` counter | Remains a global lifetime counter. Viewport-scoped stats are shown under the map. |
 | Map renderer | MapLibre GL JS, vendored and served from the app origin (CSP keeps `script-src 'self'`). |
 | Geo querying | Plain latitude/longitude bounding-box queries with B-tree indexes. No PostGIS. |
@@ -81,7 +81,7 @@ Not present today: map library, quests, routes, geo tables, create-from-activity
 
 ### Collectible data and persistence today
 
-- Catalog: `coins.json` (path via `COINS_FILE`), validated by `readCollectibles` into
+- Catalog: `fixtures/world-v1-seed.json` (path via `COLLECTIBLE_SEED_FILE`), validated by `readCollectibles` into
   `Collectible { id, name, type, latitude, longitude, radiusMeters, value, rarity?, description? }`.
 - Player history: `activity_events (activity_id, source_id, …)` with
   `UNIQUE (activity_id, source_id)`, joined to `activities.player_id`.
@@ -120,7 +120,7 @@ CREATE INDEX collectibles_bbox_index ON collectibles (latitude, longitude);
   `listWithinBounds(bounds, limit)`, `listByIds(ids)`, and `upsertMany(collectibles)`.
 - `src/coin.ts` keeps its validation logic and becomes the parser used by a new
   idempotent seed command `npm run seed:collectibles` (`src/persistence/seedCollectibles.ts`),
-  which reads `COINS_FILE` and upserts by `id`. Seeding never deletes rows.
+  which reads `COLLECTIBLE_SEED_FILE` and upserts by `id`. Seeding never deletes rows.
   The command accepts an explicit file argument
   (`npm run seed:collectibles -- fixtures/world-v1-seed.json`) and reads either a
   plain collectible array or a seed document of the form
@@ -406,7 +406,7 @@ World:
 - The viewport cap is enforced and reports `truncated`.
 
 Catalog migration:
-- Seeding from `COINS_FILE` is idempotent and upserts by id.
+- Seeding from `COLLECTIBLE_SEED_FILE` is idempotent and upserts by id.
 - Invalid catalog entries are rejected by the existing validation rules.
 - Historical `activity_events` remain readable for collectibles removed from the catalog.
 

@@ -14,7 +14,6 @@ WORKDIR /app
 ENV NODE_ENV=production \
     PORT=3000 \
     DATA_DIR=/data/jobs \
-    COINS_FILE=/data/coins.json \
     MAX_UPLOAD_BYTES=6442450944 \
     JOB_TTL_MS=1800000 \
     SELECTION_TTL_MS=1800000 \

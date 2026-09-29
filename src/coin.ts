@@ -25,9 +25,6 @@ export const readCollectibles = async (file: string): Promise<Collectible[]> => 
   return normalizeCollectibles(parsed);
 };
 
-/** @deprecated Use readCollectibles. This preserves the COINS_FILE compatibility boundary. */
-export const readCoins = readCollectibles;
-
 const types: readonly CollectibleType[] = ["coin", "landmark"];
 const rarities: readonly CollectibleRarity[] = ["common", "rare", "epic"];
 const isFiniteNumber = (value: unknown): value is number => typeof value === "number" && Number.isFinite(value);

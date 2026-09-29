@@ -115,11 +115,11 @@ Requirements: Node.js 22+, PostgreSQL 16+, and FFmpeg/FFprobe with H.264
 (`libx264`) support.
 
 ```bash
-cp coins.json.example coins.json
 npm install
 docker compose up -d postgres
 export DATABASE_URL=postgresql://post_ride_ar:post_ride_ar@localhost:5432/post_ride_ar
 npm run migrate
+npm run seed:collectibles
 npm run build
 npm start
 ```
@@ -167,7 +167,6 @@ printing. Pass `-- --debug` to show diagnostics for passing events too.
 docker build -t post-ride-ar .
 docker run --rm -p 3000:3000 \
   -e DATABASE_URL=postgresql://post_ride_ar:post_ride_ar@host.docker.internal:5432/post_ride_ar \
-  -v "$PWD/coins.json:/data/coins.json:ro" \
   post-ride-ar
 ```
 
@@ -188,18 +187,20 @@ TEST_DATABASE_URL=postgresql://post_ride_ar:post_ride_ar@localhost:5432/post_rid
 - **FIT:** Must contain at least two time-stamped GPS trackpoints.
 - **MP4 (optional):** To generate highlights, use an original GoPro chapter copied directly from the camera. QuickTime trimming, re-encoding, or export removes the required `gpmd` GPMF metadata track.
 - **Telemetry:** This POC supports **GPS5** only. The correct GoPro chapter must cover the FIT coin-passage time.
-- **Collectibles:** `coins.json` remains the default compatibility filename and
-  contains a nonempty list of unique Collectibles. Legacy entries with `id`,
+- **Collectibles:** The curated catalog lives in the PostgreSQL `collectibles`
+  table. `fixtures/world-v1-seed.json` is the default seed document: run
+  `npm run seed:collectibles` to upsert its collectibles by `id` and publish its
+  curated quests (seeding never deletes rows). Pass a file explicitly, for
+  example `npm run seed:collectibles -- fixtures/other-world.json`, or set
+  `COLLECTIBLE_SEED_FILE` to change the default. A seed document holds a
+  `collectibles` list, an optional `curator`, and optional `quests`; a plain
+  nonempty list of Collectibles is also accepted. Legacy entries with `id`,
   `latitude`, `longitude`, `radius_m`, and `value` normalize to a `coin` named
   after its ID. Rich entries may additionally set a nonblank `name`, `type`
   (`coin` or `landmark`), optional `rarity` (`common`, `rare`, or `epic`), and
   optional nonblank `description`. Coordinates must be finite and in range,
-  `radius_m` must be positive, and `value` must be finite and nonnegative.
-  Since Milestone 15 the catalog lives in the PostgreSQL `collectibles` table and
-  the file is a seed source: run `npm run seed:collectibles` to upsert it by `id`
-  (seeding never deletes rows). Pass a file explicitly to seed a curated world,
-  for example `npm run seed:collectibles -- fixtures/world-v1-seed.json`, which
-  also publishes that fixture's curated quests.
+  `radius_m` must be positive, `value` must be finite and nonnegative, and ids
+  must be unique.
 
 The app derives the event in three steps:
 

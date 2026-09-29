@@ -85,7 +85,7 @@ const seedQuests = async (pool: Pool, curatorId: string, quests: SeedQuest[]): P
   return quests.length;
 };
 
-const file = process.argv[2] ?? config.coinsFile;
+const file = process.argv[2] ?? config.collectibleSeedFile;
 
 if (!config.databaseUrl) throw new Error("DATABASE_URL is required.");
 

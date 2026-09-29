@@ -6,8 +6,8 @@ import { readCollectibles } from "./coin.js";
 import { UserInputError } from "./errors.js";
 
 const writeConfig = async (contents: unknown): Promise<string> => {
-  const directory = await mkdtemp(path.join(tmpdir(), "post-ride-ar-coins-"));
-  const file = path.join(directory, "coins.json");
+  const directory = await mkdtemp(path.join(tmpdir(), "post-ride-ar-collectibles-"));
+  const file = path.join(directory, "collectibles.json");
   await writeFile(file, JSON.stringify(contents));
   return file;
 };
