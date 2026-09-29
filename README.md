@@ -74,6 +74,9 @@ Single-container POC for turning a FIT ride into collectible game events and an 
 - [Route-Relevant World Query V1](features/route-relevant-world-query-v1/README.md)
   — cheaply limit the configured world to the padded geographic region around an
   activity route before existing precise collectible detection and presentation.
+- [Shared Staza Map Foundation](features/shared-staza-map-foundation/README.md)
+  — unify World and Activity Detail on one MapLibre Staza map foundation and
+  rebuild the Ride Detail replay natively on shared basemap, theme, and layers.
 - [Synchronization diagnostics](features/synchronization-diagnostics/README.md)
   — make FIT/GPS5 synchronization failures explicit and operationally visible.
 - [World Collectible Domain Model V1](features/world-collectible-domain-model-v1/README.md)

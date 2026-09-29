@@ -108,7 +108,7 @@ export const HomeRecentActivity = (activity) => {
           </div>
           <div class="home-earned"><span>XP EARNED</span><strong>+${formatNumber(activity.xpEarned)}</strong></div>
         </header>
-        ${replay ? Replay({ canvasLabel: "Recent activity route", className: "home-activity-replay", height: 170 }) : ""}
+        ${replay ? ReplayStill({ canvasLabel: "Recent activity route", className: "home-activity-replay" }) : ""}
         <div class="home-activity-details">${details.map((detail) => `<span>${escapeHtml(detail)}</span>`).join("<i aria-hidden=\"true\">·</i>")}</div>
         ${activity.events?.length ? `<div class="home-found"><span>FOUND</span><ul>${foundItems(activity.events)}</ul></div>` : '<p class="home-no-finds">No collectibles were recorded on this activity.</p>'}
       </button>
@@ -144,12 +144,8 @@ export const mountHomePage = async (mountPoint, onSelectActivity) => {
     mountPoint.innerHTML = HomePage(model);
     const replay = replayForHome(model.latest);
     if (replay) {
-      mountReplay({
-        canvas: mountPoint.querySelector(".home-activity-replay .activity-replay-canvas"),
-        activity: replay.activity,
-        activityResult: replay.activityResult,
-        staticRoute: true
-      });
+      const basemap = await fetch("/api/world/basemap").then(responseJson).catch(() => undefined);
+      mountReplayStillCard(mountPoint.querySelector(".home-activity-card"), replay, basemap);
     }
     mountPoint.querySelector("[data-activity-id]")?.addEventListener("click", () => {
       onSelectActivity?.(model.latest.id);
@@ -158,5 +154,4 @@ export const mountHomePage = async (mountPoint, onSelectActivity) => {
     mountPoint.innerHTML = `<section class="home-page"><p class="home-load-error" role="alert">Unable to load Home: ${escapeHtml(error.message)}</p></section>`;
   }
 };
-import { mountReplay } from "../replay.js";
-import { Replay } from "./replay-tab.js";
+import { ReplayStill, mountReplayStillCard } from "./replay-tab.js";

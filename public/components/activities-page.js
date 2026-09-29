@@ -95,7 +95,7 @@ export const ActivityMeta = (activity) => {
 export const ActivityCard = (activity) => `
   <button class="activity-card" type="button" data-activity-id="${escapeHtml(activity.id)}" aria-label="View activity from ${escapeHtml(formatActivityDate(activity.startedAt))}">
     <div class="activity-card-main">
-      ${replayForActivity(activity) ? Replay({ canvasLabel: "Route for activity from " + formatActivityDate(activity.startedAt), className: "activity-card-replay", height: 122, width: 100 }) : ""}
+      ${replayForActivity(activity) ? ReplayStill({ canvasLabel: "Route for activity from " + formatActivityDate(activity.startedAt), className: "activity-card-replay" }) : ""}
       <div class="activity-card-content">${ActivityMeta(activity)}</div>
     </div>
   </button>
@@ -141,15 +141,11 @@ export const mountActivitiesPage = async (mountPoint, onSelectActivity) => {
     })));
     const model = activitiesViewModel(activities);
     mountPoint.innerHTML = ActivitiesPage(model);
+    const basemap = await fetch("/api/world/basemap").then(responseJson).catch(() => undefined);
     mountPoint.querySelectorAll(".activity-card").forEach((card) => {
       const replay = replayForActivity(model.activities.find((activity) => activity.id === card.dataset.activityId));
       if (!replay) return;
-      mountReplay({
-        canvas: card.querySelector(".activity-card-replay .activity-replay-canvas"),
-        activity: replay.activity,
-        activityResult: replay.activityResult,
-        staticRoute: true
-      });
+      mountReplayStillCard(card, replay, basemap);
     });
     mountPoint.querySelector(".activity-list")?.addEventListener("click", (event) => {
       const card = event.target.closest("[data-activity-id]");
@@ -159,5 +155,4 @@ export const mountActivitiesPage = async (mountPoint, onSelectActivity) => {
     mountPoint.innerHTML = `<section class="activities-page"><p class="activities-load-error" role="alert">Unable to load activities: ${escapeHtml(error.message)}</p></section>`;
   }
 };
-import { mountReplay } from "../replay.js";
-import { Replay } from "./replay-tab.js";
+import { mountReplayStillCard, ReplayStill } from "./replay-tab.js";

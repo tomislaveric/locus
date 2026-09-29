@@ -38,7 +38,8 @@ describe("Activities data transformation", () => {
       }
     };
 
-    expect(ActivityCard(activity)).toContain('class="activity-replay activity-card-replay"');
+    expect(ActivityCard(activity)).toContain('class="activity-replay-still activity-card-replay"');
+    expect(ActivityCard(activity)).toContain('data-replay-still');
     expect(ActivityCard(activity)).toContain('class="rarity-rare"');
     expect(ActivityCard(activity)).not.toContain("Castle Gate");
     expect(ActivityCard(activity)).not.toContain("activity-found");

@@ -46,25 +46,25 @@
 .world-map { background: var(--world-map-surface); height: 100%; width: 100%; }
 
 /* MapLibre chrome restyled to match Staza surfaces; attribution stays readable. */
-.world-map .maplibregl-ctrl-attrib {
+.staza-map .maplibregl-ctrl-attrib {
   background: rgb(11 12 15 / 82%);
   border-radius: 6px;
   color: var(--text-muted);
   font-family: var(--font-body);
   font-size: 10px;
 }
-.world-map .maplibregl-ctrl-attrib a { color: var(--text-muted); }
-.world-map .maplibregl-ctrl-attrib-button { filter: invert(1) opacity(.55); }
-.world-map .maplibregl-ctrl-group {
+.staza-map .maplibregl-ctrl-attrib a { color: var(--text-muted); }
+.staza-map .maplibregl-ctrl-attrib-button { filter: invert(1) opacity(.55); }
+.staza-map .maplibregl-ctrl-group {
   background: rgb(11 12 15 / 90%);
   border: 1px solid var(--border-faint);
   border-radius: 8px;
   box-shadow: none;
 }
-.world-map .maplibregl-ctrl-group button + button { border-top: 1px solid var(--border-faint); }
-.world-map .maplibregl-ctrl-group button .maplibregl-ctrl-icon { filter: invert(1) opacity(.6); }
-.world-map .maplibregl-ctrl-group button:hover { background: rgb(255 255 255 / 6%); }
-.world-map .maplibregl-ctrl-group button:hover .maplibregl-ctrl-icon { filter: invert(1) opacity(.9); }
+.staza-map .maplibregl-ctrl-group button + button { border-top: 1px solid var(--border-faint); }
+.staza-map .maplibregl-ctrl-group button .maplibregl-ctrl-icon { filter: invert(1) opacity(.6); }
+.staza-map .maplibregl-ctrl-group button:hover { background: rgb(255 255 255 / 6%); }
+.staza-map .maplibregl-ctrl-group button:hover .maplibregl-ctrl-icon { filter: invert(1) opacity(.9); }
 
 .world-locate {
   background: rgb(11 12 15 / 90%);

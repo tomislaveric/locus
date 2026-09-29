@@ -76,7 +76,7 @@ export const WorldPage = ({ lifetime, activeFilter }) => `
     </header>
     ${WorldFilterTabs(activeFilter)}
     <div class="world-map-shell">
-      <div class="world-map" data-world-map></div>
+      <div class="world-map staza-map" data-world-map></div>
       ${WorldLegend()}
       <ul class="world-collectible-list" aria-label="Collectibles on the map" data-world-collectible-list></ul>
       <button class="world-locate" type="button" data-world-locate>LOCATE ME</button>

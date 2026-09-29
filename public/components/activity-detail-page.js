@@ -86,12 +86,20 @@ export const mountActivityDetailPage = async (mountPoint, activityId, onBack) =>
       fetch(`/api/activities/${encodeURIComponent(activityId)}`).then(responseJson),
       fetch("/api/player/progress").then(responseJson)
     ]);
+    let basemap;
+    const loadBasemap = async () => {
+      if (!basemap) basemap = await fetch("/api/world/basemap").then(responseJson).catch(() => undefined);
+      return basemap;
+    };
     let activity = loadedActivity;
     let selectedTab = "replay";
     let polling;
+    let disposeReplay;
     const render = (tab) => {
       selectedTab = tab;
       clearTimeout(polling);
+      disposeReplay?.();
+      disposeReplay = undefined;
       mountPoint.innerHTML = ActivityDetailPage(activity, progress, selectedTab);
       mountPoint.querySelector(".activity-detail-back").addEventListener("click", onBack);
       mountPoint.querySelector("[data-create-quest]")?.addEventListener("click", () => void openQuestEditor());
@@ -99,7 +107,11 @@ export const mountActivityDetailPage = async (mountPoint, activityId, onBack) =>
         tab.addEventListener("click", () => render(tab.dataset.rideTab));
       });
       const replay = replayInputs(activity);
-      if (selectedTab === "replay" && replay) mountReplayTab(mountPoint, replay);
+      if (selectedTab === "replay" && replay) {
+        void loadBasemap().then((config) => {
+          if (selectedTab === "replay") disposeReplay = mountReplayTab(mountPoint, replay, config);
+        });
+      }
       if (selectedTab === "video") {
         mountVideoTab(mountPoint, activity, (updatedActivity) => {
           activity = updatedActivity;

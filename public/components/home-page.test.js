@@ -31,7 +31,8 @@ describe("Home data transformation", () => {
       }
     };
 
-    expect(HomeRecentActivity(activity)).toContain('class="activity-replay home-activity-replay"');
+    expect(HomeRecentActivity(activity)).toContain('class="activity-replay-still home-activity-replay"');
+    expect(HomeRecentActivity(activity)).toContain("data-replay-still");
     expect(HomeRecentActivity(activity)).not.toContain("activity-replay-play");
     expect(HomeRecentActivity(activity)).toContain('data-activity-id="latest"');
   });

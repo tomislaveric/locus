@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   bindCollectibleInteractions,
+  COLLECTIBLE_ACTIVITY_COLLECTED_LAYER,
   COLLECTIBLE_LAYER,
   COLLECTIBLE_SELECTED_GLOW_LAYER,
   COLLECTIBLE_SELECTED_LAYER,
@@ -46,6 +47,7 @@ describe("collectible source and layers", () => {
     expect(map.getSource(COLLECTIBLE_SOURCE).promoteId).toBe("id");
     expect(map.layers.map((layer) => layer.id)).toEqual([
       COLLECTIBLE_LAYER,
+      COLLECTIBLE_ACTIVITY_COLLECTED_LAYER,
       COLLECTIBLE_SELECTED_GLOW_LAYER,
       COLLECTIBLE_SELECTED_LAYER
     ]);
@@ -69,7 +71,12 @@ describe("collectible source and layers", () => {
     ensureCollectibleLayers(map);
 
     const { paint } = map.getLayer(COLLECTIBLE_LAYER);
-    expect(paint["circle-color"]).toEqual(["case", ["get", "visited"], "#e8b80a", "#171a20"]);
+    expect(paint["circle-color"]).toEqual([
+      "case",
+      ["any", ["get", "visited"], ["==", ["get", "activityCollected"], true]],
+      "#e8b80a",
+      "#171a20"
+    ]);
     const stroke = JSON.stringify(paint["circle-stroke-color"]);
     expect(stroke).toContain("#4d9de0");
     expect(stroke).toContain("#9b6ddf");
@@ -113,7 +120,7 @@ describe("collectible source and layers", () => {
     ensureCollectibleLayers(map);
     ensureCollectibleLayers(map);
 
-    expect(map.layers).toHaveLength(3);
+    expect(map.layers).toHaveLength(4);
   });
 
   it("updates viewport data through setData on the existing source", () => {
@@ -124,7 +131,7 @@ describe("collectible source and layers", () => {
     expect(setCollectibleData(map, featureCollection)).toBe(true);
 
     expect(map.getSource(COLLECTIBLE_SOURCE).setData).toHaveBeenCalledWith(featureCollection);
-    expect(map.layers).toHaveLength(3);
+    expect(map.layers).toHaveLength(4);
   });
 
   it("ignores data updates before the source exists", () => {
