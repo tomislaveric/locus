@@ -52,6 +52,9 @@ Single-container POC for turning a FIT ride into collectible game events and an 
 - [Milestone 14 — Staza Brand & Activity Terminology Migration](features/milestone-14-staza-brand-activity-terminology-migration/README.md)
   — migrate active product branding to Staza and establish Activity as the
   cross-sport terminology while preserving core behavior.
+- [Milestone 15 — Staza World v1](features/milestone-15-staza-world-v1/README.md)
+  — replace the mock World map with a real MapLibre basemap, viewport-driven
+  curated collectibles and quests, and quests created from completed activities.
 - [Persistent activities player state v1](features/persistent-activities-player-state-v1/README.md)
   — persist compact activity/event history and single-player XP in PostgreSQL
   with transaction-safe exactly-once progression.
@@ -188,9 +191,12 @@ TEST_DATABASE_URL=postgresql://post_ride_ar:post_ride_ar@localhost:5432/post_rid
   after its ID. Rich entries may additionally set a nonblank `name`, `type`
   (`coin` or `landmark`), optional `rarity` (`common`, `rare`, or `epic`), and
   optional nonblank `description`. Coordinates must be finite and in range,
-  `radius_m` must be positive, and `value` must be finite and nonnegative. The
-  file is read at the start of every job, so coordinate changes do not require
-  rebuilding the image.
+  `radius_m` must be positive, and `value` must be finite and nonnegative.
+  Since Milestone 15 the catalog lives in the PostgreSQL `collectibles` table and
+  the file is a seed source: run `npm run seed:collectibles` to upsert it by `id`
+  (seeding never deletes rows). Pass a file explicitly to seed a curated world,
+  for example `npm run seed:collectibles -- fixtures/world-v1-seed.json`, which
+  also publishes that fixture's curated quests.
 
 The app derives the event in three steps:
 

@@ -212,4 +212,72 @@ export const migrations: Migration[] = [{
         CHECK (activity_type IN ('cycling', 'running', 'hiking', 'walking', 'unknown'));
     `);
   }
+}, {
+  id: "010_collectibles",
+  async up(client) {
+    await client.query(`
+      CREATE TABLE collectibles (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL CHECK (length(trim(name)) > 0),
+        collectible_type TEXT NOT NULL CHECK (collectible_type IN ('coin', 'landmark')),
+        rarity TEXT CHECK (rarity IS NULL OR rarity IN ('common', 'rare', 'epic')),
+        latitude DOUBLE PRECISION NOT NULL CHECK (latitude BETWEEN -90 AND 90),
+        longitude DOUBLE PRECISION NOT NULL CHECK (longitude BETWEEN -180 AND 180),
+        radius_meters DOUBLE PRECISION NOT NULL CHECK (radius_meters > 0),
+        value DOUBLE PRECISION NOT NULL CHECK (value >= 0),
+        description TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      );
+      CREATE INDEX collectibles_bbox_index ON collectibles (latitude, longitude);
+    `);
+  }
+}, {
+  id: "011_quests",
+  async up(client) {
+    await client.query(`
+      CREATE TABLE quests (
+        id UUID PRIMARY KEY,
+        title TEXT NOT NULL CHECK (length(trim(title)) > 0),
+        description TEXT,
+        status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'published')),
+        created_by_player_id UUID NOT NULL REFERENCES players(id),
+        source_activity_id TEXT REFERENCES activities(id) ON DELETE SET NULL,
+        center_latitude DOUBLE PRECISION NOT NULL CHECK (center_latitude BETWEEN -90 AND 90),
+        center_longitude DOUBLE PRECISION NOT NULL CHECK (center_longitude BETWEEN -180 AND 180),
+        published_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      );
+      CREATE INDEX quests_published_bbox_index
+        ON quests (center_latitude, center_longitude) WHERE status = 'published';
+      CREATE INDEX quests_creator_index
+        ON quests (created_by_player_id, created_at DESC);
+      CREATE TABLE quest_collectibles (
+        quest_id UUID NOT NULL REFERENCES quests(id) ON DELETE CASCADE,
+        collectible_id TEXT NOT NULL REFERENCES collectibles(id) ON DELETE RESTRICT,
+        order_index INTEGER,
+        PRIMARY KEY (quest_id, collectible_id)
+      );
+      CREATE INDEX quest_collectibles_collectible_index ON quest_collectibles (collectible_id);
+      CREATE TABLE quest_routes (
+        quest_id UUID PRIMARY KEY REFERENCES quests(id) ON DELETE CASCADE,
+        source_activity_id TEXT REFERENCES activities(id) ON DELETE SET NULL,
+        geometry JSONB NOT NULL,
+        distance_meters DOUBLE PRECISION CHECK (distance_meters IS NULL OR distance_meters >= 0),
+        activity_type TEXT CHECK (activity_type IN ('cycling', 'running', 'hiking', 'walking', 'unknown')),
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      );
+      CREATE TABLE quest_external_routes (
+        id UUID PRIMARY KEY,
+        quest_id UUID NOT NULL UNIQUE REFERENCES quests(id) ON DELETE CASCADE,
+        provider TEXT NOT NULL CHECK (provider IN ('komoot')),
+        url TEXT NOT NULL CHECK (length(url) <= 2048),
+        title TEXT,
+        distance_meters DOUBLE PRECISION CHECK (distance_meters IS NULL OR distance_meters >= 0),
+        metadata JSONB,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      );
+    `);
+  }
 }];

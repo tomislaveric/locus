@@ -213,6 +213,75 @@ export interface WorldQueryDiagnostics {
   relevantCollectibles: number;
 }
 
+export type QuestStatus = "draft" | "published";
+export type ExternalRouteProvider = "komoot";
+
+export interface ExternalRoute {
+  provider: ExternalRouteProvider;
+  url: string;
+  title?: string;
+  distanceMeters?: number;
+}
+
+export interface QuestRoute {
+  sourceActivityId?: string;
+  geometry: { type: "LineString"; coordinates: [number, number][] };
+  distanceMeters?: number;
+  activityType?: ActivityType;
+}
+
+export interface QuestProgress {
+  collected: number;
+  total: number;
+  ratio: number;
+  complete: boolean;
+}
+
+export interface QuestSummary {
+  id: string;
+  title: string;
+  description?: string;
+  status: QuestStatus;
+  createdBy: string;
+  isOwner: boolean;
+  centerLatitude: number;
+  centerLongitude: number;
+  collectibleCount: number;
+  hasRoute: boolean;
+  hasExternalRoute: boolean;
+  progress: QuestProgress;
+}
+
+export interface QuestDetail extends QuestSummary {
+  sourceActivityId?: string;
+  collectibles: WorldCollectible[];
+  route?: QuestRoute;
+  externalRoute?: ExternalRoute;
+}
+
+export interface QuestDraftSuggestion {
+  sourceActivityId: string;
+  title: string;
+  description: string;
+  activityType: ActivityType;
+  distanceMeters?: number;
+  route: QuestRoute;
+  collectibles: WorldCollectible[];
+}
+
+export interface QuestInput {
+  title: string;
+  description?: string;
+  sourceActivityId?: string;
+  collectibleIds: string[];
+  externalRoute?: ExternalRoute | null;
+}
+
+export interface WorldViewportResponse extends WorldSnapshot {
+  quests: QuestSummary[];
+  truncated: boolean;
+}
+
 export type JobState = "processing" | "awaiting_selection" | "rendering" | "succeeded" | "failed";
 
 export interface Job {

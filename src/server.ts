@@ -7,7 +7,6 @@ import { access, mkdir, readFile, rename, rm, stat, writeFile } from "node:fs/pr
 import path from "node:path";
 import multer from "multer";
 import { deriveActivity, deriveActivityResult } from "./activity.js";
-import { readCollectibles } from "./coin.js";
 import { config } from "./config.js";
 import type { ActivityImportResult, ActivityVideo, HudTimeline, Job, MappedGameEvent, PersistedActivity } from "./domain.js";
 import { UserInputError } from "./errors.js";
@@ -20,11 +19,19 @@ import {
 } from "./synchronization.js";
 import { createHudTimeline, loadHudTimeline, saveHudTimeline } from "./hud/timeline.js";
 import { ActivityRepository } from "./persistence/activityRepository.js";
+import { CollectibleRepository } from "./persistence/collectibleRepository.js";
+import { QuestNotFoundError, QuestRepository } from "./persistence/questRepository.js";
 import { createDatabasePool } from "./persistence/database.js";
 import { migrate } from "./persistence/migrate.js";
 import { buildClipIntervals, gpmfStreamIndex, probeDuration, renderSelectedClips } from "./video.js";
-import { getRelevantCollectibles } from "./worldQuery.js";
+import { getRelevantCollectibles, parseBoundsParameter } from "./worldQuery.js";
 import { createWorldSnapshot } from "./world.js";
+import { getBasemapConfig, getBasemapOrigins } from "./basemap.js";
+import {
+  createQuestRouteSnapshot,
+  parseQuestInput,
+  suggestQuestTitle
+} from "./quest.js";
 import { AuthService, EmailSender, type SessionUser } from "./auth.js";
 
 interface UploadRequest extends Request {
@@ -40,6 +47,8 @@ if (!config.databaseUrl) throw new Error("DATABASE_URL is required.");
 const databasePool = createDatabasePool(config.databaseUrl);
 await migrate(databasePool);
 const activityRepository = new ActivityRepository(databasePool);
+const collectibleRepository = new CollectibleRepository(databasePool);
+const questRepository = new QuestRepository(databasePool);
 const authService = new AuthService(databasePool, {
   rpId: config.webauthnRpId,
   rpName: config.webauthnRpName,
@@ -144,7 +153,7 @@ const processDetection = async (
   playerId: string
 ): Promise<void> => {
   try {
-    const collectibles = await readCollectibles(config.coinsFile);
+    const collectibles = await collectibleRepository.listAll();
     const fit = path.join(directory, "track.fit");
     const track = await parseFitTrack(fit);
     const activity = deriveActivity(job.token, track);
@@ -398,7 +407,7 @@ const importActivity = async (
 
   try {
     const [collectibles, track] = await Promise.all([
-      readCollectibles(config.coinsFile),
+      collectibleRepository.listAll(),
       parseFitTrack(fit.path)
     ]);
     const activity = deriveActivity(randomUUID(), track);
@@ -493,6 +502,7 @@ setInterval(() => void cleanExpiredJobs(), Math.min(config.jobTtlMs, 60_000)).un
 
 const app = express();
 app.set("trust proxy", 1);
+const basemapOrigins = getBasemapOrigins();
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
@@ -500,13 +510,16 @@ app.use(helmet({
       scriptSrc: ["'self'"],
       styleSrc: ["'self'"],
       styleSrcAttr: ["'unsafe-inline'"],
-      imgSrc: ["'self'", "data:"],
-      connectSrc: ["'self'"],
+      imgSrc: ["'self'", "data:", "blob:", ...basemapOrigins],
+      connectSrc: ["'self'", ...basemapOrigins],
+      workerSrc: ["'self'", "blob:"],
+      childSrc: ["'self'", "blob:"],
       objectSrc: ["'none'"],
       baseUri: ["'self'"],
       frameAncestors: ["'none'"]
     }
   },
+  crossOriginEmbedderPolicy: false,
   hsts: config.nodeEnv === "production" ? { maxAge: 31_536_000, includeSubDomains: true } : false,
   referrerPolicy: { policy: "same-origin" }
 }));
@@ -653,6 +666,7 @@ app.get("/shared/progression.js", (_request, response) => {
   response.sendFile(path.resolve("dist/progression.js"));
 });
 app.use("/shared/webauthn", express.static(path.resolve("node_modules/@simplewebauthn/browser/esm")));
+app.use("/shared/maplibre", express.static(path.resolve("node_modules/maplibre-gl/dist")));
 app.use(express.static(path.resolve("public")));
 
 app.post(
@@ -749,15 +763,203 @@ app.get("/api/activities", requirePlayer, async (request: UploadRequest, respons
   }
 });
 
+app.get("/api/world/basemap", requirePlayer, (_request: UploadRequest, response) => {
+  response.json(getBasemapConfig());
+});
+
 app.get("/api/world", requirePlayer, async (request: UploadRequest, response, next) => {
   try {
-    const [collectibles, discoveredSourceIds] = await Promise.all([
-      readCollectibles(config.coinsFile),
-      activityRepository.listDiscoveredCollectibleSourceIds(request.user!.playerId)
+    const playerId = request.user!.playerId;
+    const bounds = parseBoundsParameter(request.query.bbox);
+    const discoveredSourceIds = await activityRepository.listDiscoveredCollectibleSourceIds(playerId);
+    if (!bounds) {
+      const collectibles = await collectibleRepository.listAll();
+      response.json({ ...createWorldSnapshot(collectibles, discoveredSourceIds), quests: [], truncated: false });
+      return;
+    }
+    const [viewport, quests] = await Promise.all([
+      collectibleRepository.listWithinBounds(bounds, config.worldViewportLimit),
+      questRepository.listWithinBounds(playerId, bounds, discoveredSourceIds, config.worldViewportLimit)
     ]);
-    response.json(createWorldSnapshot(collectibles, discoveredSourceIds));
+    response.json({
+      ...createWorldSnapshot(viewport.collectibles, discoveredSourceIds),
+      quests,
+      truncated: viewport.truncated
+    });
   } catch (error) {
     next(error);
+  }
+});
+
+const loadCollectedIds = (playerId: string): Promise<string[]> =>
+  activityRepository.listDiscoveredCollectibleSourceIds(playerId);
+
+const assertKnownCollectibles = async (ids: string[]): Promise<void> => {
+  if (ids.length === 0) return;
+  const known = await collectibleRepository.listByIds(ids);
+  if (known.length !== ids.length) {
+    throw new UserInputError("A quest can only contain collectibles from the Staza catalog.");
+  }
+};
+
+const questRouteFromActivity = (activity: PersistedActivity): ReturnType<typeof createQuestRouteSnapshot> => {
+  const replay = activity.replay;
+  if (replay?.version !== 1 || !Array.isArray(replay.activity?.route)) return undefined;
+  return createQuestRouteSnapshot(replay.activity, config.questRouteMaxPoints);
+};
+
+const handleQuestError = (error: unknown, response: Response, next: NextFunction): void => {
+  if (error instanceof QuestNotFoundError) {
+    response.status(404).json({ error: "Quest not found." });
+    return;
+  }
+  next(error);
+};
+
+app.get("/api/activities/:id/quest-draft", requirePlayer, async (request: UploadRequest, response, next) => {
+  try {
+    const playerId = request.user!.playerId;
+    const activity = await activityRepository.getActivity(playerId, String(request.params.id));
+    if (!activity) {
+      response.status(404).json({ error: "Activity not found." });
+      return;
+    }
+    const route = questRouteFromActivity(activity);
+    if (!route) {
+      response.status(409).json({ error: "This activity has no route that can become a quest." });
+      return;
+    }
+    const [collected, encountered] = await Promise.all([
+      loadCollectedIds(playerId),
+      collectibleRepository.listByIds([...new Set(activity.events.map((event) => event.sourceId))])
+    ]);
+    const collectedIds = new Set(collected);
+    response.json({
+      sourceActivityId: activity.id,
+      title: suggestQuestTitle(activity.type, activity.startedAt),
+      description: "",
+      activityType: activity.type,
+      ...(activity.distanceMeters === undefined ? {} : { distanceMeters: activity.distanceMeters }),
+      route,
+      collectibles: encountered.map((collectible) => ({
+        ...collectible,
+        found: collectedIds.has(collectible.id),
+        visibility: "visible" as const
+      }))
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/api/quests", requirePlayer, async (request: UploadRequest, response, next) => {
+  try {
+    const playerId = request.user!.playerId;
+    const collected = await loadCollectedIds(playerId);
+    response.json(await questRepository.listByCreator(playerId, collected));
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/quests", requirePlayer, requireCsrf, async (request: UploadRequest, response, next) => {
+  try {
+    const playerId = request.user!.playerId;
+    const input = parseQuestInput(request.body, { requireTitle: true });
+    await assertKnownCollectibles(input.collectibleIds);
+    let route;
+    if (input.sourceActivityId) {
+      const activity = await activityRepository.getActivity(playerId, input.sourceActivityId);
+      if (!activity) {
+        response.status(404).json({ error: "Activity not found." });
+        return;
+      }
+      route = questRouteFromActivity(activity);
+      if (!route) {
+        response.status(409).json({ error: "This activity has no route that can become a quest." });
+        return;
+      }
+    }
+    const id = await questRepository.create(playerId, {
+      title: input.title,
+      ...(input.description === undefined ? {} : { description: input.description }),
+      ...(input.sourceActivityId === undefined ? {} : { sourceActivityId: input.sourceActivityId }),
+      collectibleIds: input.collectibleIds,
+      ...(input.externalRoute === undefined ? {} : { externalRoute: input.externalRoute }),
+      ...(route === undefined ? {} : { route })
+    });
+    const collected = await loadCollectedIds(playerId);
+    response.status(201).json(await questRepository.get(playerId, id, collected));
+  } catch (error) {
+    handleQuestError(error, response, next);
+  }
+});
+
+app.get("/api/quests/:id", requirePlayer, async (request: UploadRequest, response, next) => {
+  try {
+    const playerId = request.user!.playerId;
+    const collected = await loadCollectedIds(playerId);
+    response.json(await questRepository.get(playerId, String(request.params.id), collected));
+  } catch (error) {
+    handleQuestError(error, response, next);
+  }
+});
+
+app.patch("/api/quests/:id", requirePlayer, requireCsrf, async (request: UploadRequest, response, next) => {
+  try {
+    const playerId = request.user!.playerId;
+    const input = parseQuestInput(request.body, { requireTitle: false });
+    const collectibleIdsProvided = Array.isArray((request.body as Record<string, unknown>)?.collectibleIds);
+    if (collectibleIdsProvided) await assertKnownCollectibles(input.collectibleIds);
+    await questRepository.update(playerId, String(request.params.id), {
+      ...(input.title === undefined ? {} : { title: input.title }),
+      ...(input.description === undefined ? {} : { description: input.description }),
+      ...(collectibleIdsProvided ? { collectibleIds: input.collectibleIds } : {}),
+      externalRouteProvided: input.externalRouteProvided,
+      ...(input.externalRoute === undefined ? {} : { externalRoute: input.externalRoute })
+    });
+    const collected = await loadCollectedIds(playerId);
+    response.json(await questRepository.get(playerId, String(request.params.id), collected));
+  } catch (error) {
+    handleQuestError(error, response, next);
+  }
+});
+
+app.post("/api/quests/:id/publish", requirePlayer, requireCsrf, async (request: UploadRequest, response, next) => {
+  try {
+    const playerId = request.user!.playerId;
+    const questId = String(request.params.id);
+    const collected = await loadCollectedIds(playerId);
+    const quest = await questRepository.get(playerId, questId, collected);
+    if (!quest.isOwner) throw new QuestNotFoundError();
+    if (quest.collectibleCount === 0 && !quest.hasRoute) {
+      throw new UserInputError("A quest needs at least one collectible or a route before publishing.");
+    }
+    await questRepository.setStatus(playerId, questId, "published");
+    response.json(await questRepository.get(playerId, questId, collected));
+  } catch (error) {
+    handleQuestError(error, response, next);
+  }
+});
+
+app.post("/api/quests/:id/unpublish", requirePlayer, requireCsrf, async (request: UploadRequest, response, next) => {
+  try {
+    const playerId = request.user!.playerId;
+    const questId = String(request.params.id);
+    await questRepository.setStatus(playerId, questId, "draft");
+    const collected = await loadCollectedIds(playerId);
+    response.json(await questRepository.get(playerId, questId, collected));
+  } catch (error) {
+    handleQuestError(error, response, next);
+  }
+});
+
+app.delete("/api/quests/:id", requirePlayer, requireCsrf, async (request: UploadRequest, response, next) => {
+  try {
+    await questRepository.remove(request.user!.playerId, String(request.params.id));
+    response.status(204).end();
+  } catch (error) {
+    handleQuestError(error, response, next);
   }
 });
 
@@ -870,7 +1072,7 @@ app.get("/api/player/profile", requirePlayer, async (request: UploadRequest, res
   try {
     const [profile, collectibles, discoveredSourceIds] = await Promise.all([
       activityRepository.getProfileOverview(request.user!.playerId),
-      readCollectibles(config.coinsFile),
+      collectibleRepository.listAll(),
       activityRepository.listDiscoveredCollectibleSourceIds(request.user!.playerId)
     ]);
     const world = createWorldSnapshot(collectibles, discoveredSourceIds);

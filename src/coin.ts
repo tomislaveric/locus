@@ -2,14 +2,7 @@ import { readFile } from "node:fs/promises";
 import type { Collectible, CollectibleRarity, CollectibleType } from "./domain.js";
 import { UserInputError } from "./errors.js";
 
-export const readCollectibles = async (file: string): Promise<Collectible[]> => {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(await readFile(file, "utf8"));
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    throw new UserInputError(`Collectible configuration could not be read: ${message}`);
-  }
+export const normalizeCollectibles = (parsed: unknown): Collectible[] => {
   if (!Array.isArray(parsed) || parsed.length === 0) {
     throw new UserInputError("Collectible configuration must be a nonempty list.");
   }
@@ -19,6 +12,17 @@ export const readCollectibles = async (file: string): Promise<Collectible[]> => 
     throw new UserInputError("Collectible configuration contains duplicate ids.");
   }
   return collectibles;
+};
+
+export const readCollectibles = async (file: string): Promise<Collectible[]> => {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(await readFile(file, "utf8"));
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new UserInputError(`Collectible configuration could not be read: ${message}`);
+  }
+  return normalizeCollectibles(parsed);
 };
 
 /** @deprecated Use readCollectibles. This preserves the COINS_FILE compatibility boundary. */

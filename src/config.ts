@@ -40,6 +40,18 @@ const optionalUrlEnv = (name: string): string | undefined => {
   }
 };
 
+const httpsUrlEnv = (name: string, fallback: string): string => {
+  const value = process.env[name]?.trim() || fallback;
+  let parsed: URL;
+  try {
+    parsed = new URL(value);
+  } catch {
+    throw new Error(`${name} must be a valid URL.`);
+  }
+  if (parsed.protocol !== "https:") throw new Error(`${name} must use https.`);
+  return parsed.toString();
+};
+
 const uuidEnv = (name: string, fallback: string): string => {
   const value = process.env[name] ?? fallback;
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)) {
@@ -70,6 +82,20 @@ export const config = {
   showLegacyCoinOverlay: booleanEnv("SHOW_LEGACY_COIN_OVERLAY", false),
   fitSampleGapWarningSeconds: decimalEnv("FIT_SAMPLE_GAP_WARNING_SECONDS", 30),
   worldQueryPaddingMeters: decimalEnv("WORLD_QUERY_PADDING_METERS", 500),
+  worldViewportLimit: integerEnv("WORLD_VIEWPORT_LIMIT", 300),
+  basemapStyleUrl: httpsUrlEnv("BASEMAP_STYLE_URL", "https://tiles.openfreemap.org/styles/liberty"),
+  basemapAttribution: process.env.BASEMAP_ATTRIBUTION?.trim()
+    || "\u00a9 OpenFreeMap \u00b7 \u00a9 OpenMapTiles \u00b7 \u00a9 OpenStreetMap contributors",
+  basemapExtraOrigins: (process.env.BASEMAP_EXTRA_ORIGINS?.trim() || "")
+    .split(",").map((value) => value.trim()).filter((value) => value !== "")
+    .map((value) => {
+      try {
+        return new URL(value).origin;
+      } catch {
+        throw new Error("BASEMAP_EXTRA_ORIGINS must be a comma-separated list of origin URLs.");
+      }
+    }),
+  questRouteMaxPoints: integerEnv("QUEST_ROUTE_MAX_POINTS", 2000),
   databaseUrl: process.env.DATABASE_URL?.trim(),
   defaultPlayerId: uuidEnv("DEFAULT_PLAYER_ID", "00000000-0000-4000-8000-000000000001"),
   defaultPlayerName: process.env.DEFAULT_PLAYER_NAME?.trim() || "Local player",

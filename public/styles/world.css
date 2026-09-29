@@ -1,0 +1,320 @@
+/* Staza World: real MapLibre basemap plus Staza-owned overlays. */
+
+.world-page {
+  margin: 0 auto;
+  max-width: 1139px;
+  min-height: 100%;
+  padding: 32px clamp(32px, 10.7vw, 121.5px) 40px;
+}
+
+.main-content:has(.world-page) { background: var(--activities-canvas-background); }
+.world-header { align-items: flex-start; display: flex; justify-content: space-between; min-height: 72px; }
+.world-header h1 { color: var(--text-primary); font-family: var(--font-display); font-size: 48px; font-weight: 700; letter-spacing: -.025em; line-height: 1; margin: 0; }
+.world-header > div > p { color: var(--text-muted); font-family: var(--font-display); font-size: 14px; margin: 4px 0 0; }
+.world-discovered { display: grid; justify-items: end; }
+.world-discovered > span { color: var(--text-muted); font-family: var(--font-display); font-size: 10px; letter-spacing: .2em; text-transform: uppercase; }
+.world-discovered strong { color: var(--text-primary); font-family: var(--font-display); font-size: 24px; line-height: 32px; }
+.world-discovered strong i { color: var(--text-muted); font-size: 16px; font-style: normal; font-weight: 400; }
+
+.world-filter-tabs { display: flex; gap: 8px; height: 54px; padding: 20px 0 4px; }
+.world-filter-tabs button {
+  background: transparent;
+  border: 1px solid var(--border-faint);
+  border-radius: 999px;
+  color: #6e7279;
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 600;
+  height: 30px;
+  letter-spacing: .05em;
+  padding: 0 12px;
+  text-transform: uppercase;
+}
+.world-filter-tabs button.is-active { background: var(--accent-yellow); border-color: var(--accent-yellow); color: var(--world-map-background); }
+.world-filter-tabs button:focus-visible, .world-marker:focus-visible { outline: 2px solid var(--text-primary); outline-offset: 2px; }
+
+.world-map-shell {
+  background: var(--world-map-background);
+  border: 1px solid var(--border-faint);
+  border-radius: var(--radius-card);
+  height: 520px;
+  margin-top: 16px;
+  overflow: hidden;
+  position: relative;
+}
+.world-map { height: 100%; width: 100%; }
+.world-map .maplibregl-ctrl-attrib { font-family: var(--font-body); font-size: 10px; }
+
+.world-locate {
+  background: rgb(11 12 15 / 90%);
+  border: 1px solid var(--border-faint);
+  border-radius: 8px;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-size: 10px;
+  font-weight: 600;
+  left: 14px;
+  letter-spacing: .1em;
+  padding: 8px 10px;
+  position: absolute;
+  top: 14px;
+  z-index: 3;
+}
+.world-locate:hover { color: var(--text-primary); }
+
+.world-map-status {
+  backdrop-filter: blur(10px);
+  background: rgb(11 12 15 / 90%);
+  border: 1px solid var(--border-faint);
+  border-radius: 8px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  left: 50%;
+  margin: 0;
+  padding: 10px 14px;
+  position: absolute;
+  top: 16px;
+  transform: translateX(-50%);
+  z-index: 3;
+}
+
+.world-marker {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  display: flex;
+  height: 34px;
+  justify-content: center;
+  padding: 0;
+  position: relative;
+  width: 34px;
+}
+.world-marker::before, .world-marker::after { border-radius: 50%; content: ""; position: absolute; }
+.world-marker::before { background: #171a20; border: 1px solid rgb(255 255 255 / 12%); height: 22px; width: 22px; }
+.world-marker.is-unfound::before { background: rgb(23 26 32 / 72%); border-color: var(--world-marker-unfound); }
+.world-marker.is-unfound .world-marker-icon { filter: grayscale(1) opacity(.6); }
+.world-marker.rarity-rare::before { border-color: rgb(77 157 224 / 45%); }
+.world-marker.rarity-epic::before { border-color: rgb(155 109 223 / 48%); }
+.world-marker.is-selected::after { border: 1px dashed currentcolor; color: var(--accent-yellow); height: 32px; width: 32px; }
+.world-marker-icon { display: grid; place-items: center; position: relative; z-index: 1; }
+.world-marker-icon .collectible-type-icon { display: flex; }
+.world-marker-icon img { display: block; height: 16px; width: 16px; }
+
+.world-legend {
+  align-items: center;
+  backdrop-filter: blur(10px);
+  background: rgb(11 12 15 / 90%);
+  border: 1px solid var(--border-faint);
+  border-radius: 8px;
+  bottom: 14px;
+  display: flex;
+  gap: 14px;
+  height: 32px;
+  left: 14px;
+  padding: 8px 12px;
+  position: absolute;
+  z-index: 3;
+}
+.world-legend > span { align-items: center; display: flex; gap: 6px; }
+.world-legend small { color: var(--text-muted); font-family: var(--font-display); font-size: 9px; letter-spacing: .05em; text-transform: uppercase; }
+.world-legend .collectible-type-icon { display: flex; height: 12px; width: 14px; }
+.world-legend .collectible-type-icon img { height: 12px; width: 14px; }
+.world-legend > i { background: var(--border-faint); height: 12px; width: 1px; }
+.world-legend-unvisited { border: 1px dashed var(--world-marker-unfound); border-radius: 50%; display: block; height: 12px; width: 12px; }
+
+.world-detail-host {
+  backdrop-filter: blur(12px);
+  background: rgb(11 12 15 / 94%);
+  border: 1px solid var(--border-faint);
+  border-radius: var(--radius-card);
+  bottom: 14px;
+  max-height: calc(100% - 28px);
+  overflow-y: auto;
+  position: absolute;
+  right: 14px;
+  width: min(340px, calc(100% - 28px));
+  z-index: 4;
+}
+.world-detail { display: grid; gap: 12px; padding: 16px; }
+.world-detail header { align-items: flex-start; display: flex; gap: 12px; justify-content: space-between; }
+.world-detail h2 { align-items: center; color: var(--text-primary); display: flex; font-family: var(--font-display); font-size: 18px; gap: 8px; line-height: 1.2; margin: 0; }
+.world-detail-meta { align-items: center; color: var(--text-muted); display: flex; flex-wrap: wrap; font-family: var(--font-display); font-size: 11px; gap: 8px; margin: 4px 0 0; }
+.world-detail-close { background: transparent; border: 0; color: var(--text-muted); cursor: pointer; font-size: 20px; line-height: 1; padding: 0 2px; }
+.world-detail-close:hover { color: var(--text-primary); }
+.world-detail-empty { color: var(--text-muted); font-family: var(--font-mono); font-size: 12px; margin: 0; }
+
+.collectible-detail-state { font-family: var(--font-display); font-size: 12px; letter-spacing: .1em; margin: 0; text-transform: uppercase; }
+.collectible-detail-state.is-found { color: var(--accent-yellow); }
+.collectible-detail-state.is-unfound { color: var(--text-muted); }
+.collectible-detail-description { color: var(--text-muted); font-size: 13px; line-height: 1.5; margin: 0; }
+.collectible-detail-quests h3 { color: var(--text-muted); font-family: var(--font-display); font-size: 10px; letter-spacing: .2em; margin: 0 0 6px; text-transform: uppercase; }
+.collectible-detail-quests ul { display: grid; gap: 4px; list-style: none; margin: 0; padding: 0; }
+.collectible-detail-quests button { background: transparent; border: 0; color: var(--accent-yellow); cursor: pointer; font-family: var(--font-display); font-size: 13px; padding: 0; text-align: left; }
+
+.quest-badge { border-radius: 999px; font-family: var(--font-display); font-size: 9px; letter-spacing: .12em; padding: 3px 7px; text-transform: uppercase; }
+.quest-badge.is-draft { background: rgb(255 255 255 / 8%); color: var(--text-muted); }
+.quest-badge.is-complete { background: var(--accent-yellow); color: var(--world-map-background); }
+
+.quest-progress-track { background: rgb(255 255 255 / 10%); border-radius: 999px; display: block; height: 4px; overflow: hidden; width: 100%; }
+.quest-progress-track i { background: var(--accent-yellow); display: block; height: 100%; }
+
+.quest-detail-description { color: var(--text-muted); font-size: 13px; line-height: 1.5; margin: 0; }
+.quest-detail-progress { display: grid; gap: 6px; margin: 0; }
+.quest-detail-progress strong { color: var(--text-primary); font-family: var(--font-display); font-size: 13px; }
+.quest-detail-progress small { color: var(--text-muted); font-family: var(--font-mono); font-size: 11px; }
+.quest-route-cta {
+  align-items: center;
+  background: var(--accent-yellow);
+  border-radius: 8px;
+  color: var(--world-map-background);
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 700;
+  gap: 2px;
+  letter-spacing: .12em;
+  padding: 10px 12px;
+  text-align: center;
+  text-decoration: none;
+}
+.quest-route-cta small { font-size: 10px; font-weight: 500; letter-spacing: .02em; opacity: .75; text-transform: none; }
+.quest-collectibles { display: grid; gap: 2px; list-style: none; margin: 0; padding: 0; }
+.quest-collectible button { align-items: center; background: transparent; border: 0; color: var(--text-muted); cursor: pointer; display: flex; gap: 8px; padding: 6px 4px; text-align: left; width: 100%; }
+.quest-collectible.is-found button { color: var(--text-primary); }
+.quest-collectible-name { flex: 1; font-family: var(--font-display); font-size: 13px; }
+.quest-collectible-state { font-family: var(--font-display); font-size: 9px; letter-spacing: .1em; opacity: .7; text-transform: uppercase; }
+.quest-detail-owner-actions { display: flex; gap: 8px; }
+.quest-detail-owner-actions button {
+  background: transparent;
+  border: 1px solid var(--border-faint);
+  border-radius: 8px;
+  color: var(--text-muted);
+  cursor: pointer;
+  flex: 1;
+  font-family: var(--font-display);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .12em;
+  padding: 8px;
+}
+.quest-detail-owner-actions button:hover { color: var(--text-primary); }
+
+.world-stats { align-items: center; color: var(--text-muted); display: flex; flex-wrap: wrap; font-family: var(--font-display); font-size: 14px; gap: 0 8px; height: 40px; margin: 0; padding-top: 16px; }
+.world-stats i { color: var(--text-subtle); font-family: var(--font-body); font-size: 16px; font-style: normal; }
+.world-stats strong { font-weight: 600; }
+.world-stats .rarity-rare { border: 0; color: var(--accent-rare); padding: 0; }
+.world-stats .rarity-epic { border: 0; color: var(--accent-epic); padding: 0; }
+.world-stats-truncated { color: var(--text-subtle); font-size: 12px; }
+
+.quest-list { padding-top: 16px; }
+.quest-list h2 { color: var(--text-primary); font-family: var(--font-display); font-size: 18px; margin: 0 0 12px; }
+.quest-list ol { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); list-style: none; margin: 0; padding: 0; }
+.quest-card {
+  background: var(--surface-background);
+  border: 1px solid var(--border-faint);
+  border-radius: var(--radius-card);
+  cursor: pointer;
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  text-align: left;
+  width: 100%;
+}
+.quest-card.is-selected { border-color: var(--accent-yellow); }
+.quest-card-head { align-items: center; display: flex; gap: 8px; justify-content: space-between; }
+.quest-card-head strong { color: var(--text-primary); font-family: var(--font-display); font-size: 14px; }
+.quest-card-description { color: var(--text-muted); font-size: 12px; line-height: 1.45; overflow: hidden; }
+.quest-card-progress { display: grid; gap: 5px; }
+.quest-card-progress small, .quest-card-meta small { color: var(--text-muted); font-family: var(--font-mono); font-size: 11px; }
+.quest-card-meta { display: flex; flex-wrap: wrap; gap: 8px; }
+.quest-list-empty { color: var(--text-muted); font-family: var(--font-mono); }
+.quest-list-empty p { color: var(--text-primary); font-family: var(--font-display); margin: 0 0 4px; }
+.quest-list-empty span { font-size: 12px; }
+
+.world-editor-host, .activity-detail-quest-editor { padding-top: 20px; }
+.quest-editor {
+  background: var(--surface-background);
+  border: 1px solid var(--border-faint);
+  border-radius: var(--radius-card);
+  display: grid;
+  gap: 14px;
+  padding: 20px;
+}
+.quest-editor header { align-items: center; display: flex; justify-content: space-between; }
+.quest-editor h2 { color: var(--text-primary); font-family: var(--font-display); font-size: 18px; margin: 0; }
+.quest-editor-close { background: transparent; border: 0; color: var(--text-muted); cursor: pointer; font-size: 20px; line-height: 1; padding: 0 2px; }
+.quest-editor-field { display: grid; gap: 6px; }
+.quest-editor-field > span { color: var(--text-muted); font-family: var(--font-display); font-size: 10px; letter-spacing: .16em; text-transform: uppercase; }
+.quest-editor input, .quest-editor textarea {
+  background: var(--world-map-background);
+  border: 1px solid var(--border-faint);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 14px;
+  padding: 10px 12px;
+  width: 100%;
+}
+.quest-editor-collectibles { border: 1px solid var(--border-faint); border-radius: 8px; margin: 0; padding: 12px; }
+.quest-editor-collectibles legend { color: var(--text-muted); font-family: var(--font-display); font-size: 10px; letter-spacing: .16em; padding: 0 6px; text-transform: uppercase; }
+.quest-editor-collectibles legend small { letter-spacing: .02em; opacity: .7; text-transform: none; }
+.quest-editor-collectibles ul { display: grid; gap: 4px; list-style: none; margin: 0; max-height: 240px; overflow-y: auto; padding: 0; }
+.quest-editor-collectibles label { align-items: center; color: var(--text-primary); cursor: pointer; display: flex; font-family: var(--font-display); font-size: 13px; gap: 8px; }
+.quest-editor-collectibles label > span { flex: 1; }
+.quest-editor-collectibles label small { color: var(--text-muted); font-family: var(--font-mono); font-size: 10px; }
+.quest-editor-collectibles input { width: auto; }
+.quest-editor-collectibles p { color: var(--text-muted); font-family: var(--font-mono); font-size: 12px; margin: 0; }
+.quest-editor-message { color: #ff9a9a; font-family: var(--font-mono); font-size: 12px; margin: 0; }
+.quest-editor footer { display: flex; gap: 8px; justify-content: flex-end; }
+.quest-editor footer button {
+  background: transparent;
+  border: 1px solid var(--border-faint);
+  border-radius: 8px;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .12em;
+  padding: 10px 14px;
+}
+.quest-editor footer [data-quest-publish] { background: var(--accent-yellow); border-color: var(--accent-yellow); color: var(--world-map-background); }
+
+.activity-detail-toolbar { align-items: center; display: flex; gap: 12px; justify-content: space-between; }
+.activity-detail-create-quest {
+  background: transparent;
+  border: 1px solid var(--border-faint);
+  border-radius: 999px;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .12em;
+  padding: 8px 14px;
+}
+.activity-detail-create-quest:hover { border-color: var(--accent-yellow); color: var(--accent-yellow); }
+
+.world-map-empty, .world-loading, .world-load-error {
+  align-content: center;
+  color: var(--text-muted);
+  display: grid;
+  font-family: var(--font-mono);
+  justify-items: center;
+  text-align: center;
+}
+.world-loading, .world-load-error { background: var(--surface-background); border: 1px solid var(--border-faint); border-radius: var(--radius-card); min-height: 160px; padding: 32px; }
+.world-load-error { color: #ff9a9a; }
+
+@media (max-width: 760px) {
+  .world-page { padding-inline: 24px; }
+  .world-map-shell { height: 430px; }
+  .world-legend { gap: 8px; left: 10px; padding-inline: 8px; }
+  .world-legend small { font-size: 8px; }
+  .world-detail-host { left: 14px; right: 14px; width: auto; }
+}

@@ -10,7 +10,8 @@
     "test": "vitest run",
     "test:sync": "tsx src/runSyncValidation.ts",
     "migrate": "tsx src/persistence/migrate.ts",
-    "test:persistence": "TEST_DATABASE_URL=${TEST_DATABASE_URL:?TEST_DATABASE_URL is required} vitest run --no-file-parallelism src/persistence/activityRepository.test.ts src/auth.test.ts"
+    "seed:collectibles": "tsx src/persistence/seedCollectibles.ts",
+    "test:persistence": "TEST_DATABASE_URL=${TEST_DATABASE_URL:?TEST_DATABASE_URL is required} vitest run --no-file-parallelism src/persistence/activityRepository.test.ts src/persistence/questRepository.test.ts src/auth.test.ts"
   },
   "dependencies": {
     "@simplewebauthn/browser": "^13.3.0",
@@ -20,6 +21,7 @@
     "fit-file-parser": "^2.3.3",
     "gopro-telemetry": "^1.2.11",
     "helmet": "^8.3.0",
+    "maplibre-gl": "^6.11.2",
     "multer": "^2.4.0",
     "pg": "^8.23.0"
   },

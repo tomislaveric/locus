@@ -1,4 +1,10 @@
-import { CollectibleIcon, canonicalRarity, escapeHtml } from "./collected-list.js";
+import { escapeHtml } from "./collected-list.js";
+import { createMarkerElement, WorldLegend } from "./world/world-markers.js";
+import { boundsToParameter, createWorldMap } from "./world/world-map.js";
+import { QuestList } from "./world/quest-list.js";
+import { QuestDetail } from "./world/quest-detail.js";
+import { CollectibleDetail } from "./world/collectible-detail.js";
+import { mountQuestEditor } from "./world/quest-editor.js";
 
 export const worldFilters = ["all", "found", "unfound", "rare", "epic"];
 
@@ -22,29 +28,6 @@ export const filteredWorldCollectibles = (collectibles, activeFilter) => visible
   return true;
 });
 
-export const worldMarkerPositions = (collectibles) => {
-  if (!collectibles.length) return new Map();
-  const latitudes = collectibles.map((collectible) => collectible.latitude);
-  const longitudes = collectibles.map((collectible) => collectible.longitude);
-  const minimumLatitude = Math.min(...latitudes);
-  const maximumLatitude = Math.max(...latitudes);
-  const minimumLongitude = Math.min(...longitudes);
-  const maximumLongitude = Math.max(...longitudes);
-  const latitudeRange = maximumLatitude - minimumLatitude;
-  const longitudeRange = maximumLongitude - minimumLongitude;
-  const inset = 8;
-
-  return new Map(collectibles.map((collectible) => {
-    const horizontal = longitudeRange === 0
-      ? 50
-      : inset + ((collectible.longitude - minimumLongitude) / longitudeRange) * (100 - inset * 2);
-    const vertical = latitudeRange === 0
-      ? 50
-      : 100 - inset - ((collectible.latitude - minimumLatitude) / latitudeRange) * (100 - inset * 2);
-    return [collectible.id, { horizontal, vertical }];
-  }));
-};
-
 export const WorldFilterTabs = (activeFilter) => `
   <div class="world-filter-tabs" role="tablist" aria-label="World collectibles">
     ${worldFilters.map((filter) => `
@@ -56,136 +39,300 @@ export const WorldFilterTabs = (activeFilter) => `
   </div>
 `;
 
-export const WorldMarker = (collectible, position, selected) => {
-  const rarity = canonicalRarity(collectible.rarity) ?? "common";
-  return `
-    <button class="world-marker ${collectible.found ? "is-found" : "is-unfound"} rarity-${rarity}${selected ? " is-selected" : ""}"
-      type="button" data-world-marker="${escapeHtml(collectible.id)}" aria-pressed="${selected}"
-      aria-label="${escapeHtml(`${collectible.name}, ${collectible.found ? "found" : "unfound"}${collectible.rarity ? `, ${collectible.rarity}` : ""}`)}"
-      title="${escapeHtml(collectible.name)}"
-      style="--world-x: ${position.horizontal}%; --world-y: ${position.vertical}%;">
-      <span class="world-marker-icon">${CollectibleIcon(collectible.type, rarity === "common" ? undefined : rarity)}</span>
-    </button>
-  `;
-};
-
-export const WorldLegend = () => `
-  <aside class="world-legend" aria-label="World marker legend">
-    <span>${CollectibleIcon("coin")}<small>Coin</small></span>
-    <span>${CollectibleIcon("landmark")}<small>Landmark</small></span>
-    <i aria-hidden="true"></i>
-    <span><b class="world-legend-undiscovered" aria-hidden="true"></b><small>Undiscovered</small></span>
-  </aside>
-`;
-
-export const WorldMap = ({ collectibles, allCollectibles, totalCollectibles, selectedSourceId, activeFilter }) => {
-  if (!allCollectibles.length) {
-    return `
-      <section class="world-map world-map-empty" aria-label="World map">
-        <p>${totalCollectibles ? "NO COLLECTIBLES REVEALED" : "NO COLLECTIBLES CONFIGURED"}</p>
-        <span>${totalCollectibles
-    ? "Explore this world to reveal available collectibles."
-    : "Add collectibles to the configured catalog to explore this world."}</span>
-      </section>
-    `;
-  }
-  if (!collectibles.length) {
-    return `
-      <section class="world-map world-map-empty" aria-label="World map">
-        <p>NO ${filterLabels[activeFilter].toUpperCase()} COLLECTIBLES</p>
-        <span>Try another filter to explore the rest of this world.</span>
-      </section>
-    `;
-  }
-
-  const positions = worldMarkerPositions(allCollectibles);
-  return `
-    <section class="world-map" aria-label="World map">
-      <div class="world-map-terrain" aria-hidden="true"><span></span><span></span><span></span></div>
-      ${collectibles.map((collectible) => WorldMarker(
-        collectible,
-        positions.get(collectible.id),
-        collectible.id === selectedSourceId
-      )).join("")}
-      ${WorldLegend()}
-    </section>
-  `;
-};
-
-export const WorldStats = (stats) => `
+export const WorldStats = (stats, truncated) => `
   <p class="world-stats">
-    <span>${formatNumber(stats.discoveredCount)} discovered</span>
-    <i aria-hidden="true">·</i>
+    <span>${formatNumber(stats.discoveredCount)} visited here</span>
+    <i aria-hidden="true">\u00b7</i>
     <strong class="rarity-rare">${formatNumber(stats.rareFinds)} rare</strong>
-    <i aria-hidden="true">·</i>
+    <i aria-hidden="true">\u00b7</i>
     <strong class="rarity-epic">${formatNumber(stats.epicFinds)} epic</strong>
-    <i aria-hidden="true">·</i>
+    <i aria-hidden="true">\u00b7</i>
     <span>${formatNumber(stats.remainingCount)} remaining</span>
+    ${truncated ? '<i aria-hidden="true">\u00b7</i><span class="world-stats-truncated">Zoom in to see everything here</span>' : ""}
   </p>
 `;
 
-export const WorldPage = ({ snapshot, activeFilter, selectedSourceId }) => {
-  const visibleCollectibles = visibleWorldCollectibles(snapshot.collectibles);
-  const collectibles = filteredWorldCollectibles(snapshot.collectibles, activeFilter);
-  const { stats } = snapshot;
-  return `
-    <section class="world-page" aria-labelledby="world-title">
-      <header class="world-header">
-        <div>
-          <h1 id="world-title">World</h1>
-          <p>Explore your region</p>
-        </div>
-        <div class="world-discovered">
-          <span>Discovered</span>
-          <strong>${formatNumber(stats.discoveredCount)} <i>/ ${formatNumber(stats.totalCollectibles)}</i></strong>
-        </div>
-      </header>
-      ${WorldFilterTabs(activeFilter)}
-      ${WorldMap({
-    collectibles,
-    allCollectibles: visibleCollectibles,
-    totalCollectibles: stats.totalCollectibles,
-    selectedSourceId,
-    activeFilter
-  })}
-      ${WorldStats(stats)}
-    </section>
-  `;
-};
+export const WorldPage = ({ lifetime, activeFilter }) => `
+  <section class="world-page" aria-labelledby="world-title">
+    <header class="world-header">
+      <div>
+        <h1 id="world-title">World</h1>
+        <p>Discover what is worth exploring</p>
+      </div>
+      <div class="world-discovered">
+        <span>Discovered</span>
+        <strong>${formatNumber(lifetime.discoveredCount)} <i>/ ${formatNumber(lifetime.totalCollectibles)}</i></strong>
+      </div>
+    </header>
+    ${WorldFilterTabs(activeFilter)}
+    <div class="world-map-shell">
+      <div class="world-map" data-world-map></div>
+      ${WorldLegend()}
+      <button class="world-locate" type="button" data-world-locate>LOCATE ME</button>
+      <p class="world-map-status" data-world-status role="status" hidden></p>
+      <div class="world-detail-host" data-world-detail hidden></div>
+    </div>
+    <div data-world-stats></div>
+    <div data-world-quests></div>
+    <div class="world-editor-host" data-world-editor hidden></div>
+  </section>
+`;
 
 const responseJson = async (response) => {
+  if (response.status === 204) return undefined;
   const body = await response.json();
   if (!response.ok) throw new Error(body.error ?? "Unable to load World data.");
   return body;
 };
 
+const emptyStats = { totalCollectibles: 0, discoveredCount: 0, rareFinds: 0, epicFinds: 0, remainingCount: 0 };
+
 export const mountWorldPage = async (mountPoint) => {
   mountPoint.innerHTML = '<section class="world-page"><p class="world-loading" role="status">Loading World...</p></section>';
-  try {
-    const snapshot = await fetch("/api/world").then(responseJson);
-    let activeFilter = "all";
-    let selectedSourceId;
 
-    const render = () => {
-      mountPoint.innerHTML = WorldPage({ snapshot, activeFilter, selectedSourceId });
-      mountPoint.querySelectorAll("[data-world-filter]").forEach((tab) => {
-        tab.addEventListener("click", () => {
-          activeFilter = tab.dataset.worldFilter;
-          if (!filteredWorldCollectibles(snapshot.collectibles, activeFilter).some((item) => item.id === selectedSourceId)) {
-            selectedSourceId = undefined;
-          }
-          render();
-        });
-      });
-      mountPoint.querySelectorAll("[data-world-marker]").forEach((marker) => {
-        marker.addEventListener("click", () => {
-          selectedSourceId = selectedSourceId === marker.dataset.worldMarker ? undefined : marker.dataset.worldMarker;
-          render();
-        });
-      });
-    };
-    render();
+  let basemap;
+  let lifetime = emptyStats;
+  try {
+    const [loadedBasemap, globalSnapshot] = await Promise.all([
+      fetch("/api/world/basemap").then(responseJson),
+      fetch("/api/world").then(responseJson)
+    ]);
+    basemap = loadedBasemap;
+    lifetime = globalSnapshot.stats;
   } catch (error) {
     mountPoint.innerHTML = `<section class="world-page"><p class="world-load-error" role="alert">Unable to load World: ${escapeHtml(error.message)}</p></section>`;
+    return;
   }
+
+  let activeFilter = "all";
+  let collectibles = [];
+  let quests = [];
+  let stats = emptyStats;
+  let truncated = false;
+  let selection;
+  let selectedQuest;
+  let requestToken = 0;
+  let worldMap;
+
+  mountPoint.innerHTML = WorldPage({ lifetime, activeFilter });
+  const mapContainer = mountPoint.querySelector("[data-world-map]");
+  const statusHost = mountPoint.querySelector("[data-world-status]");
+  const statsHost = mountPoint.querySelector("[data-world-stats]");
+  const questHost = mountPoint.querySelector("[data-world-quests]");
+  const detailHost = mountPoint.querySelector("[data-world-detail]");
+  const editorHost = mountPoint.querySelector("[data-world-editor]");
+
+  const setStatus = (message) => {
+    statusHost.hidden = !message;
+    statusHost.textContent = message ?? "";
+  };
+
+  const collectibleById = (id) => collectibles.find((collectible) => collectible.id === id)
+    ?? selectedQuest?.collectibles?.find((collectible) => collectible.id === id);
+
+  const renderMarkers = () => {
+    if (!worldMap) return;
+    const merged = [...filteredWorldCollectibles(collectibles, activeFilter)];
+    for (const collectible of selectedQuest?.collectibles ?? []) {
+      if (!merged.some((item) => item.id === collectible.id)) merged.push(collectible);
+    }
+    worldMap.setMarkers(merged.map((collectible) => ({
+      id: collectible.id,
+      latitude: collectible.latitude,
+      longitude: collectible.longitude,
+      element: createMarkerElement(collectible, {
+        selected: selection?.kind === "collectible" && selection.id === collectible.id,
+        onSelect: selectCollectible
+      })
+    })));
+  };
+
+  const renderDetail = () => {
+    if (!selection) {
+      detailHost.hidden = true;
+      detailHost.innerHTML = "";
+      return;
+    }
+    detailHost.hidden = false;
+    if (selection.kind === "quest") {
+      if (!selectedQuest) {
+        detailHost.innerHTML = '<section class="world-detail"><p role="status">Loading quest...</p></section>';
+        return;
+      }
+      detailHost.innerHTML = QuestDetail(selectedQuest);
+    } else {
+      const collectible = collectibleById(selection.id);
+      if (!collectible) {
+        detailHost.hidden = true;
+        detailHost.innerHTML = "";
+        return;
+      }
+      const related = selectedQuest && (selectedQuest.collectibles ?? [])
+        .some((item) => item.id === collectible.id) ? [selectedQuest] : [];
+      detailHost.innerHTML = CollectibleDetail(collectible, related);
+    }
+    detailHost.querySelector("[data-world-close]")?.addEventListener("click", clearSelection);
+    detailHost.querySelectorAll("[data-world-marker]").forEach((button) => {
+      button.addEventListener("click", () => selectCollectible(button.dataset.worldMarker));
+    });
+    detailHost.querySelectorAll("[data-quest-card]").forEach((button) => {
+      button.addEventListener("click", () => void selectQuest(button.dataset.questCard));
+    });
+    detailHost.querySelector("[data-quest-edit]")?.addEventListener("click", openEditor);
+    detailHost.querySelector("[data-quest-status]")?.addEventListener("click", () => void toggleStatus());
+  };
+
+  const renderSidePanels = () => {
+    statsHost.innerHTML = WorldStats(stats, truncated);
+    questHost.innerHTML = QuestList(quests, selectedQuest?.id);
+    questHost.querySelectorAll("[data-quest-card]").forEach((button) => {
+      button.addEventListener("click", () => void selectQuest(button.dataset.questCard));
+    });
+  };
+
+  const renderFilters = () => {
+    mountPoint.querySelectorAll("[data-world-filter]").forEach((tab) => {
+      tab.classList.toggle("is-active", tab.dataset.worldFilter === activeFilter);
+      tab.setAttribute("aria-selected", String(tab.dataset.worldFilter === activeFilter));
+    });
+  };
+
+  function clearSelection() {
+    selection = undefined;
+    selectedQuest = undefined;
+    worldMap?.setRoute(undefined);
+    renderMarkers();
+    renderSidePanels();
+    renderDetail();
+  }
+
+  function selectCollectible(id) {
+    selection = selection?.kind === "collectible" && selection.id === id
+      ? undefined
+      : { kind: "collectible", id };
+    renderMarkers();
+    renderDetail();
+  }
+
+  async function selectQuest(questId) {
+    if (selectedQuest?.id === questId) {
+      clearSelection();
+      return;
+    }
+    selection = { kind: "quest", id: questId };
+    selectedQuest = undefined;
+    renderDetail();
+    try {
+      selectedQuest = await fetch(`/api/quests/${encodeURIComponent(questId)}`).then(responseJson);
+      worldMap?.setRoute(selectedQuest.route);
+      const points = selectedQuest.collectibles.length
+        ? selectedQuest.collectibles
+        : (selectedQuest.route?.geometry.coordinates ?? []).map(([longitude, latitude]) => ({ longitude, latitude }));
+      worldMap?.fitTo(points);
+      renderMarkers();
+      renderSidePanels();
+      renderDetail();
+    } catch (error) {
+      setStatus(error.message);
+      clearSelection();
+    }
+  }
+
+  async function toggleStatus() {
+    if (!selectedQuest?.isOwner) return;
+    const action = selectedQuest.status === "published" ? "unpublish" : "publish";
+    try {
+      selectedQuest = await fetch(`/api/quests/${encodeURIComponent(selectedQuest.id)}/${action}`, { method: "POST" })
+        .then(responseJson);
+      renderDetail();
+      await loadViewport(worldMap.getBounds());
+    } catch (error) {
+      setStatus(error.message);
+    }
+  }
+
+  function openEditor() {
+    if (!selectedQuest) return;
+    editorHost.hidden = false;
+    mountQuestEditor(editorHost, {
+      quest: selectedQuest,
+      onCancel: () => {
+        editorHost.hidden = true;
+        editorHost.innerHTML = "";
+      },
+      onSaved: async (saved) => {
+        editorHost.hidden = true;
+        editorHost.innerHTML = "";
+        selectedQuest = saved;
+        worldMap?.setRoute(saved.route);
+        await loadViewport(worldMap.getBounds());
+        renderDetail();
+      }
+    });
+  }
+
+  async function loadViewport(bounds) {
+    const token = ++requestToken;
+    try {
+      const snapshot = await fetch(`/api/world?bbox=${boundsToParameter(bounds)}`).then(responseJson);
+      if (token !== requestToken) return;
+      collectibles = snapshot.collectibles;
+      quests = snapshot.quests;
+      stats = snapshot.stats;
+      truncated = snapshot.truncated;
+      setStatus(collectibles.length === 0 && quests.length === 0 ? "Nothing curated here yet." : undefined);
+      if (selection?.kind === "collectible" && !collectibleById(selection.id)) selection = undefined;
+      renderMarkers();
+      renderSidePanels();
+      renderDetail();
+    } catch (error) {
+      if (token !== requestToken) return;
+      setStatus(error.message);
+    }
+  }
+
+  let debounce;
+  const scheduleViewportLoad = (bounds) => {
+    clearTimeout(debounce);
+    debounce = setTimeout(() => void loadViewport(bounds), 250);
+  };
+
+  mountPoint.querySelectorAll("[data-world-filter]").forEach((tab) => {
+    tab.addEventListener("click", () => {
+      activeFilter = tab.dataset.worldFilter;
+      if (selection?.kind === "collectible"
+        && !filteredWorldCollectibles(collectibles, activeFilter).some((item) => item.id === selection.id)) {
+        selection = undefined;
+      }
+      renderFilters();
+      renderMarkers();
+      renderDetail();
+    });
+  });
+
+  renderSidePanels();
+
+  try {
+    worldMap = await createWorldMap(mapContainer, {
+      styleUrl: basemap.styleUrl,
+      attribution: basemap.attribution,
+      onViewportChange: scheduleViewportLoad
+    });
+  } catch (error) {
+    mapContainer.innerHTML = `<p class="world-load-error" role="alert">Unable to load the map: ${escapeHtml(error.message)}</p>`;
+    return;
+  }
+
+  mountPoint.querySelector("[data-world-locate]").addEventListener("click", () => {
+    if (!navigator.geolocation) {
+      setStatus("Location is not available in this browser.");
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (position) => worldMap.flyTo(position.coords.longitude, position.coords.latitude, 14),
+      () => setStatus("Location permission was denied. Pan and zoom to explore.")
+    );
+  });
+
+  await loadViewport(worldMap.getBounds());
 };
