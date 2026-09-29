@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   bindCollectibleInteractions,
   COLLECTIBLE_LAYER,
+  COLLECTIBLE_SELECTED_GLOW_LAYER,
   COLLECTIBLE_SELECTED_LAYER,
   COLLECTIBLE_SOURCE,
   ensureCollectibleLayers,
@@ -36,14 +37,18 @@ const fakeMap = () => {
 };
 
 describe("collectible source and layers", () => {
-  it("adds one canonical source and both collectible layers", () => {
+  it("adds one canonical source with the collectible and selection layers in order", () => {
     const map = fakeMap();
 
     ensureCollectibleLayers(map);
 
     expect(map.getSource(COLLECTIBLE_SOURCE).type).toBe("geojson");
     expect(map.getSource(COLLECTIBLE_SOURCE).promoteId).toBe("id");
-    expect(map.layers.map((layer) => layer.id)).toEqual([COLLECTIBLE_LAYER, COLLECTIBLE_SELECTED_LAYER]);
+    expect(map.layers.map((layer) => layer.id)).toEqual([
+      COLLECTIBLE_LAYER,
+      COLLECTIBLE_SELECTED_GLOW_LAYER,
+      COLLECTIBLE_SELECTED_LAYER
+    ]);
   });
 
   it("draws the selection emphasis from the same source instead of a separate dataset", () => {
@@ -51,9 +56,55 @@ describe("collectible source and layers", () => {
 
     ensureCollectibleLayers(map);
 
-    const selected = map.getLayer(COLLECTIBLE_SELECTED_LAYER);
-    expect(selected.source).toBe(COLLECTIBLE_SOURCE);
-    expect(selected.filter).toEqual(["==", ["get", "selected"], true]);
+    for (const id of [COLLECTIBLE_SELECTED_GLOW_LAYER, COLLECTIBLE_SELECTED_LAYER]) {
+      const selected = map.getLayer(id);
+      expect(selected.source).toBe(COLLECTIBLE_SOURCE);
+      expect(selected.filter).toEqual(["==", ["get", "selected"], true]);
+    }
+  });
+
+  it("encodes discovery in the fill and rarity in the ring", () => {
+    const map = fakeMap();
+
+    ensureCollectibleLayers(map);
+
+    const { paint } = map.getLayer(COLLECTIBLE_LAYER);
+    expect(paint["circle-color"]).toEqual(["case", ["get", "visited"], "#e8b80a", "#171a20"]);
+    const stroke = JSON.stringify(paint["circle-stroke-color"]);
+    expect(stroke).toContain("#4d9de0");
+    expect(stroke).toContain("#9b6ddf");
+  });
+
+  it("scales markers with zoom instead of a fixed pixel radius", () => {
+    const map = fakeMap();
+
+    ensureCollectibleLayers(map);
+
+    const { paint } = map.getLayer(COLLECTIBLE_LAYER);
+    expect(paint["circle-radius"].slice(0, 3)).toEqual(["interpolate", ["linear"], ["zoom"]]);
+    expect(paint["circle-stroke-width"].slice(0, 3)).toEqual(["interpolate", ["linear"], ["zoom"]]);
+    expect(map.getLayer(COLLECTIBLE_SELECTED_LAYER).paint["circle-radius"].slice(0, 3))
+      .toEqual(["interpolate", ["linear"], ["zoom"]]);
+  });
+
+  it("raises the selected marker without moving it", () => {
+    const map = fakeMap();
+
+    ensureCollectibleLayers(map);
+
+    const radius = JSON.stringify(map.getLayer(COLLECTIBLE_LAYER).paint["circle-radius"]);
+    expect(radius).toContain("selected");
+    expect(radius).toContain("case");
+  });
+
+  it("dims collectibles outside the active quest while keeping them rendered", () => {
+    const map = fakeMap();
+
+    ensureCollectibleLayers(map);
+
+    const { paint } = map.getLayer(COLLECTIBLE_LAYER);
+    expect(JSON.stringify(paint["circle-opacity"])).toContain("questRelated");
+    expect(JSON.stringify(paint["circle-stroke-opacity"])).toContain("questRelated");
   });
 
   it("is idempotent so repeated renders never rebuild the layer stack", () => {
@@ -62,7 +113,7 @@ describe("collectible source and layers", () => {
     ensureCollectibleLayers(map);
     ensureCollectibleLayers(map);
 
-    expect(map.layers).toHaveLength(2);
+    expect(map.layers).toHaveLength(3);
   });
 
   it("updates viewport data through setData on the existing source", () => {
@@ -73,7 +124,7 @@ describe("collectible source and layers", () => {
     expect(setCollectibleData(map, featureCollection)).toBe(true);
 
     expect(map.getSource(COLLECTIBLE_SOURCE).setData).toHaveBeenCalledWith(featureCollection);
-    expect(map.layers).toHaveLength(2);
+    expect(map.layers).toHaveLength(3);
   });
 
   it("ignores data updates before the source exists", () => {

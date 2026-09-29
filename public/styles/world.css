@@ -43,8 +43,28 @@
   overflow: hidden;
   position: relative;
 }
-.world-map { height: 100%; width: 100%; }
-.world-map .maplibregl-ctrl-attrib { font-family: var(--font-body); font-size: 10px; }
+.world-map { background: var(--world-map-surface); height: 100%; width: 100%; }
+
+/* MapLibre chrome restyled to match Staza surfaces; attribution stays readable. */
+.world-map .maplibregl-ctrl-attrib {
+  background: rgb(11 12 15 / 82%);
+  border-radius: 6px;
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: 10px;
+}
+.world-map .maplibregl-ctrl-attrib a { color: var(--text-muted); }
+.world-map .maplibregl-ctrl-attrib-button { filter: invert(1) opacity(.55); }
+.world-map .maplibregl-ctrl-group {
+  background: rgb(11 12 15 / 90%);
+  border: 1px solid var(--border-faint);
+  border-radius: 8px;
+  box-shadow: none;
+}
+.world-map .maplibregl-ctrl-group button + button { border-top: 1px solid var(--border-faint); }
+.world-map .maplibregl-ctrl-group button .maplibregl-ctrl-icon { filter: invert(1) opacity(.6); }
+.world-map .maplibregl-ctrl-group button:hover { background: rgb(255 255 255 / 6%); }
+.world-map .maplibregl-ctrl-group button:hover .maplibregl-ctrl-icon { filter: invert(1) opacity(.9); }
 
 .world-locate {
   background: rgb(11 12 15 / 90%);
@@ -108,23 +128,32 @@
   border-radius: 8px;
   bottom: 14px;
   display: flex;
-  gap: 10px;
-  height: 32px;
+  gap: 12px;
   left: 14px;
-  padding: 8px 12px;
+  padding: 7px 12px;
   position: absolute;
   z-index: 3;
 }
 .world-legend > span { align-items: center; display: flex; gap: 6px; }
 .world-legend small { color: var(--text-muted); font-family: var(--font-display); font-size: 9px; letter-spacing: .05em; text-transform: uppercase; }
-.world-legend .collectible-type-icon { display: flex; height: 12px; width: 14px; }
-.world-legend .collectible-type-icon img { height: 12px; width: 14px; }
 .world-legend > i { background: var(--border-faint); height: 12px; width: 1px; }
-.world-legend-dot { border-radius: 50%; display: block; height: 12px; width: 12px; }
-.world-legend-visited { background: #c8ccd6; border: 1px solid rgb(11 12 15 / 75%); }
-.world-legend-unvisited { background: rgb(23 26 32 / 72%); border: 2px solid #c8ccd6; }
-.world-legend-rare { background: var(--accent-rare); border: 1px solid rgb(11 12 15 / 75%); }
-.world-legend-epic { background: var(--accent-epic); border: 1px solid rgb(11 12 15 / 75%); }
+
+/* Shared marker vocabulary: fill encodes discovery, ring encodes rarity. */
+.collectible-swatch {
+  border-radius: 50%;
+  border-style: solid;
+  border-width: 1.5px;
+  box-sizing: border-box;
+  display: block;
+  flex: none;
+  height: 12px;
+  width: 12px;
+}
+.collectible-swatch.is-visited { background: var(--accent-yellow); border-color: rgb(11 12 15 / 75%); }
+.collectible-swatch.is-unvisited { background: var(--surface-raised-background); border-color: var(--world-marker-ring); }
+.collectible-swatch.is-rare { border-color: var(--accent-rare); border-width: 2px; }
+.collectible-swatch.is-epic { border-color: var(--accent-epic); border-width: 2px; }
+.collectible-swatch.is-selected { box-shadow: 0 0 0 2px rgb(232 184 10 / 45%); }
 
 .world-detail-host {
   backdrop-filter: blur(12px);
@@ -132,11 +161,12 @@
   border: 1px solid var(--border-faint);
   border-radius: var(--radius-card);
   bottom: 14px;
-  max-height: calc(100% - 28px);
+  max-height: calc(100% - 92px);
   overflow-y: auto;
   position: absolute;
   right: 14px;
   width: min(340px, calc(100% - 28px));
+  overscroll-behavior: contain;
   z-index: 4;
 }
 .world-detail { display: grid; gap: 12px; padding: 16px; }
@@ -204,7 +234,24 @@
 }
 .quest-detail-owner-actions button:hover { color: var(--text-primary); }
 
-.world-stats { align-items: center; color: var(--text-muted); display: flex; flex-wrap: wrap; font-family: var(--font-display); font-size: 14px; gap: 0 8px; height: 40px; margin: 0; padding-top: 16px; }
+/* Viewport-scoped stats sit directly under the map so they read as map context. */
+.world-stats {
+  align-items: center;
+  border: 1px solid var(--border-faint);
+  border-radius: 10px;
+  border-top: 0;
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+  color: var(--text-muted);
+  display: flex;
+  flex-wrap: wrap;
+  font-family: var(--font-display);
+  font-size: 13px;
+  gap: 0 8px;
+  margin: -1px 12px 0;
+  min-height: 38px;
+  padding: 8px 14px;
+}
 .world-stats i { color: var(--text-subtle); font-family: var(--font-body); font-size: 16px; font-style: normal; }
 .world-stats strong { font-weight: 600; }
 .world-stats .rarity-rare { border: 0; color: var(--accent-rare); padding: 0; }
@@ -314,7 +361,7 @@
 @media (max-width: 760px) {
   .world-page { padding-inline: 24px; }
   .world-map-shell { height: 430px; }
-  .world-legend { gap: 8px; left: 10px; padding-inline: 8px; }
+  .world-legend { flex-wrap: wrap; gap: 6px 10px; left: 10px; padding-inline: 8px; right: 10px; }
   .world-legend small { font-size: 8px; }
-  .world-detail-host { left: 14px; right: 14px; width: auto; }
+  .world-detail-host { left: 14px; max-height: calc(100% - 120px); right: 14px; width: auto; }
 }

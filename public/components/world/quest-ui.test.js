@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import { formatProgressPercent, questProgressLabel, QuestCard, QuestList, QuestStatusBadge } from "./quest-list.js";
 import { ExternalRouteCta, externalRouteLabel, QuestDetail } from "./quest-detail.js";
 import { buildQuestPayload, initialEditorState } from "./quest-editor.js";
-import { markerLabel } from "./world-markers.js";
+import { markerLabel, WorldLegend } from "./world-markers.js";
+import { QuestCollectibleRow } from "./quest-detail.js";
+import { CollectibleSwatch } from "./collectible-swatch.js";
 
 const progress = (collected, total) => ({
   collected,
@@ -162,5 +164,33 @@ describe("world markers", () => {
   it("labels collectibles with visited state for assistive technology", () => {
     expect(markerLabel({ name: "Turmberg", found: true, rarity: "epic" })).toBe("Turmberg, visited, epic");
     expect(markerLabel({ name: "Turmberg", found: false })).toBe("Turmberg, unvisited");
+  });
+});
+
+describe("shared marker vocabulary", () => {
+  it("encodes discovery and rarity in one swatch", () => {
+    expect(CollectibleSwatch({ visited: true })).toContain("is-visited");
+    expect(CollectibleSwatch({ visited: false })).toContain("is-unvisited");
+    expect(CollectibleSwatch({ rarity: "epic" })).toContain("is-epic");
+    expect(CollectibleSwatch({ rarity: "rare" })).toContain("is-rare");
+    expect(CollectibleSwatch()).toContain("is-common");
+  });
+
+  it("shows only the states the map actually renders in the legend", () => {
+    const legend = WorldLegend();
+
+    expect(legend).toContain("Visited");
+    expect(legend).toContain("Unvisited");
+    expect(legend).toContain("Rare");
+    expect(legend).toContain("Epic");
+    expect(legend).not.toContain("collectible-type-icon");
+    expect(legend).not.toContain("Landmark");
+  });
+
+  it("uses the same swatch in quest collectible rows as on the map", () => {
+    const row = QuestCollectibleRow({ id: "castle-7", name: "Castle", found: true, rarity: "rare", type: "landmark" });
+
+    expect(row).toContain(CollectibleSwatch({ visited: true, rarity: "rare" }));
+    expect(row).not.toContain("collectible-type-icon");
   });
 });

@@ -17,7 +17,8 @@
   --accent-rare: #4d9de0;
   --accent-epic: #9b6ddf;
   --world-map-background: #0b0c0f;
-  --world-marker-unfound: #3c3f48;
+  --world-map-surface: #0f1114;
+  --world-marker-ring: #7c828c;
   --font-display: "Barlow Condensed", "Arial Narrow", sans-serif;
   --font-mono: "DM Mono", "SFMono-Regular", Consolas, monospace;
   --font-body: Inter, system-ui, sans-serif;

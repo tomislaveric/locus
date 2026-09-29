@@ -144,8 +144,10 @@ export const mountWorldPage = async (mountPoint) => {
 
   const renderCollectibles = () => {
     const selectedId = selection?.kind === "collectible" ? selection.id : undefined;
-    const mapped = mappedWorldCollectibles(collectibles, activeFilter, selectedQuest?.collectibles ?? []);
-    worldMap?.setCollectibles(collectiblesToFeatureCollection(mapped, { selectedId }));
+    const questCollectibles = selectedQuest?.collectibles ?? [];
+    const mapped = mappedWorldCollectibles(collectibles, activeFilter, questCollectibles);
+    const questCollectibleIds = selectedQuest ? questCollectibles.map((item) => item.id) : undefined;
+    worldMap?.setCollectibles(collectiblesToFeatureCollection(mapped, { selectedId, questCollectibleIds }));
     renderCollectibleList(mapped, selectedId);
   };
 
@@ -165,9 +167,11 @@ export const mountWorldPage = async (mountPoint) => {
     if (!selection) {
       detailHost.hidden = true;
       detailHost.innerHTML = "";
+      worldMap?.setDetailPanelOpen(false);
       return;
     }
     detailHost.hidden = false;
+    worldMap?.setDetailPanelOpen(true);
     if (selection.kind === "quest") {
       if (!selectedQuest) {
         detailHost.innerHTML = '<section class="world-detail"><p role="status">Loading quest...</p></section>';
@@ -179,6 +183,7 @@ export const mountWorldPage = async (mountPoint) => {
       if (!collectible) {
         detailHost.hidden = true;
         detailHost.innerHTML = "";
+        worldMap?.setDetailPanelOpen(false);
         return;
       }
       const related = selectedQuest && (selectedQuest.collectibles ?? [])

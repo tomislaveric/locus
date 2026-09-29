@@ -90,6 +90,24 @@ describe("collectible source data respects World filters", () => {
       .toEqual(["common-found", "epic-found", "quest-only"]);
   });
 
+  it("marks quest collectibles as quest related while a quest is active", () => {
+    const featureCollection = collectiblesToFeatureCollection(
+      [collectible({ id: "in-quest" }), collectible({ id: "elsewhere" })],
+      { questCollectibleIds: ["in-quest"] }
+    );
+
+    const related = Object.fromEntries(
+      featureCollection.features.map((feature) => [feature.properties.id, feature.properties.questRelated])
+    );
+    expect(related).toEqual({ "in-quest": true, elsewhere: false });
+  });
+
+  it("treats every collectible as quest related when no quest is selected", () => {
+    const featureCollection = collectiblesToFeatureCollection([collectible(), collectible({ id: "coin-1" })]);
+
+    expect(featureCollection.features.every((feature) => feature.properties.questRelated)).toBe(true);
+  });
+
   it("does not duplicate business filtering outside filteredWorldCollectibles", () => {
     expect(mappedWorldCollectibles(collectibles, "rare")).toEqual(filteredWorldCollectibles(collectibles, "rare"));
   });

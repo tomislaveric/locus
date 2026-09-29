@@ -1,4 +1,5 @@
-import { CollectibleIcon, canonicalRarity, escapeHtml } from "../collected-list.js";
+import { canonicalRarity, escapeHtml } from "../collected-list.js";
+import { CollectibleSwatch } from "./collectible-swatch.js";
 import { formatProgressPercent, questProgressLabel } from "./quest-list.js";
 
 const formatDistance = (meters) => meters === undefined || meters === null
@@ -26,7 +27,7 @@ export const QuestCollectibleRow = (collectible) => {
   return `
     <li class="quest-collectible${collectible.found ? " is-found" : ""}">
       <button type="button" data-world-marker="${escapeHtml(collectible.id)}">
-        ${CollectibleIcon(collectible.type, rarity === "common" ? undefined : rarity)}
+        ${CollectibleSwatch({ visited: Boolean(collectible.found), rarity })}
         <span class="quest-collectible-name">${escapeHtml(collectible.name)}</span>
         <span class="quest-collectible-state">${collectible.found ? "Visited" : "Unvisited"}</span>
       </button>
