@@ -52,6 +52,9 @@ Single-container POC for turning a FIT ride into collectible game events and an 
 - [Milestone 14 — Staza Brand & Activity Terminology Migration](features/milestone-14-staza-brand-activity-terminology-migration/README.md)
   — migrate active product branding to Staza and establish Activity as the
   cross-sport terminology while preserving core behavior.
+- [Milestone 15.1 — Native MapLibre Collectible Rendering](features/milestone-15-1-native-maplibre-collectible-rendering/README.md)
+  — render World collectibles as a native MapLibre GeoJSON source and circle
+  layers instead of per-collectible DOM markers, removing marker drift.
 - [Milestone 15 — Staza World v1](features/milestone-15-staza-world-v1/README.md)
   — replace the mock World map with a real MapLibre basemap, viewport-driven
   curated collectibles and quests, and quests created from completed activities.

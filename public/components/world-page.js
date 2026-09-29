@@ -1,5 +1,6 @@
 import { escapeHtml } from "./collected-list.js";
-import { createMarkerElement, WorldLegend } from "./world/world-markers.js";
+import { markerLabel, WorldLegend } from "./world/world-markers.js";
+import { collectiblesToFeatureCollection } from "./world/collectible-features.js";
 import { boundsToParameter, createWorldMap } from "./world/world-map.js";
 import { QuestList } from "./world/quest-list.js";
 import { QuestDetail } from "./world/quest-detail.js";
@@ -27,6 +28,15 @@ export const filteredWorldCollectibles = (collectibles, activeFilter) => visible
   if (activeFilter === "rare" || activeFilter === "epic") return collectible.rarity === activeFilter;
   return true;
 });
+
+/** Collectibles drawn on the map: the filtered viewport set plus the selected quest's own. */
+export const mappedWorldCollectibles = (collectibles, activeFilter, questCollectibles = []) => {
+  const mapped = [...filteredWorldCollectibles(collectibles, activeFilter)];
+  for (const collectible of questCollectibles) {
+    if (!mapped.some((item) => item.id === collectible.id)) mapped.push(collectible);
+  }
+  return mapped;
+};
 
 export const WorldFilterTabs = (activeFilter) => `
   <div class="world-filter-tabs" role="tablist" aria-label="World collectibles">
@@ -68,6 +78,7 @@ export const WorldPage = ({ lifetime, activeFilter }) => `
     <div class="world-map-shell">
       <div class="world-map" data-world-map></div>
       ${WorldLegend()}
+      <ul class="world-collectible-list" aria-label="Collectibles on the map" data-world-collectible-list></ul>
       <button class="world-locate" type="button" data-world-locate>LOCATE ME</button>
       <p class="world-map-status" data-world-status role="status" hidden></p>
       <div class="world-detail-host" data-world-detail hidden></div>
@@ -120,6 +131,7 @@ export const mountWorldPage = async (mountPoint) => {
   const statsHost = mountPoint.querySelector("[data-world-stats]");
   const questHost = mountPoint.querySelector("[data-world-quests]");
   const detailHost = mountPoint.querySelector("[data-world-detail]");
+  const collectibleListHost = mountPoint.querySelector("[data-world-collectible-list]");
   const editorHost = mountPoint.querySelector("[data-world-editor]");
 
   const setStatus = (message) => {
@@ -130,21 +142,23 @@ export const mountWorldPage = async (mountPoint) => {
   const collectibleById = (id) => collectibles.find((collectible) => collectible.id === id)
     ?? selectedQuest?.collectibles?.find((collectible) => collectible.id === id);
 
-  const renderMarkers = () => {
-    if (!worldMap) return;
-    const merged = [...filteredWorldCollectibles(collectibles, activeFilter)];
-    for (const collectible of selectedQuest?.collectibles ?? []) {
-      if (!merged.some((item) => item.id === collectible.id)) merged.push(collectible);
-    }
-    worldMap.setMarkers(merged.map((collectible) => ({
-      id: collectible.id,
-      latitude: collectible.latitude,
-      longitude: collectible.longitude,
-      element: createMarkerElement(collectible, {
-        selected: selection?.kind === "collectible" && selection.id === collectible.id,
-        onSelect: selectCollectible
-      })
-    })));
+  const renderCollectibles = () => {
+    const selectedId = selection?.kind === "collectible" ? selection.id : undefined;
+    const mapped = mappedWorldCollectibles(collectibles, activeFilter, selectedQuest?.collectibles ?? []);
+    worldMap?.setCollectibles(collectiblesToFeatureCollection(mapped, { selectedId }));
+    renderCollectibleList(mapped, selectedId);
+  };
+
+  const renderCollectibleList = (mapped, selectedId) => {
+    collectibleListHost.innerHTML = mapped.map((collectible) => `
+      <li>
+        <button type="button" data-world-marker="${escapeHtml(collectible.id)}"
+          aria-pressed="${collectible.id === selectedId}">${escapeHtml(markerLabel(collectible))}</button>
+      </li>
+    `).join("");
+    collectibleListHost.querySelectorAll("[data-world-marker]").forEach((button) => {
+      button.addEventListener("click", () => selectCollectible(button.dataset.worldMarker));
+    });
   };
 
   const renderDetail = () => {
@@ -201,7 +215,7 @@ export const mountWorldPage = async (mountPoint) => {
     selection = undefined;
     selectedQuest = undefined;
     worldMap?.setRoute(undefined);
-    renderMarkers();
+    renderCollectibles();
     renderSidePanels();
     renderDetail();
   }
@@ -210,7 +224,7 @@ export const mountWorldPage = async (mountPoint) => {
     selection = selection?.kind === "collectible" && selection.id === id
       ? undefined
       : { kind: "collectible", id };
-    renderMarkers();
+    renderCollectibles();
     renderDetail();
   }
 
@@ -229,7 +243,7 @@ export const mountWorldPage = async (mountPoint) => {
         ? selectedQuest.collectibles
         : (selectedQuest.route?.geometry.coordinates ?? []).map(([longitude, latitude]) => ({ longitude, latitude }));
       worldMap?.fitTo(points);
-      renderMarkers();
+      renderCollectibles();
       renderSidePanels();
       renderDetail();
     } catch (error) {
@@ -282,7 +296,7 @@ export const mountWorldPage = async (mountPoint) => {
       truncated = snapshot.truncated;
       setStatus(collectibles.length === 0 && quests.length === 0 ? "Nothing curated here yet." : undefined);
       if (selection?.kind === "collectible" && !collectibleById(selection.id)) selection = undefined;
-      renderMarkers();
+      renderCollectibles();
       renderSidePanels();
       renderDetail();
     } catch (error) {
@@ -305,7 +319,7 @@ export const mountWorldPage = async (mountPoint) => {
         selection = undefined;
       }
       renderFilters();
-      renderMarkers();
+      renderCollectibles();
       renderDetail();
     });
   });
@@ -316,7 +330,8 @@ export const mountWorldPage = async (mountPoint) => {
     worldMap = await createWorldMap(mapContainer, {
       styleUrl: basemap.styleUrl,
       attribution: basemap.attribution,
-      onViewportChange: scheduleViewportLoad
+      onViewportChange: scheduleViewportLoad,
+      onCollectibleSelect: (id) => selectCollectible(id)
     });
   } catch (error) {
     mapContainer.innerHTML = `<p class="world-load-error" role="alert">Unable to load the map: ${escapeHtml(error.message)}</p>`;

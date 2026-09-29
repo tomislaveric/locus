@@ -32,7 +32,7 @@
   text-transform: uppercase;
 }
 .world-filter-tabs button.is-active { background: var(--accent-yellow); border-color: var(--accent-yellow); color: var(--world-map-background); }
-.world-filter-tabs button:focus-visible, .world-marker:focus-visible { outline: 2px solid var(--text-primary); outline-offset: 2px; }
+.world-filter-tabs button:focus-visible { outline: 2px solid var(--text-primary); outline-offset: 2px; }
 
 .world-map-shell {
   background: var(--world-map-background);
@@ -81,28 +81,24 @@
   z-index: 3;
 }
 
-.world-marker {
-  align-items: center;
-  background: transparent;
-  border: 0;
-  cursor: pointer;
-  display: flex;
-  height: 34px;
-  justify-content: center;
+.world-collectible-list {
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  height: 1px;
+  margin: 0;
+  overflow: hidden;
   padding: 0;
-  position: relative;
-  width: 34px;
+  position: absolute;
+  white-space: nowrap;
+  width: 1px;
 }
-.world-marker::before, .world-marker::after { border-radius: 50%; content: ""; position: absolute; }
-.world-marker::before { background: #171a20; border: 1px solid rgb(255 255 255 / 12%); height: 22px; width: 22px; }
-.world-marker.is-unfound::before { background: rgb(23 26 32 / 72%); border-color: var(--world-marker-unfound); }
-.world-marker.is-unfound .world-marker-icon { filter: grayscale(1) opacity(.6); }
-.world-marker.rarity-rare::before { border-color: rgb(77 157 224 / 45%); }
-.world-marker.rarity-epic::before { border-color: rgb(155 109 223 / 48%); }
-.world-marker.is-selected::after { border: 1px dashed currentcolor; color: var(--accent-yellow); height: 32px; width: 32px; }
-.world-marker-icon { display: grid; place-items: center; position: relative; z-index: 1; }
-.world-marker-icon .collectible-type-icon { display: flex; }
-.world-marker-icon img { display: block; height: 16px; width: 16px; }
+.world-collectible-list button:focus-visible {
+  clip: auto;
+  clip-path: none;
+  height: auto;
+  white-space: normal;
+  width: auto;
+}
 
 .world-legend {
   align-items: center;
@@ -112,7 +108,7 @@
   border-radius: 8px;
   bottom: 14px;
   display: flex;
-  gap: 14px;
+  gap: 10px;
   height: 32px;
   left: 14px;
   padding: 8px 12px;
@@ -124,7 +120,11 @@
 .world-legend .collectible-type-icon { display: flex; height: 12px; width: 14px; }
 .world-legend .collectible-type-icon img { height: 12px; width: 14px; }
 .world-legend > i { background: var(--border-faint); height: 12px; width: 1px; }
-.world-legend-unvisited { border: 1px dashed var(--world-marker-unfound); border-radius: 50%; display: block; height: 12px; width: 12px; }
+.world-legend-dot { border-radius: 50%; display: block; height: 12px; width: 12px; }
+.world-legend-visited { background: #c8ccd6; border: 1px solid rgb(11 12 15 / 75%); }
+.world-legend-unvisited { background: rgb(23 26 32 / 72%); border: 2px solid #c8ccd6; }
+.world-legend-rare { background: var(--accent-rare); border: 1px solid rgb(11 12 15 / 75%); }
+.world-legend-epic { background: var(--accent-epic); border: 1px solid rgb(11 12 15 / 75%); }
 
 .world-detail-host {
   backdrop-filter: blur(12px);

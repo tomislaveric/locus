@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { formatProgressPercent, questProgressLabel, QuestCard, QuestList, QuestStatusBadge } from "./quest-list.js";
 import { ExternalRouteCta, externalRouteLabel, QuestDetail } from "./quest-detail.js";
 import { buildQuestPayload, initialEditorState } from "./quest-editor.js";
-import { markerClassName, markerLabel } from "./world-markers.js";
+import { markerLabel } from "./world-markers.js";
 
 const progress = (collected, total) => ({
   collected,
@@ -159,16 +159,7 @@ describe("quest editor state", () => {
 });
 
 describe("world markers", () => {
-  it("communicates visited, unvisited, rarity, and selection", () => {
-    expect(markerClassName({ id: "a", found: false, rarity: "rare" }, false))
-      .toBe("world-marker is-unfound rarity-rare");
-    expect(markerClassName({ id: "a", found: true, rarity: "epic" }, true))
-      .toBe("world-marker is-found rarity-epic is-selected");
-    expect(markerClassName({ id: "a", found: true }, false))
-      .toBe("world-marker is-found rarity-common");
-  });
-
-  it("labels markers with visited state for assistive technology", () => {
+  it("labels collectibles with visited state for assistive technology", () => {
     expect(markerLabel({ name: "Turmberg", found: true, rarity: "epic" })).toBe("Turmberg, visited, epic");
     expect(markerLabel({ name: "Turmberg", found: false })).toBe("Turmberg, unvisited");
   });

@@ -1,3 +1,6 @@
+import { EMPTY_FEATURE_COLLECTION } from "./collectible-features.js";
+import { bindCollectibleInteractions, ensureCollectibleLayers, setCollectibleData } from "./collectible-layers.js";
+
 const MAPLIBRE_MODULE = "/shared/maplibre/maplibre-gl.mjs";
 
 export const DEFAULT_CENTER = { longitude: 8.4037, latitude: 49.0069 };
@@ -29,7 +32,7 @@ const ROUTE_SOURCE = "staza-quest-route";
  * Thin MapLibre wrapper. It owns projection, viewport events, and layer plumbing
  * only; Staza gameplay rules stay in the World page.
  */
-export const createWorldMap = async (container, { styleUrl, attribution, onViewportChange }) => {
+export const createWorldMap = async (container, { styleUrl, attribution, onViewportChange, onCollectibleSelect }) => {
   const maplibre = await import(MAPLIBRE_MODULE);
   const map = new maplibre.Map({
     container,
@@ -41,11 +44,8 @@ export const createWorldMap = async (container, { styleUrl, attribution, onViewp
   map.addControl(new maplibre.NavigationControl({ showCompass: false }), "top-right");
   map.addControl(new maplibre.AttributionControl({ compact: true, customAttribution: attribution }), "bottom-right");
 
-  const markers = new Map();
   let styleReady = false;
-
-  const addMarker = (entry) => new maplibre.Marker({ element: entry.element })
-    .setLngLat([entry.longitude, entry.latitude]).addTo(map);
+  let pendingCollectibles = EMPTY_FEATURE_COLLECTION;
 
   const ensureRouteLayers = () => {
     if (map.getSource(ROUTE_SOURCE)) return;
@@ -70,32 +70,24 @@ export const createWorldMap = async (container, { styleUrl, attribution, onViewp
     map.on("load", () => {
       styleReady = true;
       ensureRouteLayers();
+      ensureCollectibleLayers(map);
+      setCollectibleData(map, pendingCollectibles);
       resolve();
     });
   });
+
+  if (onCollectibleSelect) bindCollectibleInteractions(map, { onSelect: onCollectibleSelect });
 
   map.on("moveend", () => onViewportChange(readBounds(map)));
 
   return {
     map,
     getBounds: () => readBounds(map),
-    setMarkers(entries) {
-      const seen = new Set();
-      for (const entry of entries) {
-        seen.add(entry.id);
-        const existing = markers.get(entry.id);
-        if (existing && existing.element === entry.element) {
-          existing.marker.setLngLat([entry.longitude, entry.latitude]);
-          continue;
-        }
-        if (existing) existing.marker.remove();
-        markers.set(entry.id, { element: entry.element, marker: addMarker(entry) });
-      }
-      for (const [id, entry] of markers) {
-        if (seen.has(id)) continue;
-        entry.marker.remove();
-        markers.delete(id);
-      }
+    setCollectibles(featureCollection) {
+      pendingCollectibles = featureCollection ?? EMPTY_FEATURE_COLLECTION;
+      if (!styleReady) return;
+      ensureCollectibleLayers(map);
+      setCollectibleData(map, pendingCollectibles);
     },
     setRoute(route) {
       if (!styleReady) return;
@@ -117,8 +109,6 @@ export const createWorldMap = async (container, { styleUrl, attribution, onViewp
       map.flyTo({ center: [longitude, latitude], zoom: zoom ?? Math.max(map.getZoom(), 13), duration: 600 });
     },
     destroy() {
-      for (const entry of markers.values()) entry.marker.remove();
-      markers.clear();
       map.remove();
     }
   };

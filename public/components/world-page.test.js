@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { filteredWorldCollectibles, visibleWorldCollectibles } from "./world-page.js";
+import { filteredWorldCollectibles, mappedWorldCollectibles, visibleWorldCollectibles } from "./world-page.js";
+import * as worldMarkers from "./world/world-markers.js";
+import * as worldMap from "./world/world-map.js";
 
 const collectibles = [
   { id: "common-found", found: true, rarity: "common", latitude: 49, longitude: 8 },
@@ -30,5 +32,21 @@ describe("World page data transformations", () => {
       "common-found", "rare-unfound", "epic-found"
     ]);
     expect(filteredWorldCollectibles(withHidden, "epic").map((item) => item.id)).toEqual(["epic-found"]);
+  });
+});
+
+describe("World map rendering is MapLibre native", () => {
+  it("no longer exposes DOM collectible marker machinery", () => {
+    expect(worldMarkers.createMarkerElement).toBeUndefined();
+    expect(worldMarkers.markerClassName).toBeUndefined();
+    expect(worldMarkers.markerInnerHtml).toBeUndefined();
+    expect(worldMap.createWorldMap).toBeTypeOf("function");
+  });
+
+  it("hidden collectibles never reach the map source", () => {
+    const hidden = { id: "hidden", found: false, rarity: "epic", latitude: 52, longitude: 11, visibility: "hidden" };
+
+    expect(mappedWorldCollectibles([...collectibles, hidden], "all").map((item) => item.id))
+      .toEqual(["common-found", "rare-unfound", "epic-found"]);
   });
 });
