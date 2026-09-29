@@ -3,6 +3,20 @@ import { CollectibleIcon, RarityBadge, canonicalRarity, escapeHtml } from "../co
 export const relatedQuestsFor = (collectibleId, quests) =>
   quests.filter((quest) => (quest.collectibleIds ?? []).includes(collectibleId));
 
+/**
+ * Subtle, usage-proximate data-source attribution for imported collectibles. Renders a
+ * clickable link to the source deeplink when available (e.g. quäldich passes under
+ * ODbL). Absent for Staza-curated collectibles, and never visually dominant.
+ */
+export const CollectibleSource = (source) => {
+  if (!source || !source.sourceAttribution) return "";
+  const label = escapeHtml(source.sourceAttribution);
+  const body = source.sourceUrl
+    ? `<a href="${escapeHtml(source.sourceUrl)}" target="_blank" rel="noopener noreferrer">${label}</a>`
+    : label;
+  return `<p class="collectible-detail-source"><small>Source: ${body}</small></p>`;
+};
+
 export const CollectibleDetail = (collectible, relatedQuests = []) => {
   const rarity = canonicalRarity(collectible.rarity);
   return `
@@ -21,7 +35,11 @@ export const CollectibleDetail = (collectible, relatedQuests = []) => {
       <p class="collectible-detail-state ${collectible.found ? "is-found" : "is-unfound"}">
         ${collectible.found ? "Visited" : "Unvisited"}
       </p>
+      ${Number.isFinite(collectible.elevationMeters)
+        ? `<p class="collectible-detail-elevation">${escapeHtml(Math.round(collectible.elevationMeters))}\u00a0m</p>`
+        : ""}
       ${collectible.description ? `<p class="collectible-detail-description">${escapeHtml(collectible.description)}</p>` : ""}
+      ${CollectibleSource(collectible.source)}
       ${relatedQuests.length ? `
         <div class="collectible-detail-quests">
           <h3>Part of</h3>

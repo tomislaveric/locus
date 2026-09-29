@@ -1,5 +1,13 @@
-export type CollectibleType = "coin" | "landmark";
+export type CollectibleType = "coin" | "landmark" | "mountain_pass";
 export type CollectibleRarity = "common" | "rare" | "epic";
+export type CollectibleStatus = "published" | "archived";
+
+export interface CollectibleSource {
+  sourceType: string;
+  sourceExternalId: string;
+  sourceUrl?: string;
+  sourceAttribution?: string;
+}
 
 export interface Collectible {
   id: string;
@@ -11,6 +19,9 @@ export interface Collectible {
   value: number;
   rarity?: CollectibleRarity;
   description?: string;
+  elevationMeters?: number;
+  status?: CollectibleStatus;
+  source?: CollectibleSource;
 }
 
 export type WorldCollectibleVisibility = "visible" | "hidden";

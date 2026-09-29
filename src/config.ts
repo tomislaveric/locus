@@ -96,6 +96,11 @@ export const config = {
       }
     }),
   questRouteMaxPoints: integerEnv("QUEST_ROUTE_MAX_POINTS", 2000),
+  quaeldichGeoJsonUrl: httpsUrlEnv(
+    "QUAELDICH_GEOJSON_URL",
+    "https://www.quaeldich.de/common/js/paesse_geojson.php?license=odbl"
+  ),
+  mountainPassDefaultRadiusMeters: decimalEnv("MOUNTAIN_PASS_DEFAULT_RADIUS_M", 90),
   databaseUrl: process.env.DATABASE_URL?.trim(),
   defaultPlayerId: uuidEnv("DEFAULT_PLAYER_ID", "00000000-0000-4000-8000-000000000001"),
   defaultPlayerName: process.env.DEFAULT_PLAYER_NAME?.trim() || "Local player",

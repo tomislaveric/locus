@@ -1,0 +1,40 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [8.3352632522583, 46.905189514160156] },
+      "properties": { "TextID": "aecherlipass", "name": "Ächerlipass", "ele": 1458 }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [6.979551792144775, 44.68382263183594] },
+      "properties": { "TextID": "col-agnel", "name": "Col Agnel", "ele": 2744 }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [8.62730598449707, 49.733375549316406] },
+      "properties": { "TextID": "alsbacher-schloss", "name": "Alsbacher Schloss", "ele": 257 }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [7.895, 46.5677] },
+      "properties": { "TextID": "no-elevation-pass", "name": "Pass Without Elevation" }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [999, 12.34] },
+      "properties": { "TextID": "bad-coordinates", "name": "Bad Coordinates", "ele": 800 }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [7.1, 45.9] },
+      "properties": { "name": "Missing TextID", "ele": 1200 }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [6.979551792144775, 44.68382263183594] },
+      "properties": { "TextID": "col-agnel", "name": "Col Agnel (duplicate)", "ele": 2744 }
+    }
+  ]
+}

@@ -280,4 +280,25 @@ export const migrations: Migration[] = [{
       );
     `);
   }
+}, {
+  id: "012_collectible_sources",
+  async up(client) {
+    await client.query(`
+      ALTER TABLE collectibles DROP CONSTRAINT collectibles_collectible_type_check;
+      ALTER TABLE collectibles ADD CONSTRAINT collectibles_collectible_type_check
+        CHECK (collectible_type IN ('coin', 'landmark', 'mountain_pass'));
+      ALTER TABLE collectibles
+        ADD COLUMN elevation_m DOUBLE PRECISION
+          CHECK (elevation_m IS NULL OR elevation_m BETWEEN -500 AND 9000),
+        ADD COLUMN source_type TEXT,
+        ADD COLUMN source_external_id TEXT,
+        ADD COLUMN source_url TEXT,
+        ADD COLUMN source_attribution TEXT,
+        ADD COLUMN status TEXT NOT NULL DEFAULT 'published'
+          CHECK (status IN ('published', 'archived'));
+      CREATE UNIQUE INDEX collectibles_source_identity_unique
+        ON collectibles (source_type, source_external_id)
+        WHERE source_type IS NOT NULL;
+    `);
+  }
 }];

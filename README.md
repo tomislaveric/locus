@@ -58,6 +58,9 @@ Single-container POC for turning a FIT ride into collectible game events and an 
 - [Milestone 15.2 — World Visual Polish & Map Styling](features/milestone-15-2-world-visual-polish-map-styling/README.md)
   — theme the basemap into a muted Staza surface and sharpen marker, selection,
   quest route and legend presentation without changing World behavior.
+- [Milestone 15.4 — quäldich Pass Catalog Import](features/milestone-15-4-quaeldich-pass-import/README.md)
+  — idempotent, manual importer that seeds World with mountain passes from the
+  official ODbL quäldich GeoJSON, preserving source identity and attribution.
 - [Milestone 15 — Staza World v1](features/milestone-15-staza-world-v1/README.md)
   — replace the mock World map with a real MapLibre basemap, viewport-driven
   curated collectibles and quests, and quests created from completed activities.
@@ -207,6 +210,28 @@ TEST_DATABASE_URL=postgresql://post_ride_ar:post_ride_ar@localhost:5432/post_rid
   optional nonblank `description`. Coordinates must be finite and in range,
   `radius_m` must be positive, `value` must be finite and nonnegative, and ids
   must be unique.
+- **quäldich pass catalog:** `npm run import:quaeldich` imports cycling mountain
+  passes from the official quäldich Pässelexikon GeoJSON
+  (`https://www.quaeldich.de/common/js/paesse_geojson.php?license=odbl`, licensed
+  **ODbL 1.0**) into the same `collectibles` table as `mountain_pass` records.
+  Add `-- --dry-run` to download, validate, and report expected changes without
+  writing. The importer is manual/on-demand (no scheduled sync) and is never on
+  the runtime World request path. It is idempotent: records use the stable
+  identity `quaeldich:<TextID>` (`source_type = quaeldich`,
+  `source_external_id = TextID`), so re-running updates existing rows instead of
+  creating duplicates or rotating ids. Only the licensed elementary fields are
+  imported — pass name, coordinates, elevation (`elevation_m`), and TextID;
+  gameplay `value` (XP) is derived from elevation via one centralized helper
+  (`mountainPassValueFromElevation`), and rarity is a neutral `common`.
+  Attribution to **quäldich.de** (with a per-pass deeplink
+  `https://www.quaeldich.de/paesse/<TextID>/`) is persisted and shown in the
+  World collectible detail. The importer reports created/updated/unchanged/
+  rejected counts, possible proximity/name duplicates (never auto-merged), and
+  records missing from the current upstream (never auto-deleted). Ascent,
+  popularity, QDH, surface, and other website content are intentionally **not**
+  imported; do not replace this GeoJSON import with website scraping without a
+  separate licensing review. See
+  [Milestone 15.4](features/milestone-15-4-quaeldich-pass-import/README.md).
 
 The app derives the event in three steps:
 

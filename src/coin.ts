@@ -25,7 +25,7 @@ export const readCollectibles = async (file: string): Promise<Collectible[]> => 
   return normalizeCollectibles(parsed);
 };
 
-const types: readonly CollectibleType[] = ["coin", "landmark"];
+const types: readonly CollectibleType[] = ["coin", "landmark", "mountain_pass"];
 const rarities: readonly CollectibleRarity[] = ["common", "rare", "epic"];
 const isFiniteNumber = (value: unknown): value is number => typeof value === "number" && Number.isFinite(value);
 

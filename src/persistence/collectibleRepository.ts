@@ -1,5 +1,5 @@
 import type { Pool } from "pg";
-import type { Collectible, CollectibleRarity, CollectibleType } from "../domain.js";
+import type { Collectible, CollectibleRarity, CollectibleStatus, CollectibleType } from "../domain.js";
 import type { GeoBounds } from "../worldQuery.js";
 import { boundsCenter, splitBoundsAtAntimeridian } from "../worldQuery.js";
 
@@ -13,6 +13,12 @@ interface CollectibleRow {
   radius_meters: number;
   value: number;
   description: string | null;
+  elevation_m: number | null;
+  status: CollectibleStatus;
+  source_type: string | null;
+  source_external_id: string | null;
+  source_url: string | null;
+  source_attribution: string | null;
 }
 
 const mapCollectible = (row: CollectibleRow): Collectible => ({
@@ -23,12 +29,25 @@ const mapCollectible = (row: CollectibleRow): Collectible => ({
   longitude: row.longitude,
   radiusMeters: row.radius_meters,
   value: row.value,
+  status: row.status,
   ...(row.rarity === null ? {} : { rarity: row.rarity }),
-  ...(row.description === null ? {} : { description: row.description })
+  ...(row.description === null ? {} : { description: row.description }),
+  ...(row.elevation_m === null ? {} : { elevationMeters: row.elevation_m }),
+  ...(row.source_type === null || row.source_external_id === null
+    ? {}
+    : {
+        source: {
+          sourceType: row.source_type,
+          sourceExternalId: row.source_external_id,
+          ...(row.source_url === null ? {} : { sourceUrl: row.source_url }),
+          ...(row.source_attribution === null ? {} : { sourceAttribution: row.source_attribution })
+        }
+      })
 });
 
 const SELECT_COLUMNS =
-  "id, name, collectible_type, rarity, latitude, longitude, radius_meters, value, description";
+  "id, name, collectible_type, rarity, latitude, longitude, radius_meters, value, description, " +
+  "elevation_m, status, source_type, source_external_id, source_url, source_attribution";
 
 export class CollectibleRepository {
   constructor(private readonly pool: Pool) {}
@@ -71,6 +90,14 @@ export class CollectibleRepository {
     return result.rows.map(mapCollectible);
   }
 
+  async listBySourceType(sourceType: string): Promise<Collectible[]> {
+    const result = await this.pool.query<CollectibleRow>(
+      `SELECT ${SELECT_COLUMNS} FROM collectibles WHERE source_type = $1 ORDER BY id`,
+      [sourceType]
+    );
+    return result.rows.map(mapCollectible);
+  }
+
   async upsertMany(collectibles: Collectible[]): Promise<number> {
     if (collectibles.length === 0) return 0;
     const client = await this.pool.connect();
@@ -79,8 +106,9 @@ export class CollectibleRepository {
       for (const collectible of collectibles) {
         await client.query(
           `INSERT INTO collectibles (
-            id, name, collectible_type, rarity, latitude, longitude, radius_meters, value, description
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            id, name, collectible_type, rarity, latitude, longitude, radius_meters, value, description,
+            elevation_m, status, source_type, source_external_id, source_url, source_attribution
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
           ON CONFLICT (id) DO UPDATE SET
             name = EXCLUDED.name,
             collectible_type = EXCLUDED.collectible_type,
@@ -90,6 +118,12 @@ export class CollectibleRepository {
             radius_meters = EXCLUDED.radius_meters,
             value = EXCLUDED.value,
             description = EXCLUDED.description,
+            elevation_m = EXCLUDED.elevation_m,
+            status = EXCLUDED.status,
+            source_type = EXCLUDED.source_type,
+            source_external_id = EXCLUDED.source_external_id,
+            source_url = EXCLUDED.source_url,
+            source_attribution = EXCLUDED.source_attribution,
             updated_at = now()`,
           [
             collectible.id,
@@ -100,7 +134,13 @@ export class CollectibleRepository {
             collectible.longitude,
             collectible.radiusMeters,
             collectible.value,
-            collectible.description ?? null
+            collectible.description ?? null,
+            collectible.elevationMeters ?? null,
+            collectible.status ?? "published",
+            collectible.source?.sourceType ?? null,
+            collectible.source?.sourceExternalId ?? null,
+            collectible.source?.sourceUrl ?? null,
+            collectible.source?.sourceAttribution ?? null
           ]
         );
       }
