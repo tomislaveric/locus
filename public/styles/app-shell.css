@@ -801,8 +801,8 @@ input {
 .activity-card-replay {
     background: #0b0c0f;
     border-right: 1px solid var(--border-faint);
-    flex: 0 0 100px;
-    height: 122px;
+    flex: 0 0 160px;
+    height: 140px;
 }
 .activity-replay-still {
     overflow: hidden;

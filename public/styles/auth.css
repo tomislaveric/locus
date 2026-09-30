@@ -27,7 +27,7 @@
 }
 
 .auth-brand { align-items: center; display: flex; gap: 12px; height: 36px; }
-.auth-brand img { display: block; flex: none; height: 36px; width: 36px; }
+.auth-brand img { display: block; flex: none; }
 .auth-brand span { color: #ede9e2; font-family: var(--font-display); font-size: 20px; font-weight: 700; letter-spacing: .5px; line-height: 28px; }
 .auth-heading { margin-top: 32px; }
 .auth-heading--sign-in { margin-top: 48px; }

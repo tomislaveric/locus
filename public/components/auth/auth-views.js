@@ -34,7 +34,7 @@ const layout = ({
   </main>`;
 
 const brand = () =>
-  `<div class="auth-brand"><img src="${logo}" width="36" height="36" alt=""><span>STAZA</span></div>`;
+  `<div class="auth-brand"><img src="${logo}" alt=""></div>`;
 const back = (label = "Back") =>
   `<button class="auth-back" type="button" data-auth-back><img src="${backIcon}" width="14" height="14" alt="">${label}</button>`;
 
