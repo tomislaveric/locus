@@ -3,13 +3,12 @@ const navItems = [
   ["activities", "Activities", "nav-activities.svg"],
   ["world", "World", "nav-world.svg"],
   ["progress", "Progress", "nav-progress.svg"],
-  ["profile", "Profile", "nav-profile.svg"]
+  ["profile", "Profile", "nav-profile.svg"],
 ];
 
 export const SidebarLogo = () => `
   <a class="sidebar-logo" href="/" aria-label="Staza home">
-    <img src="/assets/sidebar-logo-mark.svg" width="28" height="28" alt="">
-    <span>STAZA</span>
+    <img src="/assets/logo-full.svg" alt="">
   </a>
 `;
 
@@ -45,9 +44,13 @@ export const sidebar = Sidebar;
 
 export const setSidebarScreen = (mountPoint, screen) => {
   for (const item of mountPoint.querySelectorAll(".sidebar-nav-item")) {
-    const isActive = item.dataset.screen === (screen === "activity-detail" ? "activities" : screen);
+    const isActive =
+      item.dataset.screen ===
+      (screen === "activity-detail" ? "activities" : screen);
     item.classList.toggle("is-active", isActive);
     item.toggleAttribute("aria-current", isActive);
   }
-  mountPoint.querySelector(".add-activity-cta").classList.toggle("is-current", screen === "add-activity");
+  mountPoint
+    .querySelector(".add-activity-cta")
+    .classList.toggle("is-current", screen === "add-activity");
 };

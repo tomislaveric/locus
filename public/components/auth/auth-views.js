@@ -1,15 +1,30 @@
-const logo = "/assets/auth-logo-mark.svg";
+const logo = "/assets/logo-full.svg";
 const backIcon = "/assets/auth-back.svg";
 const passkeyIcon = "/assets/auth-passkey.svg";
 const successIcon = "/assets/auth-success.svg";
 
-const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (character) => ({
-  "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
-}[character]));
+const escapeHtml = (value) =>
+  String(value).replace(
+    /[&<>"']/g,
+    (character) =>
+      ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;",
+      })[character],
+  );
 
-const disabled = (busy) => busy ? " disabled aria-disabled=\"true\"" : "";
+const disabled = (busy) => (busy ? ' disabled aria-disabled="true"' : "");
 
-const layout = ({ content, message = "", messageType = "status", screen, busy = false }) => `
+const layout = ({
+  content,
+  message = "",
+  messageType = "status",
+  screen,
+  busy = false,
+}) => `
   <main class="auth-screen auth-screen--${screen}" aria-busy="${busy}">
     <div class="auth-top-band" aria-hidden="true"></div>
     <section class="auth-content" aria-label="Authentication">
@@ -18,8 +33,10 @@ const layout = ({ content, message = "", messageType = "status", screen, busy = 
     </section>
   </main>`;
 
-const brand = () => `<div class="auth-brand"><img src="${logo}" width="36" height="36" alt=""><span>STAZA</span></div>`;
-const back = (label = "Back") => `<button class="auth-back" type="button" data-auth-back><img src="${backIcon}" width="14" height="14" alt="">${label}</button>`;
+const brand = () =>
+  `<div class="auth-brand"><img src="${logo}" width="36" height="36" alt=""><span>STAZA</span></div>`;
+const back = (label = "Back") =>
+  `<button class="auth-back" type="button" data-auth-back><img src="${backIcon}" width="14" height="14" alt="">${label}</button>`;
 
 export const renderAuthSessionLoading = () => `
   <main class="auth-screen auth-session-loading" aria-busy="true" aria-label="Checking your session">
@@ -31,12 +48,13 @@ export const renderAuthSessionLoading = () => `
     </div>
   </main>`;
 
-export const renderAuthSignIn = ({ busy, message, messageType }) => layout({
-  screen: "sign-in",
-  busy,
-  message,
-  messageType,
-  content: `
+export const renderAuthSignIn = ({ busy, message, messageType }) =>
+  layout({
+    screen: "sign-in",
+    busy,
+    message,
+    messageType,
+    content: `
     ${brand()}
     <div class="auth-heading auth-heading--sign-in">
       <p>Welcome back</p>
@@ -49,15 +67,22 @@ export const renderAuthSignIn = ({ busy, message, messageType }) => layout({
       <button class="auth-secondary" type="button" data-auth-email-login${disabled(busy)}>Use email code</button>
     </div>
     <p class="auth-security-note">Secure, passwordless sign-in</p>
-    <p class="auth-account-link">New to Staza? <button type="button" data-auth-register${disabled(busy)}>Create an account</button></p>`
-});
+    <p class="auth-account-link">New to Staza? <button type="button" data-auth-register${disabled(busy)}>Create an account</button></p>`,
+  });
 
-export const renderAuthEmailRequest = ({ busy, email, message, messageType, purpose }) => layout({
-  screen: "email-request",
+export const renderAuthEmailRequest = ({
   busy,
+  email,
   message,
   messageType,
-  content: `
+  purpose,
+}) =>
+  layout({
+    screen: "email-request",
+    busy,
+    message,
+    messageType,
+    content: `
     ${back()}
     <div class="auth-heading">
       <p>${purpose === "register" ? "Create your account" : "Sign in with email"}</p>
@@ -67,15 +92,16 @@ export const renderAuthEmailRequest = ({ busy, email, message, messageType, purp
       <label for="auth-email">Email</label>
       <input id="auth-email" name="email" type="email" autocomplete="email" inputmode="email" required value="${escapeHtml(email)}" placeholder="you@example.com"${disabled(busy)}>
       <button class="auth-primary" type="submit"${disabled(busy)}>${busy ? "Sending code…" : "Send code"}</button>
-    </form>`
-});
+    </form>`,
+  });
 
-export const renderAuthVerifyEmail = ({ busy, email, message, messageType }) => layout({
-  screen: "verify-email",
-  busy,
-  message,
-  messageType,
-  content: `
+export const renderAuthVerifyEmail = ({ busy, email, message, messageType }) =>
+  layout({
+    screen: "verify-email",
+    busy,
+    message,
+    messageType,
+    content: `
     ${back()}
     <div class="auth-heading">
       <p>Enter code</p>
@@ -88,15 +114,16 @@ export const renderAuthVerifyEmail = ({ busy, email, message, messageType }) => 
       </fieldset>
       <button class="auth-primary" type="submit"${disabled(busy)}>${busy ? "Verifying…" : "Verify code"}</button>
     </form>
-    <button class="auth-text-action" type="button" data-auth-resend${disabled(busy)}>Send a new code</button>`
-});
+    <button class="auth-text-action" type="button" data-auth-resend${disabled(busy)}>Send a new code</button>`,
+  });
 
-export const renderAuthCreatePasskey = ({ busy, message, messageType }) => layout({
-  screen: "create-passkey",
-  busy,
-  message,
-  messageType,
-  content: `
+export const renderAuthCreatePasskey = ({ busy, message, messageType }) =>
+  layout({
+    screen: "create-passkey",
+    busy,
+    message,
+    messageType,
+    content: `
     ${back()}
     <div class="auth-heading">
       <p>Secure your account</p>
@@ -107,12 +134,13 @@ export const renderAuthCreatePasskey = ({ busy, message, messageType }) => layou
       <li><i aria-hidden="true">◈</i><span><strong>Uses device security</strong>Face ID, Touch ID, Windows Hello, or your device PIN.</span></li>
       <li><i aria-hidden="true">◇</i><span><strong>Private by default</strong>Your biometric data never leaves your device.</span></li>
     </ul>
-    <button class="auth-primary" type="button" data-auth-register-passkey${disabled(busy)}>${busy ? "Creating passkey…" : "Create passkey"}</button>`
-});
+    <button class="auth-primary" type="button" data-auth-register-passkey${disabled(busy)}>${busy ? "Creating passkey…" : "Create passkey"}</button>`,
+  });
 
-export const renderAuthPasskeyReady = () => layout({
-  screen: "passkey-ready",
-  content: `
+export const renderAuthPasskeyReady = () =>
+  layout({
+    screen: "passkey-ready",
+    content: `
     <div class="auth-success">
       ${brand()}
       <div class="auth-success-icon" aria-hidden="true"><img src="${successIcon}" width="32" height="32" alt=""></div>
@@ -120,13 +148,14 @@ export const renderAuthPasskeyReady = () => layout({
       <h1>Your account is secured.</h1>
       <span>You can now sign in instantly with your device.</span>
       <button class="auth-primary" type="button" data-auth-continue>Continue to Staza</button>
-    </div>`
-});
+    </div>`,
+  });
 
-export const renderAuthError = ({ unavailable, message }) => layout({
-  screen: unavailable ? "passkey-unavailable" : "error",
-  message: "",
-  content: `
+export const renderAuthError = ({ unavailable, message }) =>
+  layout({
+    screen: unavailable ? "passkey-unavailable" : "error",
+    message: "",
+    content: `
     ${brand()}
     <div class="auth-heading">
       <p>${unavailable ? "Passkey unavailable" : "Sign-in issue"}</p>
@@ -137,5 +166,5 @@ export const renderAuthError = ({ unavailable, message }) => layout({
       <button class="auth-primary" type="button" data-auth-retry>${unavailable ? "Try again" : "Try again"}</button>
       <button class="auth-secondary" type="button" data-auth-email-login>Use email code</button>
     </div>
-    <p class="auth-account-link">New to Staza? <button type="button" data-auth-register>Create an account</button></p>`
-});
+    <p class="auth-account-link">New to Staza? <button type="button" data-auth-register>Create an account</button></p>`,
+  });

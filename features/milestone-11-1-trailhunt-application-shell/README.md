@@ -75,7 +75,7 @@ public/components/sidebar.js
 public/components/main-content.js
 public/styles/design-tokens.css
 public/styles/app-shell.css
-public/assets/sidebar-logo-mark.svg
+public/assets/logo-full.svg
 public/assets/nav-home.svg
 public/assets/nav-rides.svg
 public/assets/nav-world.svg
