@@ -32,7 +32,7 @@ const quest = (overrides = {}) => ({
 
 describe("quest progress presentation", () => {
   it("renders progress as a visited count and a percentage", () => {
-    expect(questProgressLabel(progress(4, 8))).toBe("4 / 8 visited");
+    expect(questProgressLabel(progress(4, 8))).toBe("4 / 8 completed");
     expect(formatProgressPercent(progress(4, 8))).toBe("50%");
   });
 
@@ -94,12 +94,12 @@ describe("quest detail", () => {
     externalRoute: { provider: "komoot", url: "https://www.komoot.com/tour/1" }
   });
 
-  it("shows per-collectible visited state and subtle creator attribution", () => {
+  it("shows per-collectible completed state and subtle creator attribution", () => {
     const markup = QuestDetail(detailQuest);
-    expect(markup).toContain("Visited");
+    expect(markup).toContain("Completed");
     expect(markup).toContain("Unvisited");
     expect(markup).toContain("by Ada");
-    expect(markup).toContain("4 / 8 visited");
+    expect(markup).toContain("4 / 8 completed");
   });
 
   it("offers owner actions only to the creator", () => {

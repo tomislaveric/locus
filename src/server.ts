@@ -10,7 +10,7 @@ import { deriveActivity, deriveActivityResult } from "./activity.js";
 import { config } from "./config.js";
 import type { ActivityImportResult, ActivityVideo, HudTimeline, Job, MappedGameEvent, PersistedActivity } from "./domain.js";
 import { UserInputError } from "./errors.js";
-import { parseFitTrack } from "./fit.js";
+import { parseFitTrack, parseFitMetadata } from "./fit.js";
 import { extractGps5Times, mapToVideoSecond } from "./gpmf.js";
 import {
   assessSynchronization,
@@ -155,8 +155,8 @@ const processDetection = async (
   try {
     const collectibles = await collectibleRepository.listAll();
     const fit = path.join(directory, "track.fit");
-    const track = await parseFitTrack(fit);
-    const activity = deriveActivity(job.token, track);
+    const [track, metadata] = await Promise.all([parseFitTrack(fit), parseFitMetadata(fit)]);
+    const activity = deriveActivity(job.token, track, "unknown", metadata);
     const relevantCollectibles = getRelevantCollectibles(collectibles, track, config.worldQueryPaddingMeters);
     const activityResult = deriveActivityResult(activity, relevantCollectibles);
     job.activity = activity;
@@ -406,11 +406,12 @@ const importActivity = async (
   }
 
   try {
-    const [collectibles, track] = await Promise.all([
+    const [collectibles, track, metadata] = await Promise.all([
       collectibleRepository.listAll(),
-      parseFitTrack(fit.path)
+      parseFitTrack(fit.path),
+      parseFitMetadata(fit.path)
     ]);
-    const activity = deriveActivity(randomUUID(), track);
+    const activity = deriveActivity(randomUUID(), track, "unknown", metadata);
     const relevantCollectibles = getRelevantCollectibles(collectibles, track, config.worldQueryPaddingMeters);
     const activityResult = deriveActivityResult(activity, relevantCollectibles);
     const persisted = await activityRepository.persistCompletedActivity(playerId, activity, activityResult, importKey);

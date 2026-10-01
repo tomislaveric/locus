@@ -1774,6 +1774,35 @@ input {
     height: 16px;
     width: 10px;
 }
+.activity-replay-panel {
+    backdrop-filter: blur(12px);
+    background: rgb(11 12 15 / 94%);
+    border: 1px solid var(--border-faint);
+    border-radius: var(--radius-card);
+    bottom: 14px;
+    max-height: calc(100% - 92px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    position: absolute;
+    right: 14px;
+    top: 14px;
+    width: min(320px, calc(100% - 28px));
+    z-index: 3;
+}
+.activity-replay-panel[hidden] {
+    display: none;
+}
+.quest-collectible-row {
+    align-items: center;
+    color: var(--text-muted);
+    display: flex;
+    gap: 8px;
+    padding: 6px 4px;
+    width: 100%;
+}
+.quest-collectible.is-found .quest-collectible-row {
+    color: var(--text-primary);
+}
 .activity-detail-state {
     background: var(--surface-background);
     border: 1px solid var(--border-faint);

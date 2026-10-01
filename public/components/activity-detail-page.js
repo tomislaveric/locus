@@ -1,6 +1,4 @@
-import { CollectedTab } from "./collected-tab.js";
 import { canonicalRarity } from "./collected-list.js";
-import { NearMissesTab } from "./near-misses-tab.js";
 import { ActivityProgress } from "./activity-progress.js";
 import { ReplayTab, mountReplayTab } from "./replay-tab.js";
 import { ActivitySummary } from "./activity-summary.js";
@@ -45,7 +43,6 @@ export const nearMissInputs = (activity) => {
 };
 
 const ReplayUnavailable = () => '<p class="activity-detail-state" role="status">Replay data is unavailable for this legacy activity.</p>';
-const NearMissesUnavailable = () => '<p class="activity-detail-state near-misses-unavailable" role="status">Near-miss data is unavailable for this legacy activity.</p>';
 
 /** A quest can only be created from an activity that carries a usable replay route. */
 export const canCreateQuestFromActivity = (activity) => replayInputs(activity) !== undefined;
@@ -56,14 +53,9 @@ export const CreateQuestAction = (activity) => canCreateQuestFromActivity(activi
 
 export const ActivityDetailPage = (activity, progress, selectedTab = "replay") => {
   const replay = replayInputs(activity);
-  const nearMissReplay = nearMissInputs(activity);
-  const tabContent = selectedTab === "collected"
-    ? CollectedTab(activity, replay)
-    : selectedTab === "near-misses"
-      ? (nearMissReplay ? NearMissesTab(nearMissReplay) : NearMissesUnavailable())
-      : selectedTab === "video"
-        ? VideoTab(activity)
-        : (replay ? ReplayTab() : ReplayUnavailable());
+  const tabContent = selectedTab === "video"
+    ? VideoTab(activity)
+    : (replay ? ReplayTab() : ReplayUnavailable());
   return `
     <section class="activity-detail-page" aria-labelledby="activity-detail-title">
       <div class="activity-detail-toolbar">
@@ -72,7 +64,7 @@ export const ActivityDetailPage = (activity, progress, selectedTab = "replay") =
       </div>
       ${ActivitySummary(activity)}
       ${ActivityProgress(activity, progress)}
-      ${ActivityTabs(activity, selectedTab, nearMissReplay?.activityResult.nearMisses.length)}
+      ${ActivityTabs(activity, selectedTab)}
       <div class="activity-detail-tab-content">${tabContent}</div>
       <div class="activity-detail-quest-editor" data-quest-editor hidden></div>
     </section>
@@ -104,7 +96,7 @@ export const mountActivityDetailPage = async (mountPoint, activityId, onBack) =>
       mountPoint.querySelector(".activity-detail-back").addEventListener("click", onBack);
       mountPoint.querySelector("[data-create-quest]")?.addEventListener("click", () => void openQuestEditor());
       mountPoint.querySelectorAll("[data-activity-tab]").forEach((tab) => {
-        tab.addEventListener("click", () => render(tab.dataset.rideTab));
+        tab.addEventListener("click", () => render(tab.dataset.activityTab));
       });
       const replay = replayInputs(activity);
       if (selectedTab === "replay" && replay) {

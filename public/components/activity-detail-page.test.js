@@ -27,42 +27,24 @@ describe("Activity detail data transformation", () => {
     expect(activityDurationLabel(undefined)).toBe("DURATION UNAVAILABLE");
   });
 
-  it("keeps collected content available when a legacy activity has no replay snapshot", () => {
-    const page = ActivityDetailPage({
-      distanceMeters: 1_000,
-      durationSeconds: 600,
-      xpEarned: 25,
-      collectedCount: 1,
-      events: [{ type: "collectible_collected", sourceId: "coin-a", collectible: { name: "Coin A", type: "coin" }, value: 25 }]
-    }, { level: 1, currentLevelXp: 0, nextLevelXp: 100, progressToNextLevel: 0 }, "collected");
-    expect(page).toContain("Coin A");
-    expect(page).toContain("COLLECTED (1)");
-    expect(page).not.toContain("Replay data is unavailable");
+  it("keeps the collected events and near misses available for the replay overlay snapshot", () => {
+    const snapshot = replay([
+      { collectibleId: "historic-target", name: "Historic Target", value: 100, rarity: "rare", minimumDistanceMeters: 42.4 }
+    ]);
+    expect(replayInputs({ replay: snapshot })).toBe(snapshot);
+    expect(nearMissInputs({ replay: snapshot })).toBe(snapshot);
   });
 
-  it("renders persisted near misses without XP or current-world fields", () => {
+  it("renders only the REPLAY and VIDEO tabs", () => {
     const page = ActivityDetailPage({
-      distanceMeters: 1_000,
-      durationSeconds: 600,
-      xpEarned: 25,
-      collectedCount: 1,
-      replay: replay([
-        { collectibleId: "historic-target", name: "Historic Target", value: 100, rarity: "rare", minimumDistanceMeters: 42.4 }
-      ])
-    }, { level: 1, currentLevelXp: 0, nextLevelXp: 100, progressToNextLevel: 0 }, "near-misses");
-    expect(page).toContain("NEAR MISSES (1)");
-    expect(page).toContain("Historic Target");
-    expect(page).toContain("42 m from your route");
-    expect(page).toContain("near-miss-target-rare-a.svg");
-    expect(page).not.toContain("+100 XP");
-    expect(page).not.toContain("landmark");
-  });
-
-  it("renders factual empty and unavailable near-miss states", () => {
-    const activity = { distanceMeters: 1_000, durationSeconds: 600, xpEarned: 0, collectedCount: 0 };
-    const progress = { level: 1, currentLevelXp: 0, nextLevelXp: 100, progressToNextLevel: 0 };
-    expect(ActivityDetailPage({ ...activity, replay: replay() }, progress, "near-misses")).toContain("NO NEAR MISSES RECORDED");
-    expect(ActivityDetailPage(activity, progress, "near-misses")).toContain("Near-miss data is unavailable for this legacy activity.");
+      id: "activity-1", distanceMeters: 1_000, durationSeconds: 600, xpEarned: 25, collectedCount: 1,
+      replay: replay()
+    }, { level: 1, currentLevelXp: 0, nextLevelXp: 100, progressToNextLevel: 0 }, "replay");
+    expect(page).toContain('data-activity-tab="replay"');
+    expect(page).toContain('data-activity-tab="video"');
+    expect(page).not.toContain('data-activity-tab="collected"');
+    expect(page).not.toContain('data-activity-tab="near-misses"');
+    expect(page).toContain("data-replay-panel");
   });
 
   it("keeps the Video tab functional for a valid FIT-only activity", () => {

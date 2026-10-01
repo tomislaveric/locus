@@ -136,6 +136,7 @@ export const mountReplayMap = async ({
   activityResult,
   basemap,
   onPlaybackStateChange = () => {},
+  onProgress = () => {},
   onReady = () => {}
 }) => {
   const { route } = activity;
@@ -179,6 +180,7 @@ export const mountReplayMap = async ({
       map,
       collectiblesToFeatureCollection(activityCollectibleSources(sources, activityResult.events, timestamp))
     );
+    onProgress(timestamp);
   };
 
   let startedAt;

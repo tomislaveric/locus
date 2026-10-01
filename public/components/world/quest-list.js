@@ -7,7 +7,7 @@ export const formatProgressPercent = (progress) => {
 
 export const questProgressLabel = (progress) => {
   if (!progress || progress.total === 0) return "No collectibles yet";
-  return `${progress.collected} / ${progress.total} visited`;
+  return `${progress.collected} / ${progress.total} completed`;
 };
 
 export const QuestStatusBadge = (quest) => {

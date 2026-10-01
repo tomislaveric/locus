@@ -90,6 +90,8 @@ export interface Activity {
   id: string;
   source: "fit";
   type: ActivityType;
+  title?: string;
+  description?: string;
   startedAt: number;
   endedAt: number;
   route: TrackPoint[];

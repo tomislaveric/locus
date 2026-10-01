@@ -1,10 +1,27 @@
 import type { Activity, ActivityResult, ActivityType, Collectible, GameEvent, NearMissCollectible, TrackPoint } from "./domain.js";
+import type { FitMetadata } from "./fit.js";
 import { distanceMeters, detectFirstCollectiblePassages, minimumRouteDistanceMeters } from "./geometry.js";
 
 export const NEAR_MISS_THRESHOLD_METERS = 100;
 export const MAX_NEAR_MISSES = 5;
 
-export const deriveActivity = (id: string, route: TrackPoint[], type: ActivityType = "unknown"): Activity => {
+const ACTIVITY_TYPE_LABELS: Record<ActivityType, string> = {
+  cycling: "Ride",
+  running: "Run",
+  hiking: "Hike",
+  walking: "Walk",
+  unknown: "Activity"
+};
+
+/** A human label for an activity type, used as a title fallback when the FIT carries no name. */
+export const activityTypeLabel = (type: ActivityType): string => ACTIVITY_TYPE_LABELS[type] ?? ACTIVITY_TYPE_LABELS.unknown;
+
+export const deriveActivity = (
+  id: string,
+  route: TrackPoint[],
+  type: ActivityType = "unknown",
+  metadata: FitMetadata = {}
+): Activity => {
   const distance = route.slice(1).reduce(
     (total, point, index) =>
       total + distanceMeters(route[index].latitude, route[index].longitude, point.latitude, point.longitude),
@@ -12,10 +29,13 @@ export const deriveActivity = (id: string, route: TrackPoint[], type: ActivityTy
   );
   const startedAt = route[0].timestampMs;
   const endedAt = route.at(-1)!.timestampMs;
+  const title = metadata.title ?? activityTypeLabel(type);
   return {
     id,
     source: "fit",
     type,
+    title,
+    ...(metadata.description === undefined ? {} : { description: metadata.description }),
     startedAt,
     endedAt,
     route,

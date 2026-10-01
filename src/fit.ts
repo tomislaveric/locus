@@ -14,6 +14,50 @@ interface FitData {
   records?: FitRecord[];
 }
 
+type FitMessage = Record<string, unknown>;
+
+interface FitMetadataSource {
+  workout?: FitMessage;
+  workouts?: FitMessage[];
+  session?: FitMessage;
+  sessions?: FitMessage[];
+}
+
+export interface FitMetadata {
+  title?: string;
+  description?: string;
+}
+
+/** A trimmed, non-empty string candidate, or undefined when blank/unreliable. */
+const usableText = (value: unknown): string | undefined => {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+};
+
+const firstMessage = (
+  single: FitMessage | undefined,
+  list: FitMessage[] | undefined
+): FitMessage | undefined => single ?? list?.[0];
+
+/**
+ * Extracts a human ride title/description from parsed FIT name fields. Only well-known,
+ * reliable name fields are considered; everything else resolves to `undefined` so callers
+ * can fall back to an activity-type label.
+ */
+export const extractFitMetadata = (data: FitMetadataSource): FitMetadata => {
+  const workout = firstMessage(data.workout, data.workouts);
+  const session = firstMessage(data.session, data.sessions);
+  const title = usableText(workout?.wkt_name)
+    ?? usableText(session?.sport_profile_name)
+    ?? usableText(session?.name);
+  const description = usableText(workout?.notes) ?? usableText(session?.notes);
+  return {
+    ...(title === undefined ? {} : { title }),
+    ...(description === undefined ? {} : { description })
+  };
+};
+
 export const usableFitTrackPoints = (records: FitRecord[]): TrackPoint[] => {
   const points = records
     .map((record): TrackPoint | undefined => {
@@ -51,4 +95,16 @@ export const parseFitTrack = async (file: string): Promise<TrackPoint[]> => {
   }
 
   return usableFitTrackPoints(data.records ?? []);
+};
+
+export const parseFitMetadata = async (file: string): Promise<FitMetadata> => {
+  const source = await readFile(file);
+  const parser = new FitParser({ force: true, speedUnit: "m/s", lengthUnit: "m" });
+  let data: FitMetadataSource;
+  try {
+    data = (await parser.parseAsync(source)) as FitMetadataSource;
+  } catch {
+    return {};
+  }
+  return extractFitMetadata(data);
 };
