@@ -7,6 +7,7 @@ export const ReplayTab = () => `
   <section class="activity-replay activity-replay-map" aria-label="Animated route replay">
     <div class="activity-replay-map-canvas staza-map" data-replay-map></div>
     <div class="activity-replay-panel" data-replay-panel hidden></div>
+    <button class="activity-replay-panel-reopen" type="button" data-replay-panel-reopen hidden aria-label="Show collectibles">COLLECTIBLES</button>
     <button class="activity-replay-play" type="button" aria-label="Play replay" aria-pressed="false" disabled>
       <img src="/assets/activity-detail-play.svg" width="16" height="16" alt="">
     </button>
@@ -101,9 +102,6 @@ const mountReplayPanel = (host, replay) => {
     emptyMessage: "No collectibles on this activity.",
     rows: rows.map((row) => ({ id: row.id, name: row.name, rarity: row.rarity, state: "unvisited" }))
   });
-  host.querySelector("[data-world-close]")?.addEventListener("click", () => {
-    host.hidden = true;
-  });
 
   const rowElements = [...host.querySelectorAll("[data-collection-row]")];
   const labelElement = host.querySelector("[data-collection-progress-label]");
@@ -133,10 +131,35 @@ const mountReplayPanel = (host, replay) => {
   };
 };
 
+const BASE_FIT_PADDING = 48;
+const PANEL_GAP = 16;
+const MIN_VISIBLE_ROUTE = 140;
+
+/**
+ * Camera padding that reserves the strip occluded by the floating panel, so `fitBounds` keeps
+ * the whole route inside the unobstructed area beside the panel instead of beneath it. Measured
+ * from the live DOM rather than shifting any route coordinates.
+ */
+const panelFitPadding = (container, panelHost) => {
+  if (!panelHost || panelHost.hidden) return BASE_FIT_PADDING;
+  const mapRect = container.getBoundingClientRect();
+  const panelRect = panelHost.getBoundingClientRect();
+  if (!mapRect.width || !panelRect.width) return BASE_FIT_PADDING;
+  const occluded = mapRect.right - panelRect.left + PANEL_GAP;
+  const maxRight = Math.max(BASE_FIT_PADDING, mapRect.width - BASE_FIT_PADDING - MIN_VISIBLE_ROUTE);
+  return {
+    top: BASE_FIT_PADDING,
+    bottom: BASE_FIT_PADDING,
+    left: BASE_FIT_PADDING,
+    right: Math.min(Math.max(occluded, BASE_FIT_PADDING), maxRight)
+  };
+};
+
 export const mountReplayTab = (mountPoint, replay, basemap) => {
   const button = mountPoint.querySelector(".activity-replay-play");
   const container = mountPoint.querySelector("[data-replay-map]");
   const panelHost = mountPoint.querySelector("[data-replay-panel]");
+  const reopenButton = mountPoint.querySelector("[data-replay-panel-reopen]");
   const setPlayingUi = (isPlaying) => {
     button.classList.toggle("is-playing", isPlaying);
     button.setAttribute("aria-label", isPlaying ? "Pause replay" : "Play replay");
@@ -144,6 +167,18 @@ export const mountReplayTab = (mountPoint, replay, basemap) => {
   };
 
   const updatePanel = panelHost ? mountReplayPanel(panelHost, replay) : () => {};
+
+  let player;
+  const refitRoute = (duration) => player?.fitRoute(panelFitPadding(container, panelHost), { duration });
+
+  const setPanelOpen = (open) => {
+    if (panelHost) panelHost.hidden = !open;
+    if (reopenButton) reopenButton.hidden = open;
+    refitRoute(360);
+  };
+
+  panelHost?.querySelector("[data-world-close]")?.addEventListener("click", () => setPanelOpen(false));
+  reopenButton?.addEventListener("click", () => setPanelOpen(true));
 
   const mounted = mountReplayMap({
     container,
@@ -155,9 +190,9 @@ export const mountReplayTab = (mountPoint, replay, basemap) => {
     onReady: () => button.removeAttribute("disabled")
   });
 
-  let player;
   mounted.then((instance) => {
     player = instance;
+    refitRoute(0);
     player.play();
   }).catch(() => {
     container.innerHTML = '<p class="activity-detail-state activity-detail-error" role="alert">Unable to load the replay map.</p>';

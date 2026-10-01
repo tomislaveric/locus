@@ -167,7 +167,10 @@ export const mountReplayMap = async ({
   for (const layer of positionLayers()) map.addLayer(layer);
 
   const bounds = pointsToBounds([...route, ...sources]);
-  if (bounds) map.fitBounds(bounds, { padding: FIT_PADDING, maxZoom: 15, duration: 0 });
+  const fitRoute = (padding = FIT_PADDING, { duration = 0 } = {}) => {
+    if (bounds) map.fitBounds(bounds, { padding, maxZoom: 15, duration });
+  };
+  fitRoute();
 
   const render = (progress) => {
     const timestamp = replayTimestamp(activity, progress);
@@ -224,6 +227,7 @@ export const mountReplayMap = async ({
       elapsed = 0;
       render(0);
     },
+    fitRoute,
     destroy: () => {
       if (frame !== undefined) cancelAnimationFrame(frame);
       staza.destroy();

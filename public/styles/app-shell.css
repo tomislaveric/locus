@@ -1792,6 +1792,29 @@ input {
 .activity-replay-panel[hidden] {
     display: none;
 }
+.activity-replay-panel-reopen {
+    backdrop-filter: blur(12px);
+    background: rgb(11 12 15 / 94%);
+    border: 1px solid var(--border-faint);
+    border-radius: 999px;
+    color: var(--text-primary);
+    cursor: pointer;
+    font-family: var(--font-display);
+    font-size: 10px;
+    letter-spacing: .12em;
+    padding: 8px 14px;
+    position: absolute;
+    right: 14px;
+    top: 14px;
+    z-index: 3;
+}
+.activity-replay-panel-reopen[hidden] {
+    display: none;
+}
+.activity-replay-panel-reopen:hover {
+    border-color: var(--accent-yellow);
+    color: var(--accent-yellow);
+}
 .quest-collectible-row {
     align-items: center;
     color: var(--text-muted);
