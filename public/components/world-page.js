@@ -79,6 +79,8 @@ export const WorldPage = ({ lifetime, activeFilter }) => `
       <div class="world-map staza-map" data-world-map></div>
       ${WorldLegend()}
       <ul class="world-collectible-list" aria-label="Collectibles on the map" data-world-collectible-list></ul>
+      <a class="world-osm-attribution" href="https://www.openstreetmap.org/copyright"
+        target="_blank" rel="noopener noreferrer">© OpenStreetMap contributors</a>
       <button class="world-locate" type="button" data-world-locate>LOCATE ME</button>
       <p class="world-map-status" data-world-status role="status" hidden></p>
       <div class="world-detail-host" data-world-detail hidden></div>

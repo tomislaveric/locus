@@ -1,6 +1,7 @@
 export type CollectibleType = "coin" | "landmark" | "mountain_pass";
 export type CollectibleRarity = "common" | "rare" | "epic";
 export type CollectibleStatus = "published" | "archived";
+export type CollectibleCategory = "viewpoint" | "peak" | "castle" | "waterfall" | "mountain_pass";
 
 export interface CollectibleSource {
   sourceType: string;
@@ -22,6 +23,11 @@ export interface Collectible {
   elevationMeters?: number;
   status?: CollectibleStatus;
   source?: CollectibleSource;
+  primaryCategory?: CollectibleCategory;
+  tags?: string[];
+  wikidataQid?: string;
+  wikipediaReference?: string;
+  enrichmentMetadata?: Record<string, unknown>;
 }
 
 export type WorldCollectibleVisibility = "visible" | "hidden";

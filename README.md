@@ -61,6 +61,9 @@ Single-container POC for turning a FIT ride into collectible game events and an 
 - [Milestone 15.4 — quäldich Pass Catalog Import](features/milestone-15-4-quaeldich-pass-import/README.md)
   — idempotent, manual importer that seeds World with mountain passes from the
   official ODbL quäldich GeoJSON, preserving source identity and attribution.
+- [Milestone 15.6 — Automated OSM/Wikidata Collectible Pipeline](features/milestone-15-6-automated-osm-wikidata-collectible-pipeline/README.md)
+  — conservative cached Germany Overpass ingestion, Wikidata enrichment, and scored manual
+  World catalog import.
 - [Milestone 15 — Staza World v1](features/milestone-15-staza-world-v1/README.md)
   — replace the mock World map with a real MapLibre basemap, viewport-driven
   curated collectibles and quests, and quests created from completed activities.

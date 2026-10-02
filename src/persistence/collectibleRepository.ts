@@ -1,5 +1,5 @@
 import type { Pool } from "pg";
-import type { Collectible, CollectibleRarity, CollectibleStatus, CollectibleType } from "../domain.js";
+import type { Collectible, CollectibleCategory, CollectibleRarity, CollectibleStatus, CollectibleType } from "../domain.js";
 import type { GeoBounds } from "../worldQuery.js";
 import { boundsCenter, splitBoundsAtAntimeridian } from "../worldQuery.js";
 
@@ -19,6 +19,11 @@ interface CollectibleRow {
   source_external_id: string | null;
   source_url: string | null;
   source_attribution: string | null;
+  primary_category: CollectibleCategory | null;
+  tags: string[];
+  wikidata_qid: string | null;
+  wikipedia_reference: string | null;
+  enrichment_metadata: Record<string, unknown> | null;
 }
 
 const mapCollectible = (row: CollectibleRow): Collectible => ({
@@ -42,12 +47,18 @@ const mapCollectible = (row: CollectibleRow): Collectible => ({
           ...(row.source_url === null ? {} : { sourceUrl: row.source_url }),
           ...(row.source_attribution === null ? {} : { sourceAttribution: row.source_attribution })
         }
-      })
+      }),
+  ...(row.primary_category === null ? {} : { primaryCategory: row.primary_category }),
+  tags: row.tags,
+  ...(row.wikidata_qid === null ? {} : { wikidataQid: row.wikidata_qid }),
+  ...(row.wikipedia_reference === null ? {} : { wikipediaReference: row.wikipedia_reference }),
+  ...(row.enrichment_metadata === null ? {} : { enrichmentMetadata: row.enrichment_metadata })
 });
 
 const SELECT_COLUMNS =
   "id, name, collectible_type, rarity, latitude, longitude, radius_meters, value, description, " +
-  "elevation_m, status, source_type, source_external_id, source_url, source_attribution";
+  "elevation_m, status, source_type, source_external_id, source_url, source_attribution, " +
+  "primary_category, tags, wikidata_qid, wikipedia_reference, enrichment_metadata";
 
 export class CollectibleRepository {
   constructor(private readonly pool: Pool) {}
@@ -107,8 +118,10 @@ export class CollectibleRepository {
         await client.query(
           `INSERT INTO collectibles (
             id, name, collectible_type, rarity, latitude, longitude, radius_meters, value, description,
-            elevation_m, status, source_type, source_external_id, source_url, source_attribution
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+            elevation_m, status, source_type, source_external_id, source_url, source_attribution,
+            primary_category, tags, wikidata_qid, wikipedia_reference, enrichment_metadata
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
+                    $16, $17, $18, $19, $20)
           ON CONFLICT (id) DO UPDATE SET
             name = EXCLUDED.name,
             collectible_type = EXCLUDED.collectible_type,
@@ -124,6 +137,11 @@ export class CollectibleRepository {
             source_external_id = EXCLUDED.source_external_id,
             source_url = EXCLUDED.source_url,
             source_attribution = EXCLUDED.source_attribution,
+            primary_category = EXCLUDED.primary_category,
+            tags = EXCLUDED.tags,
+            wikidata_qid = EXCLUDED.wikidata_qid,
+            wikipedia_reference = EXCLUDED.wikipedia_reference,
+            enrichment_metadata = EXCLUDED.enrichment_metadata,
             updated_at = now()`,
           [
             collectible.id,
@@ -140,7 +158,12 @@ export class CollectibleRepository {
             collectible.source?.sourceType ?? null,
             collectible.source?.sourceExternalId ?? null,
             collectible.source?.sourceUrl ?? null,
-            collectible.source?.sourceAttribution ?? null
+            collectible.source?.sourceAttribution ?? null,
+            collectible.primaryCategory ?? null,
+            collectible.tags ?? [],
+            collectible.wikidataQid ?? null,
+            collectible.wikipediaReference ?? null,
+            collectible.enrichmentMetadata ? JSON.stringify(collectible.enrichmentMetadata) : null
           ]
         );
       }

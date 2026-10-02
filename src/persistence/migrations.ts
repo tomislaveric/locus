@@ -301,4 +301,19 @@ export const migrations: Migration[] = [{
         WHERE source_type IS NOT NULL;
     `);
   }
+}, {
+  id: "013_osm_collectible_metadata",
+  async up(client) {
+    await client.query(`
+      ALTER TABLE collectibles
+        ADD COLUMN primary_category TEXT
+          CHECK (primary_category IS NULL OR primary_category IN ('viewpoint', 'peak', 'castle', 'waterfall', 'mountain_pass')),
+        ADD COLUMN tags TEXT[] NOT NULL DEFAULT '{}',
+        ADD COLUMN wikidata_qid TEXT
+          CHECK (wikidata_qid IS NULL OR wikidata_qid ~ '^Q[1-9][0-9]*$'),
+        ADD COLUMN wikipedia_reference TEXT,
+        ADD COLUMN enrichment_metadata JSONB;
+      CREATE INDEX collectibles_primary_category_index ON collectibles (primary_category);
+    `);
+  }
 }];

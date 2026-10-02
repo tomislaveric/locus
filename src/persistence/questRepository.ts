@@ -3,6 +3,7 @@ import type { Pool, PoolClient } from "pg";
 import type {
   ActivityType,
   Collectible,
+  CollectibleCategory,
   ExternalRoute,
   ExternalRouteProvider,
   QuestDetail,
@@ -55,6 +56,17 @@ interface QuestCollectibleRow {
   radius_meters: number;
   value: number;
   description: string | null;
+  elevation_m: number | null;
+  status: Collectible["status"];
+  source_type: string | null;
+  source_external_id: string | null;
+  source_url: string | null;
+  source_attribution: string | null;
+  primary_category: CollectibleCategory | null;
+  tags: string[];
+  wikidata_qid: string | null;
+  wikipedia_reference: string | null;
+  enrichment_metadata: Record<string, unknown> | null;
 }
 
 interface QuestRouteRow {
@@ -92,7 +104,22 @@ const mapCollectible = (row: QuestCollectibleRow): Collectible => ({
   radiusMeters: row.radius_meters,
   value: row.value,
   ...(row.rarity === null || row.rarity === undefined ? {} : { rarity: row.rarity }),
-  ...(row.description === null ? {} : { description: row.description })
+  ...(row.description === null ? {} : { description: row.description }),
+  ...(row.elevation_m == null ? {} : { elevationMeters: row.elevation_m }),
+  ...(row.status == null ? {} : { status: row.status }),
+  ...(row.source_type == null || row.source_external_id == null ? {} : {
+    source: {
+      sourceType: row.source_type,
+      sourceExternalId: row.source_external_id,
+      ...(row.source_url == null ? {} : { sourceUrl: row.source_url }),
+      ...(row.source_attribution == null ? {} : { sourceAttribution: row.source_attribution })
+    }
+  }),
+  ...(row.primary_category == null ? {} : { primaryCategory: row.primary_category }),
+  ...(row.tags == null ? {} : { tags: row.tags }),
+  ...(row.wikidata_qid == null ? {} : { wikidataQid: row.wikidata_qid }),
+  ...(row.wikipedia_reference == null ? {} : { wikipediaReference: row.wikipedia_reference }),
+  ...(row.enrichment_metadata == null ? {} : { enrichmentMetadata: row.enrichment_metadata })
 });
 
 const mapRoute = (row: QuestRouteRow): QuestRoute => ({
@@ -292,7 +319,10 @@ export class QuestRepository {
       this.pool.query<QuestCollectibleRow>(
         `SELECT quest_collectibles.quest_id, quest_collectibles.collectible_id, quest_collectibles.order_index,
                 collectibles.name, collectibles.collectible_type, collectibles.rarity, collectibles.latitude,
-                collectibles.longitude, collectibles.radius_meters, collectibles.value, collectibles.description
+                collectibles.longitude, collectibles.radius_meters, collectibles.value, collectibles.description,
+                collectibles.elevation_m, collectibles.status, collectibles.source_type, collectibles.source_external_id,
+                collectibles.source_url, collectibles.source_attribution, collectibles.primary_category, collectibles.tags,
+                collectibles.wikidata_qid, collectibles.wikipedia_reference, collectibles.enrichment_metadata
          FROM quest_collectibles
          INNER JOIN collectibles ON collectibles.id = quest_collectibles.collectible_id
          WHERE quest_collectibles.quest_id = $1
@@ -385,7 +415,9 @@ export class QuestRepository {
     if (ids.length === 0) return [];
     const result = await client.query<QuestCollectibleRow>(
       `SELECT id AS collectible_id, name, collectible_type, rarity, latitude, longitude,
-              radius_meters, value, description, NULL::integer AS order_index, NULL::uuid AS quest_id
+              radius_meters, value, description, elevation_m, status, source_type, source_external_id,
+              source_url, source_attribution, primary_category, tags, wikidata_qid,
+              wikipedia_reference, enrichment_metadata, NULL::integer AS order_index, NULL::uuid AS quest_id
        FROM collectibles WHERE id = ANY($1::text[])`,
       [ids]
     );

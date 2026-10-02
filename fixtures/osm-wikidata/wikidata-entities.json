@@ -1,0 +1,33 @@
+{
+  "Q1001": {
+    "id": "Q1001",
+    "labels": { "de": { "language": "de", "value": "Wachtelberg" }, "en": { "language": "en", "value": "Wachtelberg" } },
+    "descriptions": { "de": { "language": "de", "value": "Aussichtspunkt" } },
+    "claims": { "P31": [{ "mainsnak": { "datavalue": { "value": { "id": "Q570116" } } } }], "P625": [{ "mainsnak": { "datavalue": { "value": { "latitude": 48.0, "longitude": 7.9 } } } }] },
+    "sitelinks": { "dewiki": { "site": "dewiki", "title": "Wachtelberg" } }
+  },
+  "Q1002": {
+    "id": "Q1002",
+    "labels": { "de": { "language": "de", "value": "Belchen" } },
+    "claims": { "P31": [{ "mainsnak": { "datavalue": { "value": { "id": "Q8502" } } } }], "P625": [{ "mainsnak": { "datavalue": { "value": { "latitude": 47.8, "longitude": 7.83 } } } }] },
+    "sitelinks": { "dewiki": { "site": "dewiki", "title": "Belchen" } }
+  },
+  "Q1003": {
+    "id": "Q1003",
+    "labels": { "de": { "language": "de", "value": "Schloss Beispiel" } },
+    "claims": { "P31": [{ "mainsnak": { "datavalue": { "value": { "id": "Q23413" } } } }], "P625": [{ "mainsnak": { "datavalue": { "value": { "latitude": 48.2, "longitude": 8.1 } } } }] },
+    "sitelinks": { "dewiki": { "site": "dewiki", "title": "Schloss Beispiel" } }
+  },
+  "Q1004": {
+    "id": "Q1004",
+    "labels": { "de": { "language": "de", "value": "Beispiel Wasserfall" } },
+    "claims": { "P31": [{ "mainsnak": { "datavalue": { "value": { "id": "Q34038" } } } }], "P625": [{ "mainsnak": { "datavalue": { "value": { "latitude": 47.5, "longitude": 8.0 } } } }] },
+    "sitelinks": { "dewiki": { "site": "dewiki", "title": "Beispiel Wasserfall" } }
+  },
+  "Q1005": {
+    "id": "Q1005",
+    "labels": { "de": { "language": "de", "value": "Die richtige Burgruine" } },
+    "claims": { "P31": [{ "mainsnak": { "datavalue": { "value": { "id": "Q23413" } } } }], "P625": [{ "mainsnak": { "datavalue": { "value": { "latitude": 47.7, "longitude": 8.2 } } } }] },
+    "sitelinks": { "dewiki": { "site": "dewiki", "title": "Die richtige Burgruine" } }
+  }
+}

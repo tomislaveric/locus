@@ -10,6 +10,12 @@ const VISITED_FILL = "#e8b80a";
 const UNVISITED_FILL = "#171a20";
 const NEUTRAL_RING = "#7c828c";
 const SELECTED_ACCENT = "#e8b80a";
+const CATEGORY_FILL = ["match", ["get", "category"],
+  "viewpoint", "#43a6c6",
+  "peak", "#6d9f55",
+  "castle", "#c47a44",
+  "waterfall", "#397fc4",
+  UNVISITED_FILL];
 
 /** Rarity is carried by the ring so the map never becomes a field of bright tokens. */
 const RARITY_RING = ["match", ["get", "rarity"],
@@ -20,7 +26,7 @@ const RARITY_RING = ["match", ["get", "rarity"],
 const SELECTED = ["==", ["get", "selected"], true];
 const IS_RARE = ["!=", ["get", "rarity"], "common"];
 const ACTIVITY_COLLECTED = ["==", ["get", "activityCollected"], true];
-/** Filled when discovered in World or collected on the current activity replay. */
+/** Visited state stays gold; unvisited imported landmarks use their semantic category color. */
 const FILLED = ["any", ["get", "visited"], ACTIVITY_COLLECTED];
 
 /** Far out stays readable but uncluttered; close in stays crisp. */
@@ -47,7 +53,7 @@ const collectibleLayer = () => ({
   source: COLLECTIBLE_SOURCE,
   paint: {
     "circle-radius": zoomSize(RADIUS_STOPS, SELECTED, 1.25),
-    "circle-color": ["case", FILLED, VISITED_FILL, UNVISITED_FILL],
+    "circle-color": ["case", FILLED, VISITED_FILL, CATEGORY_FILL],
     "circle-opacity": questOpacity(["case", FILLED, 1, 0.88]),
     "circle-stroke-width": zoomSize(STROKE_STOPS, IS_RARE, 1.4),
     "circle-stroke-color": ["case",

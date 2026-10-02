@@ -1,0 +1,23 @@
+{
+  "qid": "Q1001",
+  "fetchedAt": "2026-10-01T08:00:00.000Z",
+  "status": 200,
+  "responseDate": "Thu, 01 Oct 2026 08:00:00 GMT",
+  "entity": {
+    "id": "Q1001",
+    "labels": {
+      "de": { "language": "de", "value": "Wachtelberg" },
+      "en": { "language": "en", "value": "Wachtelberg" }
+    },
+    "descriptions": {
+      "de": { "language": "de", "value": "Aussichtspunkt" }
+    },
+    "claims": {
+      "P31": [{ "mainsnak": { "datavalue": { "value": { "id": "Q570116" } } } }],
+      "P625": [{ "mainsnak": { "datavalue": { "value": { "latitude": 48.0, "longitude": 7.9 } } } }]
+    },
+    "sitelinks": {
+      "dewiki": { "site": "dewiki", "title": "Wachtelberg" }
+    }
+  }
+}

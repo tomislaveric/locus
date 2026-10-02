@@ -1,0 +1,10 @@
+{"latitude":48.0,"longitude":7.9,"osmId":"1001","osmType":"node","tags":{"access":"permissive","direction":"180","name":"Wachtelberg","tourism":"viewpoint","wikidata":"Q1001","wikipedia":"de:Wachtelberg"}}
+{"latitude":48.1,"longitude":7.8,"osmId":"1002","osmType":"node","tags":{"direction":"90","foot":"yes","tourism":"viewpoint"}}
+{"latitude":47.8,"longitude":7.83,"osmId":"2001","osmType":"node","tags":{"access":"yes","ele":"1414","name":"Belchen","natural":"peak","prominence":"310 m","tourism":"viewpoint","wikidata":"Q1002","wikipedia":"de:Belchen"}}
+{"latitude":48.2,"longitude":8.1,"osmId":"3001","osmType":"way","tags":{"access":"permissive","castle_type":"manor","heritage":"4","historic":"castle","name":"Schloss Beispiel","tourism":"attraction","wikidata":"Q1003","wikipedia":"de:Schloss_Beispiel"}}
+{"latitude":48.2001,"longitude":8.1001,"osmId":"3002","osmType":"node","tags":{"access":"yes","direction":"north","name":"Schloss Beispiel Aussicht","tourism":"viewpoint","wikidata":"Q1003","wikipedia":"de:Schloss_Beispiel"}}
+{"latitude":47.5,"longitude":8.0,"osmId":"4001","osmType":"way","tags":{"access":"permissive","height":"18","name":"Beispiel Wasserfall","waterway":"waterfall","website":"https://example.invalid","wikidata":"Q1004","wikipedia":"de:Beispiel_Wasserfall"}}
+{"latitude":47.7,"longitude":8.2,"osmId":"5001","osmType":"node","tags":{"access":"yes","castle_type":"ruin","historic":"castle","name":"Ruine Falsch","wikidata":"Q1005","wikipedia":"de:Falscher_Titel"}}
+{"latitude":47.6,"longitude":8.3,"osmId":"6001","osmType":"node","tags":{"access":"private","name":"Privater Aussichtspunkt","tourism":"viewpoint"}}
+{"latitude":999,"longitude":8,"osmId":"7001","osmType":"node","tags":{"natural":"peak"}}
+{"latitude":48.0,"longitude":7.9,"osmId":"1001","osmType":"node","tags":{"access":"permissive","direction":"180","name":"Wachtelberg duplicate","tourism":"viewpoint"}}

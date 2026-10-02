@@ -52,4 +52,20 @@ describe("CollectibleDetail", () => {
     expect(html).not.toContain("Source:");
     expect(html).not.toContain("collectible-detail-elevation");
   });
+
+  it("shows an imported OSM category and source link", () => {
+    const html = CollectibleDetail(pass({
+      type: "landmark",
+      primaryCategory: "castle",
+      source: {
+        sourceType: "osm",
+        sourceExternalId: "way:42",
+        sourceUrl: "https://www.openstreetmap.org/way/42",
+        sourceAttribution: "© OpenStreetMap contributors"
+      }
+    }));
+    expect(html).toContain("<small>castle</small>");
+    expect(html).toContain("© OpenStreetMap contributors");
+    expect(html).toContain('href="https://www.openstreetmap.org/way/42"');
+  });
 });

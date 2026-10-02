@@ -65,7 +65,7 @@ describe("collectible source and layers", () => {
     }
   });
 
-  it("encodes discovery in the fill and rarity in the ring", () => {
+  it("encodes discovery and category in the fill and rarity in the ring", () => {
     const map = fakeMap();
 
     ensureCollectibleLayers(map);
@@ -75,7 +75,12 @@ describe("collectible source and layers", () => {
       "case",
       ["any", ["get", "visited"], ["==", ["get", "activityCollected"], true]],
       "#e8b80a",
-      "#171a20"
+      ["match", ["get", "category"],
+        "viewpoint", "#43a6c6",
+        "peak", "#6d9f55",
+        "castle", "#c47a44",
+        "waterfall", "#397fc4",
+        "#171a20"]
     ]);
     const stroke = JSON.stringify(paint["circle-stroke-color"]);
     expect(stroke).toContain("#4d9de0");

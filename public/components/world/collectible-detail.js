@@ -25,7 +25,7 @@ export const CollectibleDetail = (collectible, relatedQuests = []) => {
         <div>
           <h2>${CollectibleIcon(collectible.type, rarity === "common" ? undefined : rarity)}${escapeHtml(collectible.name)}</h2>
           <p class="world-detail-meta">
-            <small>${escapeHtml(collectible.type)}</small>
+            <small>${escapeHtml(collectible.primaryCategory ?? collectible.type)}</small>
             ${RarityBadge(rarity)}
             <small>${escapeHtml(collectible.value)} XP</small>
           </p>

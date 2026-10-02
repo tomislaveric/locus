@@ -173,6 +173,7 @@ describe("shared marker vocabulary", () => {
     expect(CollectibleSwatch({ visited: false })).toContain("is-unvisited");
     expect(CollectibleSwatch({ rarity: "epic" })).toContain("is-epic");
     expect(CollectibleSwatch({ rarity: "rare" })).toContain("is-rare");
+    expect(CollectibleSwatch({ category: "castle" })).toContain("is-castle");
     expect(CollectibleSwatch()).toContain("is-common");
   });
 
@@ -181,6 +182,10 @@ describe("shared marker vocabulary", () => {
 
     expect(legend).toContain("Visited");
     expect(legend).toContain("Unvisited");
+    expect(legend).toContain("Viewpoint");
+    expect(legend).toContain("Peak");
+    expect(legend).toContain("Castle");
+    expect(legend).toContain("Waterfall");
     expect(legend).toContain("Rare");
     expect(legend).toContain("Epic");
     expect(legend).not.toContain("collectible-type-icon");

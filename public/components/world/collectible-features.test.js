@@ -54,6 +54,30 @@ describe("collectible GeoJSON conversion", () => {
     expect(feature.properties.name).toBe("Turmberg");
   });
 
+  it("carries OSM category, tags, and provenance without changing the gameplay type", () => {
+    const feature = collectibleFeature(collectible({
+      primaryCategory: "castle",
+      tags: ["historic", "viewpoint"],
+      wikidataQid: "Q123",
+      wikipediaReference: "de:Sample_Castle",
+      source: {
+        sourceType: "osm",
+        sourceExternalId: "way:42",
+        sourceUrl: "https://www.openstreetmap.org/way/42",
+        sourceAttribution: "© OpenStreetMap contributors"
+      }
+    }));
+    expect(feature.properties).toMatchObject({
+      category: "castle",
+      tags: ["historic", "viewpoint"],
+      sourceType: "osm",
+      sourceExternalId: "way:42",
+      wikidataQid: "Q123",
+      wikipediaReference: "de:Sample_Castle",
+      visited: false
+    });
+  });
+
   it("marks only the selected collectible as selected", () => {
     const featureCollection = collectiblesToFeatureCollection(
       [collectible({ id: "a" }), collectible({ id: "b" })],

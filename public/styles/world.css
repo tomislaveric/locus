@@ -44,6 +44,20 @@
   position: relative;
 }
 .world-map { background: var(--world-map-surface); height: 100%; width: 100%; }
+.world-osm-attribution {
+  background: rgb(11 12 15 / 82%);
+  border-radius: 6px;
+  bottom: 34px;
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: 10px;
+  padding: 2px 5px;
+  position: absolute;
+  right: 8px;
+  text-decoration: none;
+  z-index: 3;
+}
+.world-osm-attribution:hover { text-decoration: underline; }
 
 /* MapLibre chrome restyled to match Staza surfaces; attribution stays readable. */
 .staza-map .maplibregl-ctrl-attrib {
@@ -128,6 +142,7 @@
   border-radius: 8px;
   bottom: 14px;
   display: flex;
+  flex-wrap: wrap;
   gap: 12px;
   left: 14px;
   padding: 7px 12px;
@@ -138,7 +153,7 @@
 .world-legend small { color: var(--text-muted); font-family: var(--font-display); font-size: 9px; letter-spacing: .05em; text-transform: uppercase; }
 .world-legend > i { background: var(--border-faint); height: 12px; width: 1px; }
 
-/* Shared marker vocabulary: fill encodes discovery, ring encodes rarity. */
+/* Shared marker vocabulary: fill encodes discovery/category, ring encodes rarity. */
 .collectible-swatch {
   border-radius: 50%;
   border-style: solid;
@@ -151,6 +166,10 @@
 }
 .collectible-swatch.is-visited { background: var(--accent-yellow); border-color: rgb(11 12 15 / 75%); }
 .collectible-swatch.is-unvisited { background: var(--surface-raised-background); border-color: var(--world-marker-ring); }
+.collectible-swatch.is-unvisited.is-viewpoint { background: #43a6c6; }
+.collectible-swatch.is-unvisited.is-peak { background: #6d9f55; }
+.collectible-swatch.is-unvisited.is-castle { background: #c47a44; }
+.collectible-swatch.is-unvisited.is-waterfall { background: #397fc4; }
 .collectible-swatch.is-rare { border-color: var(--accent-rare); border-width: 2px; }
 .collectible-swatch.is-epic { border-color: var(--accent-epic); border-width: 2px; }
 .collectible-swatch.is-selected { box-shadow: 0 0 0 2px rgb(232 184 10 / 45%); }
