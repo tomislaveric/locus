@@ -668,6 +668,16 @@ app.get("/shared/progression.js", (_request, response) => {
 });
 app.use("/shared/webauthn", express.static(path.resolve("node_modules/@simplewebauthn/browser/esm")));
 app.use("/shared/maplibre", express.static(path.resolve("node_modules/maplibre-gl/dist")));
+
+const landingDocument = path.resolve("public/landing/index.html");
+const appDocument = path.resolve("public/index.html");
+app.get("/", (_request, response) => {
+  response.sendFile(landingDocument);
+});
+app.get(["/app", "/sign-in"], (_request, response) => {
+  response.sendFile(appDocument);
+});
+
 app.use(express.static(path.resolve("public")));
 
 app.post(

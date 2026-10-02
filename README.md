@@ -21,8 +21,6 @@ Single-container POC for turning a FIT ride into collectible game events and an 
 - [Job lifecycle operational robustness](features/job-lifecycle-operational-robustness/README.md)
   — make local processing jobs lifecycle-safe, isolated, recoverable, and
   retention-aware.
-- [Multi Clip creation](features/multi-clip-creation/README.md) — select detected
-  Coin passages and combine them into one chronological highlight video.
 - [Milestone 11.1 — Application shell (historical)](features/milestone-11-1-trailhunt-application-shell/README.md)
   — historical implementation of desktop tokens, shell, sidebar, and main content.
 - [Milestone 11.10 — Progress desktop (historical)](features/milestone-11-10-trailhunt-progress-desktop/README.md)
@@ -67,6 +65,11 @@ Single-container POC for turning a FIT ride into collectible game events and an 
 - [Milestone 15 — Staza World v1](features/milestone-15-staza-world-v1/README.md)
   — replace the mock World map with a real MapLibre basemap, viewport-driven
   curated collectibles and quests, and quests created from completed activities.
+- [Milestone 16.0 — Staza Landing Page](features/milestone-16-0-staza-landing-page/README.md)
+  — add an isolated public landing page at `/` while preserving the existing
+  authenticated app under `/app` and `/sign-in`.
+- [Multi Clip creation](features/multi-clip-creation/README.md) — select detected
+  Coin passages and combine them into one chronological highlight video.
 - [Persistent activities player state v1](features/persistent-activities-player-state-v1/README.md)
   — persist compact activity/event history and single-player XP in PostgreSQL
   with transaction-safe exactly-once progression.

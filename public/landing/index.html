@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Staza — The outdoor exploration game built on real geography</title>
+    <meta
+      name="description"
+      content="Staza turns real mountain passes, summits, castles, waterfalls and viewpoints into collectibles. Upload a ride, run or hike and claim every place you crossed."
+    />
+    <link rel="canonical" href="https://staza.world/" />
+    <meta name="theme-color" content="#0B0C0F" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Staza" />
+    <meta property="og:url" content="https://staza.world/" />
+    <meta property="og:title" content="Staza — The outdoor exploration game built on real geography" />
+    <meta
+      property="og:description"
+      content="Turn real mountain passes, summits, castles, waterfalls and viewpoints into collectibles. Upload a ride, run or hike and claim every place you crossed."
+    />
+    <meta property="og:image" content="https://staza.world/landing/assets/photo-alpine-road.jpg" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Staza — The outdoor exploration game built on real geography" />
+    <meta
+      name="twitter:description"
+      content="Turn real mountain passes, summits, castles, waterfalls and viewpoints into collectibles. Upload a ride, run or hike and claim every place you crossed."
+    />
+    <meta name="twitter:image" content="https://staza.world/landing/assets/photo-alpine-road.jpg" />
+    <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/landing/landing.css" />
+  </head>
+  <body class="landing">
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <header class="nav" id="top">
+      <div class="nav__inner">
+        <a class="nav__brand" href="/" aria-label="Staza home">
+          <img src="/assets/logo-full.svg" width="114" height="48" alt="Staza" />
+        </a>
+
+        <button
+          class="nav__toggle"
+          type="button"
+          aria-expanded="false"
+          aria-controls="nav-menu"
+          aria-label="Open navigation"
+        >
+          <span class="nav__toggle-bar" aria-hidden="true"></span>
+          <span class="nav__toggle-bar" aria-hidden="true"></span>
+        </button>
+
+        <nav class="nav__menu" id="nav-menu" aria-label="Primary">
+          <ul class="nav__links">
+            <li><a href="#collection">Discover</a></li>
+            <li><a href="#how-it-works">How it works</a></li>
+            <li><a href="#quests">Quests</a></li>
+            <li><a href="#progression">Progression</a></li>
+          </ul>
+          <div class="nav__actions">
+            <a class="link-quiet" href="/sign-in">Sign in</a>
+            <a class="button button--primary button--sm" href="/sign-in">Get Early Access</a>
+          </div>
+        </nav>
+      </div>
+    </header>
+
+    <main id="main">
+      <section class="hero">
+        <div class="hero__glow" aria-hidden="true"></div>
+        <div class="section__inner hero__inner">
+          <div class="hero__copy">
+            <p class="pill"><span aria-hidden="true">✦</span> Early access · staza.world</p>
+            <h1 class="hero__title">
+              Go somewhere<br />
+              <span class="accent">worth</span><br />
+              discovering.
+            </h1>
+            <p class="lead">
+              Staza turns real mountain passes, summits, castles, waterfalls and viewpoints into
+              collectibles. Upload a ride, a run or a hike and claim every place you crossed.
+            </p>
+            <div class="hero__actions">
+              <a class="button button--primary" href="/sign-in">Join Early Access — Free</a>
+              <a class="button button--ghost" href="#how-it-works">
+                See how it works <span aria-hidden="true">↓</span>
+              </a>
+            </div>
+          </div>
+
+          <figure class="hero__figure">
+            <img
+              class="hero__map"
+              src="/landing/assets/hero-map.svg"
+              width="606"
+              height="558"
+              alt="Illustration of a Staza route across the Black Forest with discovered collectibles marked along the track."
+            />
+          </figure>
+        </div>
+      </section>
+
+      <section class="section" id="collection" aria-labelledby="collection-title">
+        <div class="section__inner">
+          <p class="eyebrow">The collection</p>
+          <h2 class="section__title" id="collection-title">
+            The world is<br />
+            the game board.
+          </h2>
+          <p class="lead lead--section">
+            Five collectible categories, each with its own detection radius and XP value.
+          </p>
+
+          <ul class="card-grid card-grid--3">
+            <li class="collect-card" data-rarity="epic">
+              <div class="collect-card__head">
+                <span class="collect-card__icon" aria-hidden="true">⛰</span>
+                <span class="badge">100–600 XP</span>
+              </div>
+              <h3 class="collect-card__title">Mountain Pass</h3>
+              <p class="collect-card__meta">Value scales with elevation</p>
+              <p class="collect-card__examples">Stelvio · Galibier · Mortirolo</p>
+            </li>
+            <li class="collect-card" data-rarity="rare">
+              <div class="collect-card__head">
+                <span class="collect-card__icon" aria-hidden="true">▲</span>
+                <span class="badge">50 XP</span>
+              </div>
+              <h3 class="collect-card__title">Summit</h3>
+              <p class="collect-card__meta">90 m detection radius</p>
+              <p class="collect-card__examples">Feldberg · Brandenkopf · Belchen</p>
+            </li>
+            <li class="collect-card" data-rarity="uncommon">
+              <div class="collect-card__head">
+                <span class="collect-card__icon" aria-hidden="true">🏰</span>
+                <span class="badge">35 XP</span>
+              </div>
+              <h3 class="collect-card__title">Castle</h3>
+              <p class="collect-card__meta">75 m detection radius</p>
+              <p class="collect-card__examples">Hohenzollern · Geroldseck</p>
+            </li>
+            <li class="collect-card" data-rarity="uncommon">
+              <div class="collect-card__head">
+                <span class="collect-card__icon" aria-hidden="true">💧</span>
+                <span class="badge">35 XP</span>
+              </div>
+              <h3 class="collect-card__title">Waterfall</h3>
+              <p class="collect-card__meta">75 m detection radius</p>
+              <p class="collect-card__examples">Rheinfall · Triberg Falls</p>
+            </li>
+            <li class="collect-card" data-rarity="common">
+              <div class="collect-card__head">
+                <span class="collect-card__icon" aria-hidden="true">👁</span>
+                <span class="badge">20 XP</span>
+              </div>
+              <h3 class="collect-card__title">Viewpoint</h3>
+              <p class="collect-card__meta">60 m detection radius</p>
+              <p class="collect-card__examples">Hornisgrinde · Schauinsland</p>
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="section section--alt" id="how-it-works" aria-labelledby="how-title">
+        <div class="section__inner">
+          <p class="eyebrow">How it works</p>
+          <h2 class="section__title" id="how-title">
+            Move. Discover.<br />
+            Earn.
+          </h2>
+
+          <ol class="steps">
+            <li class="step">
+              <span class="step__dot step__dot--accent" aria-hidden="true">⚡</span>
+              <p class="step__index">01</p>
+              <h3 class="step__title">Move</h3>
+              <p class="step__body">Ride, run or hike with any device that records a .FIT file.</p>
+            </li>
+            <li class="step">
+              <span class="step__dot" aria-hidden="true">◎</span>
+              <p class="step__index">02</p>
+              <h3 class="step__title">Detect</h3>
+              <p class="step__body">Upload the file. Staza matches your GPS track against every known place.</p>
+            </li>
+            <li class="step">
+              <span class="step__dot" aria-hidden="true">✦</span>
+              <p class="step__index">03</p>
+              <h3 class="step__title">Collect</h3>
+              <p class="step__body">Everything you passed close enough to is added to your collection.</p>
+            </li>
+            <li class="step">
+              <span class="step__dot" aria-hidden="true">🏆</span>
+              <p class="step__index">04</p>
+              <h3 class="step__title">Earn</h3>
+              <p class="step__body">Each discovery awards XP. XP raises your level and your rank.</p>
+            </li>
+          </ol>
+        </div>
+      </section>
+
+      <section class="section" id="quests" aria-labelledby="quests-title">
+        <div class="section__inner split">
+          <div class="split__copy">
+            <p class="eyebrow">Quests</p>
+            <h2 class="section__title" id="quests-title">
+              Linked regions.<br />
+              Linked rides.
+            </h2>
+            <p class="lead lead--section">
+              A quest groups the collectibles of one region into a single objective. Finish it across
+              as many activities as you need.
+            </p>
+            <ul class="bullets">
+              <li>
+                <span class="bullets__mark" aria-hidden="true">✦</span>
+                <span><strong>Tied to real geography.</strong> Every step is an actual place you can reach.</span>
+              </li>
+              <li>
+                <span class="bullets__mark" aria-hidden="true">✦</span>
+                <span><strong>Cross-activity.</strong> Progress carries across every ride, run and hike.</span>
+              </li>
+              <li>
+                <span class="bullets__mark" aria-hidden="true">✦</span>
+                <span><strong>Bonus XP.</strong> Closing out a region rewards more than its places alone.</span>
+              </li>
+            </ul>
+          </div>
+
+          <div class="split__visual">
+            <ul class="quests">
+              <li class="quest" data-rarity="rare">
+                <p class="quest__label">Rare · Upper Rhine</p>
+                <div class="quest__head">
+                  <h3 class="quest__title">Rhine Corridor</h3>
+                  <p class="quest__xp">2,400 XP</p>
+                </div>
+                <div class="quest__progress">
+                  <div class="progress" role="img" aria-label="4 of 6 places found">
+                    <span class="progress__bar" style="--progress: 66.7%"></span>
+                  </div>
+                  <p class="quest__count">4/6</p>
+                </div>
+                <ul class="quest__items">
+                  <li data-done="true">Breisach Fortress</li>
+                  <li data-done="true">Kaiserstuhl Summit</li>
+                  <li data-done="true">Baden Vineyard Pass</li>
+                  <li data-done="true">Freiburg Cathedral View</li>
+                  <li data-done="false">Schluchten Gorge</li>
+                  <li data-done="false">Titisee Viewpoint</li>
+                </ul>
+              </li>
+
+              <li class="quest" data-rarity="epic">
+                <p class="quest__label">Epic · Alps</p>
+                <div class="quest__head">
+                  <h3 class="quest__title">Alpine Crossings</h3>
+                  <p class="quest__xp">8,000 XP</p>
+                </div>
+                <div class="quest__progress">
+                  <div class="progress" role="img" aria-label="2 of 8 places found">
+                    <span class="progress__bar" style="--progress: 25%"></span>
+                  </div>
+                  <p class="quest__count">2/8</p>
+                </div>
+                <ul class="quest__items">
+                  <li data-done="true">Stelvio Pass</li>
+                  <li data-done="true">Umbrail Pass</li>
+                  <li data-done="false">Mortirolo</li>
+                  <li data-done="false">Gavia Pass</li>
+                  <li data-done="false">Giau Pass</li>
+                  <li data-done="false">Tre Cime View</li>
+                  <li data-done="false">Monte Grappa</li>
+                  <li data-done="false">Marmolada</li>
+                </ul>
+              </li>
+
+              <li class="quest" data-rarity="common">
+                <p class="quest__label">Common · Schwarzwald</p>
+                <div class="quest__head">
+                  <h3 class="quest__title">Black Forest Peaks</h3>
+                  <p class="quest__xp">1,800 XP</p>
+                </div>
+                <div class="quest__progress">
+                  <div class="progress" role="img" aria-label="6 of 6 places found">
+                    <span class="progress__bar" style="--progress: 100%"></span>
+                  </div>
+                  <p class="quest__count">6/6</p>
+                </div>
+                <ul class="quest__items">
+                  <li data-done="true">Feldberg</li>
+                  <li data-done="true">Belchen</li>
+                  <li data-done="true">Schauinsland</li>
+                  <li data-done="true">Kandel</li>
+                  <li data-done="true">Hornisgrinde</li>
+                  <li data-done="true">Blauen</li>
+                </ul>
+              </li>
+            </ul>
+            <p class="mockup-note">Example quests, shown for illustration.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section section--alt" id="activity" aria-labelledby="activity-title">
+        <div class="section__inner section__inner--centered">
+          <p class="eyebrow">Activity log</p>
+          <h2 class="section__title" id="activity-title">Every ride has a story.</h2>
+          <p class="lead lead--section">
+            Upload your .FIT file and Staza replays the route, surfacing every collectible you crossed
+            along with the XP it earned.
+          </p>
+
+          <div class="activity">
+            <div class="activity__head">
+              <div>
+                <p class="activity__meta">Sat 14 Sept · Cycling · 4h 22min</p>
+                <h3 class="activity__title">Schwarzwald Traverse</h3>
+              </div>
+              <div class="activity__xp">
+                <p class="activity__xp-value">+1,640</p>
+                <p class="activity__xp-label">XP earned</p>
+              </div>
+            </div>
+
+            <dl class="activity__stats">
+              <div>
+                <dt>Distance</dt>
+                <dd>94.7 km</dd>
+              </div>
+              <div>
+                <dt>Elevation</dt>
+                <dd>2,340 m</dd>
+              </div>
+              <div>
+                <dt>Avg power</dt>
+                <dd>3.8 W/kg</dd>
+              </div>
+            </dl>
+
+            <p class="activity__section-label">5 places discovered</p>
+            <ul class="finds">
+              <li class="find" data-rarity="epic">
+                <span class="find__icon" aria-hidden="true">⛰</span>
+                <span class="find__name">Schwarzwald Pass</span>
+                <span class="find__category">Mountain Pass · Epic</span>
+                <span class="find__xp">+340 XP</span>
+              </li>
+              <li class="find" data-rarity="rare">
+                <span class="find__icon" aria-hidden="true">🏰</span>
+                <span class="find__name">Burg Geroldseck</span>
+                <span class="find__category">Castle · Rare</span>
+                <span class="find__xp">+220 XP</span>
+              </li>
+              <li class="find" data-rarity="common">
+                <span class="find__icon" aria-hidden="true">👁</span>
+                <span class="find__name">Hornisgrinde View</span>
+                <span class="find__category">Viewpoint · Common</span>
+                <span class="find__xp">+85 XP</span>
+              </li>
+              <li class="find" data-rarity="rare">
+                <span class="find__icon" aria-hidden="true">▲</span>
+                <span class="find__name">Brandenkopf Summit</span>
+                <span class="find__category">Summit · Rare</span>
+                <span class="find__xp">+180 XP</span>
+              </li>
+              <li class="find" data-rarity="uncommon">
+                <span class="find__icon" aria-hidden="true">💧</span>
+                <span class="find__name">Triberg Falls Access</span>
+                <span class="find__category">Waterfall · Common</span>
+                <span class="find__xp">+120 XP</span>
+              </li>
+            </ul>
+          </div>
+          <p class="mockup-note">Example activity, shown for illustration.</p>
+        </div>
+      </section>
+
+      <section class="section" id="progression" aria-labelledby="progression-title">
+        <div class="section__inner split">
+          <div class="split__copy">
+            <p class="eyebrow">Progression</p>
+            <h2 class="section__title" id="progression-title">
+              A rank earned<br />
+              by discovery.
+            </h2>
+            <p class="lead lead--section">
+              Every collectible you claim adds XP. Levels follow a fixed curve — each level costs
+              100 XP more than the one before it — so progress is predictable and never for sale.
+            </p>
+            <p class="lead lead--section">
+              From level five onwards each level carries a named rank that reflects how much of the
+              map you have actually covered.
+            </p>
+          </div>
+
+          <div class="split__visual">
+            <ol class="ranks">
+              <li class="rank" data-rarity="common">
+                <span class="rank__level" aria-hidden="true">05</span>
+                <span class="rank__name">Adventurer</span>
+                <span class="rank__xp">1,000 XP</span>
+              </li>
+              <li class="rank" data-rarity="uncommon">
+                <span class="rank__level" aria-hidden="true">06</span>
+                <span class="rank__name">Explorer</span>
+                <span class="rank__xp">1,500 XP</span>
+              </li>
+              <li class="rank" data-rarity="rare">
+                <span class="rank__level" aria-hidden="true">08</span>
+                <span class="rank__name">Pathfinder</span>
+                <span class="rank__xp">2,800 XP</span>
+              </li>
+              <li class="rank" data-rarity="epic">
+                <span class="rank__level" aria-hidden="true">09</span>
+                <span class="rank__name">Trailblazer</span>
+                <span class="rank__xp">3,600 XP</span>
+              </li>
+              <li class="rank" data-rarity="legendary">
+                <span class="rank__level" aria-hidden="true">10</span>
+                <span class="rank__name">Waymaker</span>
+                <span class="rank__xp">4,500 XP</span>
+              </li>
+            </ol>
+          </div>
+        </div>
+      </section>
+
+      <section class="section section--alt" id="places" aria-labelledby="places-title">
+        <div class="section__inner section__inner--centered">
+          <p class="eyebrow">Data</p>
+          <h2 class="section__title" id="places-title">
+            Built around<br />
+            real places.
+          </h2>
+          <p class="lead lead--section">
+            Collectibles are imported from OpenStreetMap, Wikidata and quäldich, scored for
+            prominence and matched against real elevation data. Nothing is invented.
+          </p>
+
+          <ul class="card-grid card-grid--3 places">
+            <li class="place" data-rarity="epic">
+              <p class="place__category">Mountain Pass</p>
+              <h3 class="place__title">Passo dello Stelvio</h3>
+              <p class="place__detail">2,758 m · Lombardy, Italy</p>
+            </li>
+            <li class="place" data-rarity="rare">
+              <p class="place__category">Summit</p>
+              <h3 class="place__title">Feldberg</h3>
+              <p class="place__detail">1,493 m · Black Forest, Germany</p>
+            </li>
+            <li class="place" data-rarity="uncommon">
+              <p class="place__category">Castle</p>
+              <h3 class="place__title">Burg Hohenzollern</h3>
+              <p class="place__detail">855 m · Baden-Württemberg, Germany</p>
+            </li>
+            <li class="place" data-rarity="uncommon">
+              <p class="place__category">Waterfall</p>
+              <h3 class="place__title">Rheinfall</h3>
+              <p class="place__detail">Neuhausen, Switzerland</p>
+            </li>
+            <li class="place" data-rarity="epic">
+              <p class="place__category">Mountain Pass</p>
+              <h3 class="place__title">Col du Galibier</h3>
+              <p class="place__detail">2,642 m · Hautes-Alpes, France</p>
+            </li>
+            <li class="place" data-rarity="common">
+              <p class="place__category">Viewpoint</p>
+              <h3 class="place__title">Tre Cime di Lavaredo</h3>
+              <p class="place__detail">2,999 m · Dolomites, Italy</p>
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="section" id="further" aria-labelledby="further-title">
+        <div class="section__inner">
+          <p class="eyebrow">For people who move</p>
+          <h2 class="section__title" id="further-title">
+            A reason to go<br />
+            further.
+          </h2>
+          <p class="lead lead--section">
+            The best rides are not the fastest ones. They are the ones that take you somewhere new.
+          </p>
+
+          <div class="gallery">
+            <img
+              class="gallery__item gallery__item--tall"
+              src="/landing/assets/photo-alpine-road.jpg"
+              width="900"
+              height="700"
+              loading="lazy"
+              alt="Cyclists climbing a serpentine alpine road above a valley."
+            />
+            <img
+              class="gallery__item"
+              src="/landing/assets/photo-trail-runner.jpg"
+              width="600"
+              height="340"
+              loading="lazy"
+              alt="Trail runner ascending a mountain path through wildflowers."
+            />
+            <img
+              class="gallery__item"
+              src="/landing/assets/photo-gravel-valley.jpg"
+              width="600"
+              height="340"
+              loading="lazy"
+              alt="Gravel cyclist riding a track through a green mountain valley."
+            />
+          </div>
+        </div>
+      </section>
+
+      <section class="cta" aria-labelledby="cta-title">
+        <div class="cta__glow" aria-hidden="true"></div>
+        <div class="section__inner section__inner--centered">
+          <img class="cta__mark" src="/assets/favicon.svg" width="52" height="52" alt="" />
+          <h2 class="cta__title" id="cta-title">
+            Your map is<br />
+            <span class="accent">still mostly fog.</span>
+          </h2>
+          <p class="lead lead--section">
+            Staza is in closed beta. Join the waitlist and we will let you in as soon as your region
+            is ready.
+          </p>
+          <a class="button button--primary button--lg" href="/sign-in">Join Early Access — Free</a>
+          <p class="cta__fine">No password required — Staza uses passkeys.</p>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="section__inner footer__inner">
+        <div class="footer__brand">
+          <img src="/assets/logo-full.svg" width="114" height="48" alt="Staza" />
+          <p class="footer__tagline">
+            The outdoor exploration game built on real geography.
+          </p>
+          <p class="footer__domain">staza.world</p>
+        </div>
+
+        <nav class="footer__column" aria-label="Product">
+          <h2 class="footer__heading">Product</h2>
+          <ul>
+            <li><a href="#collection">Discover</a></li>
+            <li><a href="#how-it-works">How it works</a></li>
+            <li><a href="#quests">Quests</a></li>
+            <li><a href="#progression">Progression</a></li>
+          </ul>
+        </nav>
+
+        <div class="footer__column">
+          <h2 class="footer__heading">Company</h2>
+          <ul class="footer__list--quiet">
+            <li>About</li>
+            <li>Blog</li>
+            <li>Press</li>
+            <li>Careers</li>
+          </ul>
+        </div>
+
+        <div class="footer__column">
+          <h2 class="footer__heading">Legal</h2>
+          <ul class="footer__list--quiet">
+            <li>Privacy</li>
+            <li>Terms</li>
+            <li>Cookies</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="section__inner footer__bottom">
+        <p>Staza — the outdoor exploration game built on real geography.</p>
+        <p class="footer__version">v0.1.0</p>
+      </div>
+    </footer>
+
+    <script type="module" src="/landing/landing.js"></script>
+  </body>
+</html>
