@@ -2,7 +2,7 @@ name: staza-dev
 
 services:
   app:
-    image: ${STAZA_IMAGE:?Set STAZA_IMAGE in the environment file}:${STAZA_IMAGE_TAG:?Set STAZA_IMAGE_TAG in the environment file}
+    image: ${STAZA_IMAGE}:${STAZA_IMAGE_TAG}
     container_name: staza-dev-app
     restart: unless-stopped
     environment:
@@ -10,10 +10,10 @@ services:
       PORT: "3000"
       DATA_DIR: /data/jobs
       MEDIA_DIR: /data/media
-      DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL in the environment file}
-      WEBAUTHN_RP_ID: ${WEBAUTHN_RP_ID:?Set WEBAUTHN_RP_ID in the environment file}
-      WEBAUTHN_RP_NAME: ${WEBAUTHN_RP_NAME:?Set WEBAUTHN_RP_NAME in the environment file}
-      WEBAUTHN_ORIGIN: ${WEBAUTHN_ORIGIN:?Set WEBAUTHN_ORIGIN in the environment file}
+      DATABASE_URL: ${DATABASE_URL}
+      WEBAUTHN_RP_ID: ${WEBAUTHN_RP_ID}
+      WEBAUTHN_RP_NAME: ${WEBAUTHN_RP_NAME}
+      WEBAUTHN_ORIGIN: ${WEBAUTHN_ORIGIN}
     volumes:
       - app-data:/data
     depends_on:
@@ -40,9 +40,9 @@ services:
     container_name: staza-dev-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:?Set POSTGRES_DB in the environment file}
-      POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER in the environment file}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the environment file}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
