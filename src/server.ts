@@ -682,6 +682,9 @@ app.get(["/de", "/de/"], (_request, response) => {
 app.get(["/app", "/sign-in"], (_request, response) => {
   response.sendFile(appDocument);
 });
+app.get(/^\/(?:en|de)(?:\/.*)?$/, (_request, response) => {
+  response.sendFile(appDocument);
+});
 
 app.use(express.static(path.resolve("public")));
 

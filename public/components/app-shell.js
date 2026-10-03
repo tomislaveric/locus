@@ -3,15 +3,15 @@ import { setSidebarScreen, sidebar } from "./sidebar.js";
 
 export const navigableScreens = new Set(["home", "activities", "world", "progress", "profile", "add-activity"]);
 
-export const AppShell = () => `
+export const AppShell = (locale = "en") => `
   <div class="app-shell">
-    ${sidebar()}
+    ${sidebar(locale)}
     ${mainContent()}
   </div>
 `;
 
-export const mountAppShell = (mountPoint, onScreenChange) => {
-  mountPoint.innerHTML = AppShell();
+export const mountAppShell = (mountPoint, onScreenChange, locale = "en") => {
+  mountPoint.innerHTML = AppShell(locale);
   mountPoint.addEventListener("click", (event) => {
     const button = event.target.closest("[data-screen]");
     if (!button || !mountPoint.contains(button)) return;

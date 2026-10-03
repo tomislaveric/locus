@@ -1,4 +1,6 @@
-const formatNumber = (value, maximumFractionDigits = 0) => new Intl.NumberFormat("en-US", {
+import { getAppLocale } from "../app-locales.js";
+
+const formatNumber = (value, maximumFractionDigits = 0) => new Intl.NumberFormat(getAppLocale(), {
   maximumFractionDigits
 }).format(value);
 
@@ -6,7 +8,7 @@ const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (character) => (
   "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
 })[character]);
 
-export const formatActivityDate = (startedAt) => new Intl.DateTimeFormat("en-US", {
+export const formatActivityDate = (startedAt) => new Intl.DateTimeFormat(getAppLocale(), {
   day: "2-digit",
   month: "short",
   weekday: "short",

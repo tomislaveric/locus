@@ -424,6 +424,7 @@ export const translateLandingTemplate = (template: string, locale: LandingLocale
     .replaceAll("{{landing.language.english}}", selected["landing.language.english"])
     .replaceAll("{{landing.language.german}}", selected["landing.language.german"])
     .replaceAll("{{landing.language.enCurrent}}", locale === "en" ? ' aria-current="page"' : "")
-    .replaceAll("{{landing.language.deCurrent}}", locale === "de" ? ' aria-current="page"' : "");
+    .replaceAll("{{landing.language.deCurrent}}", locale === "de" ? ' aria-current="page"' : "")
+    .replaceAll("{{landing.signInPath}}", locale === "de" ? "/de/anmelden" : "/en/sign-in");
   return document;
 };

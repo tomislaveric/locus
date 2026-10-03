@@ -1,3 +1,5 @@
+import { getAppLocale } from "../app-locales.js";
+
 const levelNames = {
   5: "Adventurer",
   6: "Explorer",
@@ -7,7 +9,7 @@ const levelNames = {
   10: "Waymaker"
 };
 
-const formatNumber = (value, maximumFractionDigits = 0) => new Intl.NumberFormat("en-US", {
+const formatNumber = (value, maximumFractionDigits = 0) => new Intl.NumberFormat(getAppLocale(), {
   maximumFractionDigits
 }).format(value);
 
@@ -18,7 +20,7 @@ const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (character) => (
 export const levelName = (level) => levelNames[level] ?? `Level ${formatNumber(level)}`;
 
 export const formatActivityDate = (startedAt) => {
-  const parts = new Intl.DateTimeFormat("en-US", {
+  const parts = new Intl.DateTimeFormat(getAppLocale(), {
     day: "2-digit",
     month: "short",
     weekday: "short",

@@ -70,5 +70,6 @@ describe("landing page localization", () => {
     const server = readFileSync(path.resolve("src/server.ts"), "utf8");
     expect(server).toContain('app.get(["/app", "/sign-in"]');
     expect(server).toContain("response.sendFile(appDocument)");
+    expect(server).toContain('app.get(/^\\/(?:en|de)(?:\\/.*)?$/');
   });
 });

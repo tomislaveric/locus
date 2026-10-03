@@ -8,11 +8,41 @@ import { mountWorldPage } from "./components/world-page.js";
 import { mountProfilePage } from "./components/profile/profile-page.js";
 import { startAuthentication, startRegistration } from "/shared/webauthn/index.js";
 import { mountAuthFlow, mountAuthSessionLoading } from "./components/auth/auth-flow.js";
+import { appPath, localizeAppUi, parseAppPath, setAppLocale } from "./app-locales.js";
 
 const app = document.querySelector("#app");
 const nativeFetch = window.fetch.bind(window);
 let csrfToken;
 let currentSession;
+let currentRoute = parseAppPath(window.location.pathname, navigator.languages);
+let sessionChecked = false;
+
+const setDocumentLocale = (locale) => {
+  setAppLocale(locale);
+  document.documentElement.lang = locale;
+};
+
+const localizeRoot = () => localizeAppUi(app, currentRoute.locale);
+
+new MutationObserver(localizeRoot).observe(app, { childList: true, characterData: true, subtree: true });
+window.addEventListener("popstate", () => {
+  currentRoute = parseAppPath(window.location.pathname, navigator.languages);
+  if (currentRoute.legacy) {
+    window.history.replaceState(null, "", currentRoute.path);
+    currentRoute = parseAppPath(currentRoute.path, navigator.languages);
+  }
+  setDocumentLocale(currentRoute.locale);
+  renderCurrentRoute();
+});
+
+const setRoute = (screen, { activityId, replace = false } = {}) => {
+  const path = appPath(currentRoute.locale, screen, activityId);
+  if (window.location.pathname !== path) {
+    window.history[replace ? "replaceState" : "pushState"](null, "", path);
+  }
+  currentRoute = parseAppPath(path, navigator.languages);
+  setDocumentLocale(currentRoute.locale);
+};
 
 const authenticateFetch = (input, init = {}) => {
   const method = (init.method ?? "GET").toUpperCase();
@@ -26,13 +56,18 @@ const authenticateFetch = (input, init = {}) => {
 };
 
 const mountPrivateApp = () => {
-  const shell = mountAppShell(app, selectScreen);
-  let selectedActivityId;
-  function selectScreen(screen) {
+  const shell = mountAppShell(app, navigateScreen, currentRoute.locale);
+  let selectedActivityId = currentRoute.activityId;
+  function navigateScreen(screen, activityId) {
+    setRoute(screen, { activityId });
+    if (screen === "activity-detail") selectedActivityId = activityId;
+    showScreen(screen);
+  }
+  function showScreen(screen) {
     shell.setScreen(screen);
     if (screen === "add-activity") mountAddActivityPage(shell.content, selectActivity);
     else if (screen === "activities") mountActivitiesPage(shell.content, selectActivity);
-    else if (screen === "activity-detail") mountActivityDetailPage(shell.content, selectedActivityId, () => selectScreen("activities"));
+    else if (screen === "activity-detail") mountActivityDetailPage(shell.content, selectedActivityId, () => navigateScreen("activities"));
     else if (screen === "world") mountWorldPage(shell.content);
     else if (screen === "progress") mountProgressPage(shell.content);
     else if (screen === "profile") mountProfilePage(shell.content, {
@@ -50,10 +85,14 @@ const mountPrivateApp = () => {
     shell.content.focus({ preventScroll: true });
   }
   function selectActivity(activityId) {
-    selectedActivityId = activityId;
-    selectScreen("activity-detail");
+    selectedActivityId = String(activityId);
+    navigateScreen("activity-detail", selectedActivityId);
   }
-  selectScreen("home");
+  const screen = currentRoute.screen;
+  if (screen === "sign-in" || screen === "register" || screen === "not-found") {
+    setRoute("home", { replace: true });
+    showScreen("home");
+  } else showScreen(screen);
 };
 
 const configureSession = (session) => {
@@ -67,13 +106,48 @@ const mountSignIn = (message = "") => mountAuthFlow(app, {
   startAuthentication,
   startRegistration,
   onSession: configureSession,
-  onAuthenticated: mountPrivateApp,
-  initialMessage: message
+  onAuthenticated: () => {
+    setRoute("home", { replace: true });
+    mountPrivateApp();
+  },
+  initialMessage: message,
+  initialPurpose: currentRoute.screen === "register" ? "register" : "login",
+  onPurposeChange: (purpose) => {
+    const screen = purpose === "register" ? "register" : "sign-in";
+    if (screen !== currentRoute.screen) setRoute(screen);
+  }
 });
 
+const showNotFound = () => {
+  app.innerHTML = `<main class="auth-screen"><section class="auth-content"><h1>Page not found</h1><a href="${appPath(currentRoute.locale, "sign-in")}">Sign in</a></section></main>`;
+  localizeRoot();
+};
+
+const renderCurrentRoute = () => {
+  if (!sessionChecked) return;
+  if (currentRoute.screen === "not-found") return showNotFound();
+  if (currentSession) return mountPrivateApp();
+  if (currentRoute.screen !== "sign-in" && currentRoute.screen !== "register") {
+    setRoute("sign-in", { replace: true });
+  }
+  mountSignIn();
+};
+
+if (currentRoute.legacy) {
+  window.history.replaceState(null, "", currentRoute.path);
+  currentRoute = parseAppPath(currentRoute.path, navigator.languages);
+}
+setDocumentLocale(currentRoute.locale);
 mountAuthSessionLoading(app);
 nativeFetch("/api/auth/session").then((response) => response.json()).then((session) => {
-  if (!session.authenticated) return mountSignIn();
+  sessionChecked = true;
+  if (!session.authenticated) return renderCurrentRoute();
   configureSession(session);
-  mountPrivateApp();
-}).catch(() => mountSignIn("Unable to check your session."));
+  renderCurrentRoute();
+}).catch(() => {
+  sessionChecked = true;
+  if (currentRoute.screen !== "sign-in" && currentRoute.screen !== "register") {
+    setRoute("sign-in", { replace: true });
+  }
+  mountSignIn("Unable to check your session.");
+});

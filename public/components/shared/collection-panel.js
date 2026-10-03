@@ -24,7 +24,7 @@ export const CollectionRow = ({ id, name, rarity, state = "unvisited", interacti
   const completed = state === "completed";
   const inner = `
     ${CollectibleSwatch({ visited: completed, rarity: tier })}
-    <span class="quest-collectible-name">${escapeHtml(name)}</span>
+    <span class="quest-collectible-name" data-user-content>${escapeHtml(name)}</span>
     <span class="quest-collectible-state">${collectionStateLabel(state)}</span>
   `;
   const body = interactive
@@ -57,16 +57,16 @@ export const CollectionPanel = ({
     <section class="world-detail collection-panel" aria-label="${escapeHtml(ariaLabel)}">
       <header>
         <div>
-          <h2>${escapeHtml(title ?? "")}</h2>
+          <h2 data-user-content>${escapeHtml(title ?? "")}</h2>
           <p class="world-detail-meta">
             ${metaLeading}
-            ${creator ? `<small>by ${escapeHtml(creator)}</small>` : ""}
+            ${creator ? `<small data-user-content>by ${escapeHtml(creator)}</small>` : ""}
             ${metaTrailing}
           </p>
         </div>
         ${closable ? '<button class="world-detail-close" type="button" data-world-close aria-label="Close">\u00d7</button>' : ""}
       </header>
-      ${description ? `<p class="quest-detail-description">${escapeHtml(description)}</p>` : ""}
+      ${description ? `<p class="quest-detail-description" data-user-content>${escapeHtml(description)}</p>` : ""}
       <p class="quest-detail-progress">
         <span class="quest-progress-track" aria-hidden="true">
           <i style="width: ${escapeHtml(percent)};" data-collection-progress-bar></i>

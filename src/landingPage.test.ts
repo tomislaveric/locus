@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { getTotalXpRequiredForLevel } from "./progression.js";
+import { translateLandingTemplate } from "./landing/locales.js";
 
 const landingDirectory = path.resolve("public/landing");
 const html = readFileSync(path.join(landingDirectory, "index.html"), "utf8");
@@ -43,9 +44,10 @@ describe("landing page document", () => {
     const ctas = [...html.matchAll(/<a class="button[^"]*" href="([^"]+)"/g)].map((match) => match[1]!);
     expect(ctas.length).toBeGreaterThanOrEqual(3);
     for (const target of ctas) {
-      expect(target === "/sign-in" || target.startsWith("#")).toBe(true);
+      expect(target === "{{landing.signInPath}}" || target.startsWith("#")).toBe(true);
     }
-    expect(ctas).toContain("/sign-in");
+    expect(translateLandingTemplate(html, "en")).toContain('href="/en/sign-in"');
+    expect(translateLandingTemplate(html, "de")).toContain('href="/de/anmelden"');
   });
 
   it("resolves every in-page anchor to an existing element id", () => {

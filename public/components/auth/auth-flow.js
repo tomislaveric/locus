@@ -36,12 +36,22 @@ export const mountAuthFlow = (root, {
   startRegistration,
   onSession,
   onAuthenticated,
+  initialPurpose = "login",
+  onPurposeChange = () => {},
   initialMessage = ""
 }) => {
-  let state = { screen: "sign-in", purpose: "login", email: "", busy: false, message: initialMessage, messageType: initialMessage ? "error" : "status" };
+  let state = {
+    screen: initialPurpose === "register" ? "email-request" : "sign-in",
+    purpose: initialPurpose,
+    email: "",
+    busy: false,
+    message: initialMessage,
+    messageType: initialMessage ? "error" : "status"
+  };
 
   const show = (next) => {
     state = { ...state, ...next };
+    onPurposeChange(state.purpose);
     if (state.screen === "sign-in") root.innerHTML = renderAuthSignIn(state);
     else if (state.screen === "email-request") root.innerHTML = renderAuthEmailRequest(state);
     else if (state.screen === "verify-email") root.innerHTML = renderAuthVerifyEmail(state);
@@ -152,7 +162,14 @@ export const mountAuthFlow = (root, {
         show({ busy: false, message: "Create a passkey to finish securing your account.", messageType: "status" });
         return;
       }
-      show({ screen: state.screen === "verify-email" ? "email-request" : "sign-in", busy: false, message: "", messageType: "status" });
+      const returningToSignIn = state.screen !== "verify-email";
+      show({
+        screen: returningToSignIn ? "sign-in" : "email-request",
+        purpose: returningToSignIn ? "login" : state.purpose,
+        busy: false,
+        message: "",
+        messageType: "status"
+      });
     });
     root.querySelector("[data-auth-retry]")?.addEventListener("click", signInWithPasskey);
     root.querySelector("[data-auth-register-passkey]")?.addEventListener("click", createPasskey);

@@ -21,10 +21,10 @@ export const QuestCard = (quest, selectedQuestId) => `
     <button class="quest-card${quest.id === selectedQuestId ? " is-selected" : ""}" type="button"
       data-quest-card="${escapeHtml(quest.id)}" aria-pressed="${quest.id === selectedQuestId}">
       <span class="quest-card-head">
-        <strong>${escapeHtml(quest.title)}</strong>
+        <strong data-user-content>${escapeHtml(quest.title)}</strong>
         ${QuestStatusBadge(quest)}
       </span>
-      ${quest.description ? `<span class="quest-card-description">${escapeHtml(quest.description)}</span>` : ""}
+      ${quest.description ? `<span class="quest-card-description" data-user-content>${escapeHtml(quest.description)}</span>` : ""}
       <span class="quest-card-progress">
         <span class="quest-progress-track" aria-hidden="true">
           <i style="width: ${escapeHtml(formatProgressPercent(quest.progress))};"></i>

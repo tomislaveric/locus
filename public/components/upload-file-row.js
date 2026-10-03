@@ -10,7 +10,7 @@ const formatSize = (bytes) => {
 
 export const UploadFileRow = ({ file, kind, removable = true }) => `
   <div class="upload-file-row">
-    <div><strong>${escapeHtml(kind)}</strong><span>${escapeHtml(file.name)}${file.size ? ` · ${formatSize(file.size)}` : ""}</span></div>
+    <div><strong>${escapeHtml(kind)}</strong><span data-user-content>${escapeHtml(file.name)}${file.size ? ` · ${formatSize(file.size)}` : ""}</span></div>
     ${removable ? `<button type="button" data-remove-upload="${escapeHtml(kind)}" aria-label="Remove ${escapeHtml(kind)} file">REMOVE</button>` : ""}
   </div>
 `;

@@ -126,7 +126,7 @@ export const mountActivityDetailPage = async (mountPoint, activityId, onBack) =>
             host.innerHTML = "";
           },
           onSaved: (quest) => {
-            host.innerHTML = `<p class="activity-detail-state" role="status">Quest "${escapeHtml(quest.title)}" ${quest.status === "published" ? "published" : "saved as a draft"}. Open World to see it.</p>`;
+            host.innerHTML = `<p class="activity-detail-state" role="status">Quest "<span data-user-content>${escapeHtml(quest.title)}</span>" ${quest.status === "published" ? "published" : "saved as a draft"}. Open World to see it.</p>`;
           }
         });
       } catch (error) {

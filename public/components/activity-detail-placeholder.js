@@ -6,7 +6,7 @@ export const RideDetailPlaceholder = (activityId) => `
   <section class="activity-detail-placeholder" aria-labelledby="activity-detail-title">
     <p class="activities-section-label">ACTIVITY DETAIL</p>
     <h1 id="activity-detail-title">Activity selected</h1>
-    <p>Activity <code>${escapeHtml(activityId)}</code> is ready for the Activity Detail experience.</p>
+    <p>Activity <code data-user-content>${escapeHtml(activityId)}</code> is ready for the Activity Detail experience.</p>
   </section>
 `;
 

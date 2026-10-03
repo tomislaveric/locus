@@ -48,7 +48,7 @@ const VideoSelection = (video) => `
   <section class="video-selection" aria-label="Highlight selection">
     <div class="video-selection-heading"><div><h2>${video.events?.length ?? 0} Collectibles Found</h2><span>Select which moments to include in your highlight video</span></div><button type="button" data-select-all>Select All</button></div>
     <form data-video-selection>
-      <ul>${(video.events ?? []).map((event) => `<li><label><input type="checkbox" name="sourceId" value="${escapeHtml(event.sourceId)}"><i></i><span><b>${escapeHtml(event.collectible.name)}</b><small>${escapeHtml(event.collectible.rarity ?? "common")} · ${escapeHtml(event.collectible.type)}</small></span><em>+${escapeHtml(event.value)} XP</em></label></li>`).join("")}</ul>
+      <ul>${(video.events ?? []).map((event) => `<li><label><input type="checkbox" name="sourceId" value="${escapeHtml(event.sourceId)}"><i></i><span><b data-user-content>${escapeHtml(event.collectible.name)}</b><small data-user-content>${escapeHtml(event.collectible.rarity ?? "common")} · ${escapeHtml(event.collectible.type)}</small></span><em>+${escapeHtml(event.value)} XP</em></label></li>`).join("")}</ul>
       <button class="video-attach-button" type="submit" disabled>GENERATE HIGHLIGHTS</button>
     </form>
   </section>
@@ -72,7 +72,7 @@ const HighlightReadyState = (video) => {
       </div>
       <div class="video-player-title"><strong>Auto-Generated Highlights</strong><span>${events.length} ${events.length === 1 ? "moment" : "moments"}${Number.isFinite(outputDuration) ? ` · ${duration(outputDuration)}` : ""}</span></div>
       ${video.downloadUrl ? `<a class="video-download" href="${escapeHtml(video.downloadUrl)}">DOWNLOAD VIDEO</a>` : ""}
-      <ul class="video-event-list">${events.map((event) => `<li><time>${duration(event.videoSecond)}</time><i></i><strong>${escapeHtml(event.collectible.name)}</strong></li>`).join("")}</ul>
+      <ul class="video-event-list">${events.map((event) => `<li><time>${duration(event.videoSecond)}</time><i></i><strong data-user-content>${escapeHtml(event.collectible.name)}</strong></li>`).join("")}</ul>
     </section>
   `;
 };

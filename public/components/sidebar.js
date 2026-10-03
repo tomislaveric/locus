@@ -1,3 +1,5 @@
+import { appPath } from "../app-locales.js";
+
 const navItems = [
   ["home", "Home", "nav-home.svg"],
   ["activities", "Activities", "nav-activities.svg"],
@@ -6,8 +8,8 @@ const navItems = [
   ["profile", "Profile", "nav-profile.svg"],
 ];
 
-export const SidebarLogo = () => `
-  <a class="sidebar-logo" href="/" aria-label="Staza home">
+export const SidebarLogo = (locale = "en") => `
+  <a class="sidebar-logo" href="${appPath(locale, "home")}" aria-label="Staza home">
     <img src="/assets/logo-full.svg" alt="">
   </a>
 `;
@@ -32,9 +34,9 @@ export const AddActivityCTA = () => `
   </button>
 `;
 
-export const Sidebar = () => `
+export const Sidebar = (locale = "en") => `
   <aside class="sidebar">
-    <div class="sidebar-logo-region">${SidebarLogo()}</div>
+    <div class="sidebar-logo-region">${SidebarLogo(locale)}</div>
     ${SidebarNavMenu()}
     <div class="sidebar-cta-region">${AddActivityCTA()}</div>
   </aside>

@@ -1,8 +1,9 @@
-const formatNumber = (value, maximumFractionDigits = 0) => new Intl.NumberFormat("en-US", {
+import { getActivityCompleteLabel } from "./activity-labels.js";
+import { getAppLocale } from "../app-locales.js";
+
+const formatNumber = (value, maximumFractionDigits = 0) => new Intl.NumberFormat(getAppLocale(), {
   maximumFractionDigits
 }).format(value);
-
-import { getActivityCompleteLabel } from "./activity-labels.js";
 
 export const activityDistanceLabel = (distanceMeters) => Number.isFinite(distanceMeters)
   ? `${formatNumber(distanceMeters / 1000, 1)} KM`

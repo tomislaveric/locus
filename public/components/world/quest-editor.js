@@ -49,7 +49,7 @@ const CollectibleOption = (collectible, selectedIds) => {
         <input type="checkbox" data-quest-collectible="${escapeHtml(collectible.id)}"
           ${selectedIds.includes(collectible.id) ? "checked" : ""}>
         ${CollectibleIcon(collectible.type, rarity === "common" ? undefined : rarity)}
-        <span>${escapeHtml(collectible.name)}</span>
+        <span data-user-content>${escapeHtml(collectible.name)}</span>
         <small>${collectible.found ? "Visited" : "Unvisited"}</small>
       </label>
     </li>
@@ -68,7 +68,7 @@ export const QuestEditor = (state, message) => `
     </label>
     <label class="quest-editor-field">
       <span>Description</span>
-      <textarea name="description" maxlength="2000" rows="3">${escapeHtml(state.description)}</textarea>
+      <textarea name="description" maxlength="2000" rows="3" data-user-content>${escapeHtml(state.description)}</textarea>
     </label>
     <label class="quest-editor-field">
       <span>External route link (optional)</span>

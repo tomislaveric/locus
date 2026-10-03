@@ -1,4 +1,6 @@
-const formatNumber = (value, maximumFractionDigits = 0) => new Intl.NumberFormat("en-US", {
+import { getAppLocale } from "../app-locales.js";
+
+const formatNumber = (value, maximumFractionDigits = 0) => new Intl.NumberFormat(getAppLocale(), {
   maximumFractionDigits
 }).format(value);
 
@@ -13,7 +15,7 @@ const durationLabel = (seconds) => {
   return hours ? `${hours}h ${minutes}m` : `${minutes}m`;
 };
 
-const dateLabel = (startedAt) => new Intl.DateTimeFormat("en-US", {
+const dateLabel = (startedAt) => new Intl.DateTimeFormat(getAppLocale(), {
   day: "2-digit", month: "short", weekday: "short"
 }).format(new Date(startedAt)).toUpperCase();
 
@@ -76,7 +78,7 @@ export const HomeStats = (stats) => `
 
 const foundItems = (events) => events.slice(0, 4).map((event) => {
   const rarity = event.collectible?.rarity ?? event.collectible?.type ?? "common";
-  return `<li class="home-found-item rarity-${escapeHtml(rarity)}">${escapeHtml(event.collectible?.name ?? event.sourceId)}</li>`;
+  return `<li class="home-found-item rarity-${escapeHtml(rarity)}" data-user-content>${escapeHtml(event.collectible?.name ?? event.sourceId)}</li>`;
 }).join("");
 
 export const HomeRecentActivity = (activity) => {

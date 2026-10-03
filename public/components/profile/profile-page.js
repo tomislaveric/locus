@@ -1,9 +1,11 @@
+import { getAppLocale } from "../../app-locales.js";
+
 const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (character) => ({
   "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
 })[character]);
 
-const formatNumber = (value, maximumFractionDigits = 0) => new Intl.NumberFormat("en-US", { maximumFractionDigits }).format(value);
-const formatDate = (value) => new Intl.DateTimeFormat("en-US", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(value));
+const formatNumber = (value, maximumFractionDigits = 0) => new Intl.NumberFormat(getAppLocale(), { maximumFractionDigits }).format(value);
+const formatDate = (value) => new Intl.DateTimeFormat(getAppLocale(), { day: "2-digit", month: "short", year: "numeric" }).format(new Date(value));
 const json = async (response) => {
   const body = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(typeof body.error === "string" ? body.error : "Unable to complete that request.");
@@ -16,7 +18,9 @@ const tabs = (screen) => `<nav class="profile-tabs" aria-label="Profile navigati
 </nav>`;
 const shell = (screen, body) => `<section class="profile-page">${tabs(screen)}${body}</section>`;
 const row = (label, detail, action, danger = false) => `<button type="button" class="profile-row${danger ? " is-danger" : ""}" ${action ? `data-profile-action="${action}"` : "disabled"}>
-  <span><strong>${escapeHtml(label)}</strong>${detail ? `<small>${escapeHtml(detail)}</small>` : ""}</span>
+  <span><strong>${typeof label === "string" ? escapeHtml(label) : `<span data-user-content>${escapeHtml(label.value)}</span>`}</strong>${detail ? `<small>${typeof detail === "string"
+    ? escapeHtml(detail)
+    : `<span data-user-content>${escapeHtml(detail.email)}</span>${detail.verified ? ` · ${escapeHtml(detail.verified)}` : ""}`}</small>` : ""}</span>
 </button>`;
 
 export const profileOverviewView = (profile, session) => {
@@ -26,7 +30,7 @@ export const profileOverviewView = (profile, session) => {
     <header class="profile-heading"><h1>Profile</h1></header>
     <section class="profile-identity">
       <span class="profile-avatar" aria-hidden="true">${escapeHtml(initial)}</span>
-      <div><strong>${escapeHtml(profile.displayName)}</strong></div>
+      <div><strong data-user-content>${escapeHtml(profile.displayName)}</strong></div>
       <b>LVL ${formatNumber(progress.level)}</b>
     </section>
     <section class="profile-progress" aria-label="Level progress">
@@ -41,7 +45,7 @@ export const profileOverviewView = (profile, session) => {
       <div><dt>Rare &amp; epic</dt><dd>${formatNumber(collectibles.rareFinds)} rare · ${formatNumber(collectibles.epicFinds)} epic</dd></div>
     </dl></section>
     <section class="profile-section"><h2>ACCOUNT &amp; SECURITY</h2><div class="profile-card">
-      ${row("Account email", `${session.user.email}${session.user.emailVerified ? " · Verified" : ""}`, "account")}
+      ${row("Account email", { email: session.user.email, verified: session.user.emailVerified ? "Verified" : "" }, "account")}
       ${row("Passkeys", "Manage registered passkeys", "passkeys")}
       ${row("Sessions", "Sign out or manage active devices", "account")}
     </div></section>`);
@@ -50,7 +54,7 @@ export const profileOverviewView = (profile, session) => {
 export const profileAccountView = (session, passkeyCount) => shell("account", `
   <button class="profile-back" type="button" data-profile-screen="overview">‹ Profile</button>
   <header class="profile-heading"><h1>Account &amp; Security</h1><p>Authentication and account settings</p></header>
-  <section class="profile-section"><h2>ACCOUNT EMAIL</h2><div class="profile-card">${row(session.user.email, session.user.emailVerified ? "Verified" : "Not verified")}</div></section>
+  <section class="profile-section"><h2>ACCOUNT EMAIL</h2><div class="profile-card">${row({ value: session.user.email }, session.user.emailVerified ? "Verified" : "Not verified")}</div></section>
   <section class="profile-section"><h2>PASSKEYS</h2><div class="profile-card">${row("Manage passkeys", `${formatNumber(passkeyCount)} registered`, "passkeys")}${row("Add passkey", "", "add-passkey")}</div><p class="profile-help">Passkeys use your device to sign in without a password.</p></section>
   <section class="profile-section"><h2>SESSIONS</h2><div class="profile-card">${row("Sign out", "", "logout")}${row("Sign out all devices", "Ends all active sessions including this one", "logout-all", true)}</div></section>
   <section class="profile-section"><h2>PRIVACY &amp; ACCOUNT</h2><div class="profile-card">${row("Export my data", "Download a copy of your account and activity data", "export")}</div></section>
@@ -59,7 +63,7 @@ export const profileAccountView = (session, passkeyCount) => shell("account", `
 export const profilePasskeysView = (passkeys) => shell("passkeys", `
   <button class="profile-back" type="button" data-profile-screen="account">‹ Account &amp; Security</button>
   <header class="profile-heading"><h1>Passkeys</h1><p>${formatNumber(passkeys.length)} registered on your account</p></header>
-  <section class="passkey-list">${passkeys.map((passkey) => `<article class="passkey-row"><div><strong>${escapeHtml(passkey.name)}</strong><small>Added ${formatDate(passkey.createdAt)}${passkey.lastUsedAt ? ` · Last used ${formatDate(passkey.lastUsedAt)}` : ""}</small></div><button type="button" data-remove-passkey="${escapeHtml(passkey.id)}">Remove</button></article>`).join("")}</section>
+  <section class="passkey-list">${passkeys.map((passkey) => `<article class="passkey-row"><div><strong data-user-content>${escapeHtml(passkey.name)}</strong><small>Added ${formatDate(passkey.createdAt)}${passkey.lastUsedAt ? ` · Last used ${formatDate(passkey.lastUsedAt)}` : ""}</small></div><button type="button" data-remove-passkey="${escapeHtml(passkey.id)}">Remove</button></article>`).join("")}</section>
   <button class="profile-ghost-button" type="button" data-profile-action="add-passkey">Add passkey</button>
   <p class="profile-help">Keep at least one passkey registered. You can still sign in with an email code.</p>`);
 

@@ -1,4 +1,6 @@
-const formatNumber = (value) => new Intl.NumberFormat("en-US", {
+import { getAppLocale } from "../app-locales.js";
+
+const formatNumber = (value) => new Intl.NumberFormat(getAppLocale(), {
   maximumFractionDigits: 0
 }).format(value);
 

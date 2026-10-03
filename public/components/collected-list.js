@@ -30,10 +30,10 @@ export const CollectibleCard = (event) => {
     <li class="collectible-card${rarity ? ` rarity-${rarity}` : ""}">
       ${CollectibleIcon(collectible.type, rarity)}
       <div class="collectible-card-details">
-        <strong>${escapeHtml(collectible.name ?? event.sourceId)}</strong>
-        <span>${escapeHtml(collectible.type ?? "collectible")}</span>
+        <strong data-user-content>${escapeHtml(collectible.name ?? event.sourceId)}</strong>
+        <span data-user-content>${escapeHtml(collectible.type ?? "collectible")}</span>
       </div>
-      ${RarityBadge(rarity)}
+      ${rarity ? `<span class="collectible-rarity rarity-${rarity}" data-user-content>${escapeHtml(rarity)}</span>` : ""}
       <strong class="collectible-value">+${escapeHtml(event.value)} XP</strong>
     </li>
   `;

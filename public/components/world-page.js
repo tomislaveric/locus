@@ -1,3 +1,4 @@
+import { getAppLocale } from "../app-locales.js";
 import { escapeHtml } from "./collected-list.js";
 import { markerLabel, WorldLegend } from "./world/world-markers.js";
 import { collectiblesToFeatureCollection } from "./world/collectible-features.js";
@@ -17,7 +18,7 @@ const filterLabels = {
   epic: "Epic"
 };
 
-const formatNumber = (value) => new Intl.NumberFormat("en-US").format(value);
+const formatNumber = (value) => new Intl.NumberFormat(getAppLocale()).format(value);
 
 export const visibleWorldCollectibles = (collectibles) =>
   collectibles.filter((collectible) => collectible.visibility !== "hidden");
@@ -157,7 +158,7 @@ export const mountWorldPage = async (mountPoint) => {
     collectibleListHost.innerHTML = mapped.map((collectible) => `
       <li>
         <button type="button" data-world-marker="${escapeHtml(collectible.id)}"
-          aria-pressed="${collectible.id === selectedId}">${escapeHtml(markerLabel(collectible))}</button>
+          aria-pressed="${collectible.id === selectedId}" data-user-content>${escapeHtml(markerLabel(collectible))}</button>
       </li>
     `).join("");
     collectibleListHost.querySelectorAll("[data-world-marker]").forEach((button) => {
