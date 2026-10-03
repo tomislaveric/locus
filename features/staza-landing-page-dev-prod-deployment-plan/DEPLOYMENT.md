@@ -39,7 +39,7 @@ Secrets (Settings → Environments → *env* → Environment secrets):
 | --- | --- |
 | `LANDING_SSH_HOST` | Shared-host SSH hostname. |
 | `LANDING_SSH_USER` | SSH account username. |
-| `LANDING_SSH_PRIVATE_KEY` | Private key authorized for that account. |
+| `LANDING_SSH_PASSWORD` | Password for the SSH account. |
 
 Variables (Settings → Environments → *env* → Environment variables):
 
@@ -56,7 +56,8 @@ GitHub UI.
 
 `scripts/deploy-landing.sh` enforces the following before any file transfer:
 
-- Writes the private key to a temporary `600` file and never prints secrets.
+- Uses `sshpass` to provide the password noninteractively without printing it.
+  SSH password authentication must be enabled by the host.
 - Pins the host key with `ssh-keyscan` into a temporary `known_hosts` and
   connects with `StrictHostKeyChecking=yes`; host-key checking is never
   disabled globally.

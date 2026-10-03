@@ -108,7 +108,8 @@ Configure these secrets separately on each environment:
 
 - `LANDING_SSH_HOST`: shared-host SSH hostname.
 - `LANDING_SSH_USER`: SSH account username.
-- `LANDING_SSH_PRIVATE_KEY`: private key authorized for that account.
+- `LANDING_SSH_PASSWORD`: password for the SSH account. The host must allow
+  password-based SSH authentication.
 
 Configure these variables separately on each environment:
 
@@ -122,8 +123,9 @@ commands do not configure them.
 
 ## SSH and rsync safety
 
-- Write the private key to a temporary runner file with restrictive mode `600`
-  and never print secret values.
+- Use `sshpass` to provide the SSH account password noninteractively without
+  printing the secret. Password-based SSH authentication must be enabled on
+  the shared host.
 - Use `ssh-keyscan` for the configured host and port to populate a temporary
   `known_hosts`, then connect with `StrictHostKeyChecking=yes`. Never disable
   host-key checking globally.
