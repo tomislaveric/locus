@@ -5,15 +5,6 @@ name: Deploy landing
 # variables, URL, and remote path.
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "public/landing/**"
-      - "src/landing/**"
-      - "scripts/export-landing.mjs"
-      - "scripts/landing.htaccess"
-      - "scripts/deploy-landing.sh"
-      - ".github/workflows/deploy-landing.yml"
   workflow_dispatch:
     inputs:
       target:
