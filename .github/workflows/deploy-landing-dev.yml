@@ -1,0 +1,56 @@
+name: Deploy landing (DEV)
+
+# Deploys only the public Staza landing page to the shared DEV host over SSH.
+# It renders the English and German pages with a dependency-free static export
+# and syncs the staged artifact. No application, VPS, database, or backend
+# service is deployed. Workflows do not run npm install, application
+# compilation, or the backend test suite.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "public/landing/**"
+      - "src/landing/**"
+      - "scripts/export-landing.mjs"
+  workflow_dispatch:
+
+concurrency:
+  group: landing-dev
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: landing-dev
+      url: ${{ vars.LANDING_PUBLIC_URL }}
+    env:
+      LANDING_SSH_HOST: ${{ secrets.LANDING_SSH_HOST }}
+      LANDING_SSH_USER: ${{ secrets.LANDING_SSH_USER }}
+      LANDING_SSH_PRIVATE_KEY: ${{ secrets.LANDING_SSH_PRIVATE_KEY }}
+      LANDING_REMOTE_PATH: ${{ vars.LANDING_REMOTE_PATH }}
+      LANDING_SSH_PORT: ${{ vars.LANDING_SSH_PORT }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Export landing artifact
+        id: export
+        run: |
+          set -euo pipefail
+          STAGING="$(node scripts/export-landing.mjs | tail -n 1)"
+          echo "staging=${STAGING}" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy over SSH
+        env:
+          STAGING_DIR: ${{ steps.export.outputs.staging }}
+        run: ./scripts/deploy-landing.sh
