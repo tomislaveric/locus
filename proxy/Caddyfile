@@ -1,0 +1,7 @@
+play.staza.world {
+    reverse_proxy staza-prod-app:3000
+}
+
+dev.play.staza.world {
+    reverse_proxy staza-dev-app:3000
+}

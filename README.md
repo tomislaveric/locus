@@ -89,6 +89,9 @@ Single-container POC for turning a FIT ride into collectible game events and an 
 - [Shared Staza Map Foundation](features/shared-staza-map-foundation/README.md)
   — unify World and Activity Detail on one MapLibre Staza map foundation and
   rebuild the Ride Detail replay natively on shared basemap, theme, and layers.
+- [Staza app DEV/PROD deployment structure](features/staza-app-dev-prod-deployment-structure/README.md)
+  — version separate app deployment Compose files, isolated environment storage,
+  and manual VPS deployment instructions.
 - [Staza landing page DEV/PROD deployment](features/staza-landing-page-dev-prod-deployment-plan/README.md)
   — plan a self-contained static English/German landing artifact and SSH-based
   DEV/PROD deployment workflows.
