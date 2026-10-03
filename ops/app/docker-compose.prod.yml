@@ -2,7 +2,7 @@ name: staza-prod
 
 services:
   app:
-    image: ${STAZA_IMAGE}
+    image: ${STAZA_IMAGE}:${STAZA_IMAGE_TAG}
     container_name: staza-prod-app
     restart: unless-stopped
     environment:
