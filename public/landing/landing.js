@@ -10,7 +10,7 @@ const setMenuOpen = (open) => {
   if (!toggle || !menu) return;
   menu.dataset.open = open ? "true" : "false";
   toggle.setAttribute("aria-expanded", open ? "true" : "false");
-  toggle.setAttribute("aria-label", open ? "Close navigation" : "Open navigation");
+  toggle.setAttribute("aria-label", open ? toggle.dataset.closeLabel : toggle.dataset.openLabel);
 };
 
 if (toggle && menu) {
@@ -29,6 +29,17 @@ if (toggle && menu) {
   });
 }
 
+const languageLinks = document.querySelectorAll(".language-switcher a");
+const preserveLanguageFragment = () => {
+  for (const link of languageLinks) {
+    const destination = new URL(link.getAttribute("href") ?? link.href, window.location.origin);
+    link.setAttribute("href", `${destination.pathname}${destination.search}${window.location.hash}`);
+  }
+};
+
+preserveLanguageFragment();
+window.addEventListener("hashchange", preserveLanguageFragment);
+
 const prefersReducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 for (const anchor of document.querySelectorAll('a[href^="#"]')) {
@@ -42,5 +53,6 @@ for (const anchor of document.querySelectorAll('a[href^="#"]')) {
     target.setAttribute("tabindex", "-1");
     target.focus({ preventScroll: true });
     history.replaceState(null, "", id);
+    preserveLanguageFragment();
   });
 }

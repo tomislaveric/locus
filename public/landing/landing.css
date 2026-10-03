@@ -290,6 +290,32 @@ p {
   gap: 20px;
 }
 
+.language-switcher {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--landing-border-strong);
+  border-radius: 999px;
+  color: var(--landing-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.language-switcher a {
+  padding: 5px 7px;
+  border-radius: 999px;
+}
+
+.language-switcher a[aria-current="page"] {
+  background: var(--landing-chip);
+  color: var(--landing-text);
+}
+
+.language-switcher--footer {
+  flex-shrink: 0;
+}
+
 .nav__toggle {
   display: none;
   flex-direction: column;
@@ -1129,6 +1155,8 @@ p {
 
   .nav__actions {
     justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
   }
 }
 
@@ -1136,6 +1164,12 @@ p {
   .landing {
     --section-pad-y: 64px;
     --section-pad-x: 20px;
+  }
+
+  html[lang="de"] .button {
+    max-width: 100%;
+    white-space: normal;
+    text-align: center;
   }
 
   .card-grid--3 {

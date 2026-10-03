@@ -9,6 +9,9 @@
       content="Staza turns real mountain passes, summits, castles, waterfalls and viewpoints into collectibles. Upload a ride, run or hike and claim every place you crossed."
     />
     <link rel="canonical" href="https://staza.world/" />
+    <link rel="alternate" hreflang="en" href="{{landing.url.en}}" />
+    <link rel="alternate" hreflang="de" href="{{landing.url.de}}" />
+    <link rel="alternate" hreflang="x-default" href="{{landing.url.default}}" />
     <meta name="theme-color" content="#0B0C0F" />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Staza" />
@@ -44,6 +47,8 @@
           aria-expanded="false"
           aria-controls="nav-menu"
           aria-label="Open navigation"
+          data-open-label="Open navigation"
+          data-close-label="Close navigation"
         >
           <span class="nav__toggle-bar" aria-hidden="true"></span>
           <span class="nav__toggle-bar" aria-hidden="true"></span>
@@ -57,6 +62,10 @@
             <li><a href="#progression">Progression</a></li>
           </ul>
           <div class="nav__actions">
+            <nav class="language-switcher" aria-label="{{landing.language.label}}">
+              <a href="{{landing.path.en}}" lang="en" aria-label="{{landing.language.english}}" hreflang="en"{{landing.language.enCurrent}}>EN</a>
+              <a href="{{landing.path.de}}" lang="de" aria-label="{{landing.language.german}}" hreflang="de"{{landing.language.deCurrent}}>DE</a>
+            </nav>
             <a class="link-quiet" href="/sign-in">Sign in</a>
             <a class="button button--primary button--sm" href="/sign-in">Get Early Access</a>
           </div>
@@ -571,6 +580,10 @@
 
       <div class="section__inner footer__bottom">
         <p>Staza — the outdoor exploration game built on real geography.</p>
+        <nav class="language-switcher language-switcher--footer" aria-label="{{landing.language.label}}">
+          <a href="{{landing.path.en}}" lang="en" aria-label="{{landing.language.english}}" hreflang="en"{{landing.language.enCurrent}}>EN</a>
+          <a href="{{landing.path.de}}" lang="de" aria-label="{{landing.language.german}}" hreflang="de"{{landing.language.deCurrent}}>DE</a>
+        </nav>
         <p class="footer__version">v0.1.0</p>
       </div>
     </footer>

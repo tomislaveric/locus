@@ -33,6 +33,7 @@ import {
   suggestQuestTitle
 } from "./quest.js";
 import { AuthService, EmailSender, type SessionUser } from "./auth.js";
+import { translateLandingTemplate } from "./landing/locales.js";
 
 interface UploadRequest extends Request {
   job?: Job;
@@ -671,8 +672,12 @@ app.use("/shared/maplibre", express.static(path.resolve("node_modules/maplibre-g
 
 const landingDocument = path.resolve("public/landing/index.html");
 const appDocument = path.resolve("public/index.html");
+const landingTemplate = await readFile(landingDocument, "utf8");
 app.get("/", (_request, response) => {
-  response.sendFile(landingDocument);
+  response.type("html").send(translateLandingTemplate(landingTemplate, "en"));
+});
+app.get(["/de", "/de/"], (_request, response) => {
+  response.type("html").send(translateLandingTemplate(landingTemplate, "de"));
 });
 app.get(["/app", "/sign-in"], (_request, response) => {
   response.sendFile(appDocument);

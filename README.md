@@ -86,6 +86,9 @@ Single-container POC for turning a FIT ride into collectible game events and an 
 - [Shared Staza Map Foundation](features/shared-staza-map-foundation/README.md)
   — unify World and Activity Detail on one MapLibre Staza map foundation and
   rebuild the Ride Detail replay natively on shared basemap, theme, and layers.
+- [Staza landing page localization](features/staza-landing-page-localization/README.md)
+  — render the public landing page in English and German with localized URLs
+  while preserving one shared page structure and the existing app routes.
 - [Synchronization diagnostics](features/synchronization-diagnostics/README.md)
   — make FIT/GPS5 synchronization failures explicit and operationally visible.
 - [World Collectible Domain Model V1](features/world-collectible-domain-model-v1/README.md)
