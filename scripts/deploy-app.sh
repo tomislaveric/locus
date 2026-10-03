@@ -171,7 +171,7 @@ REMOTE_PREFLIGHT
 
 echo "Previous image tag: $previous_tag"
 echo "Compose validation: staging versioned Compose file on the server."
-"${scp_options[@]}" "$COMPOSE_SOURCE" "$remote:$compose_staging"
+scp "${scp_options[@]}" "$COMPOSE_SOURCE" "$remote:$compose_staging"
 
 if ! ssh "${ssh_options[@]}" "$remote" bash -s -- \
   "$REMOTE_PATH" "$DEPLOY_TARGET" "$IMAGE_TAG" "$PUBLIC_URL" \
