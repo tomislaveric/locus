@@ -3,12 +3,12 @@
 ## Goal
 
 Deploy only the public Staza landing page to shared hosting over SSH, with
-separate DEV and PROD GitHub Actions workflows.
+one GitHub Actions workflow that targets separate DEV and PROD environments.
 
 ## Scope
 
-- Create `.github/workflows/deploy-landing-dev.yml` and
-  `.github/workflows/deploy-landing-prod.yml`.
+- Create `.github/workflows/deploy-landing.yml` with automatic DEV deployments
+  for relevant `main` changes and a manual DEV/PROD environment selector.
 - Add a dependency-free static exporter that renders the existing English and
   German landing templates for a static host.
 - Add concise documentation for GitHub Environment configuration and safe
@@ -31,11 +31,10 @@ separate DEV and PROD GitHub Actions workflows.
 - `public/styles/` is not referenced by the landing page and is not deployed.
   Only `public/landing/` and the two referenced files from `public/assets/` are
   staged.
-- DEV reacts to changes under `public/landing/**`, `src/landing/**`, and the
-  static export script `scripts/export-landing.mjs`.
-- PROD reacts only to published GitHub Releases with tags matching
-  `^staza-[0-9]+\.[0-9]+\.[0-9]+$`. Deploy the exact tag only if its commit is
-  reachable from `main`.
+- Relevant pushes to `main` deploy to DEV. Manual dispatches let the operator
+  choose DEV or PROD; either target checks out the latest `main` commit.
+- The chosen GitHub Environment supplies that stage's credentials, public URL,
+  and remote path. Landing page deployments do not use release tags.
 - Keep real credentials out of the repository and do not populate secrets via
   GitHub CLI.
 
@@ -69,26 +68,16 @@ files or other `public/assets/` content.
    emit the English and German pages and stage only the required files.
 2. Add export-focused checks for complete localization, no unresolved
    placeholders, and presence of all staged URL dependencies.
-3. Add `.github/workflows/deploy-landing-dev.yml`:
-   - Trigger on `push` to `main` with paths for `public/landing/**`,
-     `src/landing/**`, and `scripts/export-landing.mjs`.
-   - Use `landing-dev`, expose `vars.LANDING_PUBLIC_URL`, and deploy the
-     generated stage.
-   - Use the `landing-dev` concurrency group with
-     `cancel-in-progress: true` so a newer main push supersedes an older DEV
+3. Add `.github/workflows/deploy-landing.yml`:
+   - Trigger relevant pushes to `main` and deploy those to `landing-dev`.
+   - Add a manual `workflow_dispatch` choice for `dev` or `prod`, mapping to
+     the corresponding GitHub Environment and its environment-scoped settings.
+   - Check out `main` for both automatic and manual runs.
+   - Cancel superseded DEV deployments, but never cancel an active PROD
      deployment.
-4. Add `.github/workflows/deploy-landing-prod.yml`:
-   - Trigger on `release` publication, not arbitrary tag pushes.
-   - Validate the tag against `^staza-[0-9]+\.[0-9]+\.[0-9]+$`; reject
-     malformed tags before deployment.
-   - Check out the exact release tag and verify its commit is an ancestor of
-     `origin/main`; never substitute current HEAD or another branch.
-   - Use `landing-prod` and expose `vars.LANDING_PUBLIC_URL`.
-   - Use the `landing-prod` concurrency group with
-     `cancel-in-progress: false`; do not cancel an active production deploy.
-5. Validate required configuration, SSH connectivity, and the remote path
-   before syncing. Fail on missing values or any SSH/rsync/tag/ancestry error.
-6. Add concise environment setup instructions to the feature documentation.
+4. Validate required configuration, SSH connectivity, and the remote path
+   before syncing. Fail on missing values or any SSH/rsync error.
+5. Add concise environment setup instructions to the feature documentation.
 
 ## Environments and manual configuration
 
@@ -147,15 +136,14 @@ commands do not configure them.
   German page at `/de/`, with no unresolved `{{landing.*}}` placeholders.
 - The staged artifact contains only the two localized pages, `public/landing`
   supporting files, and the referenced logo/favicon.
-- DEV deploys only for relevant `main` changes and does not run for unrelated
-  repository changes.
-- PROD deploys only published releases with exact `staza-MAJOR.MINOR.PATCH`
-  tags whose commit is reachable from `main`; it checks out that exact tag.
-- Each workflow uses the correct GitHub Environment and dynamically exposes
-  the URL from `LANDING_PUBLIC_URL`.
+- Relevant `main` changes automatically deploy to DEV; unrelated changes do
+  not trigger a deployment.
+- Manual dispatch offers DEV and PROD, deploys the latest `main` commit, and
+  uses the selected environment's URL, credentials, and remote path. No
+  release or version tag is required.
 - Missing/invalid configuration, SSH authentication/connectivity failure,
-  invalid/missing remote directory, tag validation failure, ancestry failure,
-  or rsync failure produces a failed workflow.
+  invalid/missing remote directory or rsync failure produces a failed
+  workflow.
 - No app/VPS/backend/database/container deployment is added.
 
 ## Validation and limitations

@@ -1,19 +1,17 @@
 # Landing page deployment
 
-The public Staza landing page is deployed on its own, independent of the
-application. Two workflows render the English and German pages with a
-dependency-free static export (`scripts/export-landing.mjs`) and sync the
-staged artifact over SSH with `scripts/deploy-landing.sh`.
+The public Staza landing page is deployed independently of the application by
+`.github/workflows/deploy-landing.yml`. One workflow renders the English and
+German pages with the dependency-free static exporter
+(`scripts/export-landing.mjs`) and syncs the staged artifact over SSH using
+`scripts/deploy-landing.sh`.
 
-- `.github/workflows/deploy-landing-dev.yml` — deploys on pushes to `main` that
-  touch `public/landing/**`, `src/landing/**`, or `scripts/export-landing.mjs`.
-  The Apache config at `scripts/landing.htaccess` also triggers a DEV deploy.
-  Uses the `landing-dev` environment and the `landing-dev` concurrency group
-  with `cancel-in-progress: true`.
-- `.github/workflows/deploy-landing-prod.yml` — deploys on published GitHub
-  Releases whose tag matches `staza-MAJOR.MINOR.PATCH` and whose commit is
-  reachable from `main`. Uses the `landing-prod` environment and the
-  `landing-prod` concurrency group with `cancel-in-progress: false`.
+Relevant pushes to `main` deploy automatically to DEV. From the Actions tab,
+use **Run workflow** and select `dev` or `prod` to choose the target
+environment. All runs check out `main`; no release tags are used. Each GitHub
+Environment supplies its own credentials, public URL, and `LANDING_REMOTE_PATH`,
+so DEV and PROD deploy to separate webroots. DEV runs are superseded by newer
+deployments; an active PROD deployment is not cancelled.
 
 No application, VPS, database, container, or backend service is deployed, and
 the workflows never run `npm install`, application compilation, or the test

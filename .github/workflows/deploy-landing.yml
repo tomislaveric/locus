@@ -1,10 +1,8 @@
-name: Deploy landing (DEV)
+name: Deploy landing
 
-# Deploys only the public Staza landing page to the shared DEV host over SSH.
-# It renders the English and German pages with a dependency-free static export
-# and syncs the staged artifact. No application, VPS, database, or backend
-# service is deployed. Workflows do not run npm install, application
-# compilation, or the backend test suite.
+# Pushes to relevant main paths deploy to DEV. Manual runs can choose DEV or
+# PROD; both always check out main and use the selected environment's secrets,
+# variables, URL, and remote path.
 
 on:
   push:
@@ -14,11 +12,22 @@ on:
       - "src/landing/**"
       - "scripts/export-landing.mjs"
       - "scripts/landing.htaccess"
+      - "scripts/deploy-landing.sh"
+      - ".github/workflows/deploy-landing.yml"
   workflow_dispatch:
+    inputs:
+      target:
+        description: Deployment environment
+        required: true
+        type: choice
+        default: dev
+        options:
+          - dev
+          - prod
 
 concurrency:
-  group: landing-dev
-  cancel-in-progress: true
+  group: landing-${{ inputs.target || 'dev' }}
+  cancel-in-progress: ${{ inputs.target != 'prod' }}
 
 permissions:
   contents: read
@@ -27,11 +36,13 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     environment:
-      name: landing-dev
+      name: landing-${{ inputs.target || 'dev' }}
       url: ${{ vars.LANDING_PUBLIC_URL }}
     steps:
-      - name: Check out repository
+      - name: Check out main
         uses: actions/checkout@v4
+        with:
+          ref: main
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -44,6 +55,14 @@ jobs:
           set -euo pipefail
           STAGING="$(node scripts/export-landing.mjs | tail -n 1)"
           echo "staging=${STAGING}" >> "$GITHUB_OUTPUT"
+
+      - name: Verify Apache configuration
+        env:
+          STAGING_DIR: ${{ steps.export.outputs.staging }}
+        run: |
+          set -euo pipefail
+          test -f "$STAGING_DIR/.htaccess"
+          test -r "$STAGING_DIR/.htaccess"
 
       - name: Install sshpass
         run: |
