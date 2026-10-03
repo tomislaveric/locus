@@ -1,0 +1,70 @@
+name: Build app image and push to GHCR
+
+on:
+  workflow_call:
+    inputs:
+      release_version:
+        description: Bare semantic version to publish for a PROD release; empty for DEV tags.
+        required: false
+        type: string
+      publish_main:
+        description: Also update the mutable main tag for a DEV main build.
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: tomislaveric/staza
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out the caller commit
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Validate image tags
+        id: tags
+        env:
+          RELEASE_VERSION: ${{ inputs.release_version }}
+          PUBLISH_MAIN: ${{ inputs.publish_main }}
+        run: |
+          set -euo pipefail
+          if [[ -n "$RELEASE_VERSION" ]]; then
+            if [[ ! "$RELEASE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              echo "Invalid release image version." >&2
+              exit 1
+            fi
+            printf 'tags=%s/%s:%s\n' "$REGISTRY" "$IMAGE_NAME" "$RELEASE_VERSION" >> "$GITHUB_OUTPUT"
+          else
+            {
+              echo "tags<<EOF"
+              if [[ "$PUBLISH_MAIN" == "true" ]]; then
+                printf '%s/%s:main\n' "$REGISTRY" "$IMAGE_NAME"
+              fi
+              printf '%s/%s:sha-%s\n' "$REGISTRY" "$IMAGE_NAME" "$GITHUB_SHA"
+              echo "EOF"
+            } >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.tags.outputs.tags }}

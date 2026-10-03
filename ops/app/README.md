@@ -43,8 +43,8 @@ environment. Required variables:
 
 | Variable | Purpose |
 | --- | --- |
-| `STAZA_IMAGE` | Image name, for example `ghcr.io/tomislaveric/locus`. |
-| `STAZA_IMAGE_TAG` | Independently selected DEV or PROD image tag. |
+| `STAZA_IMAGE` | `ghcr.io/tomislaveric/staza`. |
+| `STAZA_IMAGE_TAG` | DEV immutable `sha-<commit>` tag or PROD bare semantic version such as `1.0.0`. |
 | `POSTGRES_DB` | Environment-specific database name. |
 | `POSTGRES_USER` | Environment-specific database user. |
 | `POSTGRES_PASSWORD` | Environment-specific database password. |
@@ -59,10 +59,45 @@ volume for `/data`; PostgreSQL uses a different named volume for its data
 directory. Never reuse database credentials or `DATABASE_URL` between DEV and
 PROD.
 
-The app image must be available to the VPS. Authenticate Docker to GHCR on the
-host if the package is private. Future automation may choose tags independently
-(for example, a development build tag and a `staza-X.Y.Z` release tag); no
-deployment workflow is included here.
+The VPS must already be authenticated to GHCR if the package is private. The
+deployment workflows rely on that existing Docker credential storage and do
+not copy a registry token to the server.
+
+## Automated deployment
+
+The app image is built by `.github/workflows/build-app-image.yml`, a reusable
+workflow called by the separate DEV and PROD deployment workflows:
+
+- `.github/workflows/deploy-app-dev.yml` builds and deploys after pushes to
+  `main`, and supports manual dispatch. It deploys the exact
+  `sha-${GITHUB_SHA}` image; `main` is also published as a convenience tag for
+  main-branch builds, but deployment never relies on that mutable tag.
+- `.github/workflows/deploy-app-prod.yml` runs only for a published GitHub
+  Release whose tag matches `staza-X.Y.Z`. It builds and deploys the exact
+  bare version tag (for example, `staza-1.0.0` produces
+  `ghcr.io/tomislaveric/staza:1.0.0`). It does not publish or deploy PROD as
+  `latest`.
+
+The deployment jobs use GitHub Environments `app-dev` and `app-prod`.
+Configure each with secrets `SSH_HOST`, `SSH_USER`, and `SSH_PRIVATE_KEY`, and
+variables `REMOTE_PATH` and `PUBLIC_URL`. Set DEV to
+`/opt/staza/dev` and `https://dev.play.staza.world`; set PROD to
+`/opt/staza/prod` and `https://play.staza.world`. `SSH_PORT` is optional and
+defaults to 22. Do not put host or user values in workflow source.
+
+The runner pulls the exact image before connecting to the VPS. It stages only
+the matching versioned Compose file, checks the server directory and required
+`.env` values, and validates the staged Compose config. It then atomically
+updates only `STAZA_IMAGE_TAG` in the server `.env`; all other server values
+remain authoritative. It never copies an env file from the repository. SSH
+uses the environment private key, a temporary `known_hosts` file populated by
+`ssh-keyscan`, and `StrictHostKeyChecking=yes`.
+
+After deployment, the workflow waits for Docker health and checks the public
+HTTPS endpoint with bounded retries. Failures fail the workflow and include
+container diagnostics. DEV deployments use concurrency group `app-dev` and
+cancel older in-progress deployments; PROD uses `app-prod` and does not cancel
+an active release deployment.
 
 ## Manual commands
 
@@ -73,10 +108,10 @@ docker compose --env-file /opt/staza/dev/.env \
   -f /opt/staza/dev/docker-compose.yml pull
 
 docker compose --env-file /opt/staza/dev/.env \
-  -f /opt/staza/dev/docker-compose.yml up -d
+  -f /opt/staza/dev/docker-compose.yml run --rm app node dist/persistence/migrate.js
 
 docker compose --env-file /opt/staza/dev/.env \
-  -f /opt/staza/dev/docker-compose.yml run --rm app node dist/persistence/migrate.js
+  -f /opt/staza/dev/docker-compose.yml up -d
 
 docker compose --env-file /opt/staza/dev/.env \
   -f /opt/staza/dev/docker-compose.yml logs -f app postgres
@@ -95,10 +130,30 @@ also stops and removes that project's containers and networks but leaves
 named volumes. Do not use `down -v` unless intentionally deleting that
 environment's persistent data.
 
-The current app startup already applies pending database migrations. The
-one-off compiled command above is available for an explicit migration step;
-the runtime image does not include `tsx`, so `npm run migrate` is not the
-container command.
+The app startup also applies pending database migrations. The automated
+deployment runs the compiled one-off command after pulling and before
+recreating the app; startup then runs the ledger-backed migration runner again,
+which is a no-op when the explicit command succeeded. Migrations run in a
+transaction, and a failed explicit migration stops deployment before app
+recreation. The runtime image does not include `tsx`, so `npm run migrate` is
+not the container command.
+
+## Manual rollback
+
+Deployment logs record the previous and attempted image tags. If manual
+recovery is needed, change only `STAZA_IMAGE_TAG` in the relevant server `.env`
+back to the previous tag, then pull and recreate that environment:
+
+```sh
+docker compose --env-file /opt/staza/dev/.env \
+  -f /opt/staza/dev/docker-compose.yml pull
+docker compose --env-file /opt/staza/dev/.env \
+  -f /opt/staza/dev/docker-compose.yml up -d
+```
+
+For PROD, substitute `/opt/staza/prod`. There is no automatic image or
+database rollback; do not reverse migrations or remove named volumes as part
+of application rollback.
 
 ## Isolation and health
 

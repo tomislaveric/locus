@@ -1,0 +1,67 @@
+name: Deploy app DEV
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: app-dev
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/build-app-image.yml
+    with:
+      publish_main: ${{ github.ref == 'refs/heads/main' }}
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    environment:
+      name: app-dev
+      url: ${{ vars.PUBLIC_URL }}
+    steps:
+      - name: Check out the image source commit
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verify the immutable DEV image exists
+        env:
+          IMAGE_TAG: sha-${{ github.sha }}
+        run: |
+          set -euo pipefail
+          echo "Target environment: DEV"
+          echo "Image tag: $IMAGE_TAG"
+          docker pull "ghcr.io/tomislaveric/staza:$IMAGE_TAG"
+
+      - name: Deploy DEV
+        env:
+          DEPLOY_TARGET: dev
+          IMAGE_TAG: sha-${{ github.sha }}
+          COMPOSE_SOURCE: ops/app/docker-compose.dev.yml
+          REMOTE_PATH: ${{ vars.REMOTE_PATH }}
+          PUBLIC_URL: ${{ vars.PUBLIC_URL }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_PORT: ${{ vars.SSH_PORT }}
+        run: ./scripts/deploy-app.sh

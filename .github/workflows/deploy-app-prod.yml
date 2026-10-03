@@ -1,0 +1,89 @@
+name: Deploy app PROD
+
+on:
+  release:
+    types:
+      - published
+
+concurrency:
+  group: app-prod
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  validate-release:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.release.outputs.version }}
+    steps:
+      - name: Validate release tag
+        id: release
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+          if [[ ! "$RELEASE_TAG" =~ ^staza-([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+            echo "Release tag must match staza-X.Y.Z with numeric components." >&2
+            exit 1
+          fi
+          version="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.${BASH_REMATCH[3]}"
+          echo "Release tag: $RELEASE_TAG"
+          echo "PROD image tag: $version"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: validate-release
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/build-app-image.yml
+    with:
+      release_version: ${{ needs.validate-release.outputs.version }}
+
+  deploy:
+    needs:
+      - validate-release
+      - build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    environment:
+      name: app-prod
+      url: ${{ vars.PUBLIC_URL }}
+    steps:
+      - name: Check out the release commit
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verify the exact PROD image exists
+        env:
+          IMAGE_TAG: ${{ needs.validate-release.outputs.version }}
+        run: |
+          set -euo pipefail
+          echo "Target environment: PROD"
+          echo "Image tag: $IMAGE_TAG"
+          docker pull "ghcr.io/tomislaveric/staza:$IMAGE_TAG"
+
+      - name: Deploy PROD
+        env:
+          DEPLOY_TARGET: prod
+          IMAGE_TAG: ${{ needs.validate-release.outputs.version }}
+          COMPOSE_SOURCE: ops/app/docker-compose.prod.yml
+          REMOTE_PATH: ${{ vars.REMOTE_PATH }}
+          PUBLIC_URL: ${{ vars.PUBLIC_URL }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_PORT: ${{ vars.SSH_PORT }}
+        run: ./scripts/deploy-app.sh

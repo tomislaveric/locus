@@ -92,6 +92,9 @@ Single-container POC for turning a FIT ride into collectible game events and an 
 - [Staza app DEV/PROD deployment structure](features/staza-app-dev-prod-deployment-structure/README.md)
   — version separate app deployment Compose files, isolated environment storage,
   and manual VPS deployment instructions.
+- [Staza GitHub Actions deployment automation](features/staza-github-actions-deployment-automation/README.md)
+  — build and deploy immutable DEV images and strictly versioned PROD releases
+  to the existing VPS Compose projects.
 - [Staza landing page DEV/PROD deployment](features/staza-landing-page-dev-prod-deployment-plan/README.md)
   — plan a self-contained static English/German landing artifact and SSH-based
   DEV/PROD deployment workflows.
