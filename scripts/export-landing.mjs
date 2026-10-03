@@ -12,7 +12,7 @@
 // The resolved staging directory is printed on the final stdout line so a
 // caller (such as a GitHub Actions workflow) can capture it.
 
-import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { chmod, cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -96,6 +96,13 @@ const main = async () => {
     await cp(from, path.join(stagedAssets, asset));
   }
 
+  // Add Apache directory-index settings at the webroot, readable by the host.
+  const htaccess = path.join(staging, ".htaccess");
+  await writeFile(htaccess, await readFile(path.join(repositoryRoot, "scripts", "landing.htaccess")), {
+    mode: 0o644
+  });
+  await chmod(htaccess, 0o644);
+
   // Verify every local URL dependency referenced by the rendered pages exists
   // inside the staged artifact.
   const missing = new Set();
@@ -114,6 +121,9 @@ const main = async () => {
   }
   if (checkedReferences === 0) {
     throw new Error("No local asset references were found in the rendered landing pages.");
+  }
+  if (!existsSync(htaccess)) {
+    throw new Error("Staged artifact is missing its Apache .htaccess file.");
   }
 
   process.stdout.write(`Staged landing artifact at ${staging}\n`);

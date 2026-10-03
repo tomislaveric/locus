@@ -52,6 +52,7 @@ Generate a temporary directory under `$RUNNER_TEMP` containing only:
     landing.css
     landing.js
     assets/
+  .htaccess
   assets/
     favicon.svg
     logo-full.svg
@@ -135,6 +136,8 @@ commands do not configure them.
 - Sync only `<staging>/` to
   `$LANDING_SSH_USER@$LANDING_SSH_HOST:$LANDING_REMOTE_PATH/` using SSH on the
   configured port and `rsync -az --delete`.
+- Include the root Apache `.htaccess` with readable permissions so the host
+  can serve `index.html` and does not expose directory listings.
 - `--delete` removes stale files only inside that validated remote landing
   webroot; it must never target the home directory or a broader path.
 

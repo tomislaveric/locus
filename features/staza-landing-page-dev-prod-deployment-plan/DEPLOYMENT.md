@@ -7,6 +7,7 @@ staged artifact over SSH with `scripts/deploy-landing.sh`.
 
 - `.github/workflows/deploy-landing-dev.yml` — deploys on pushes to `main` that
   touch `public/landing/**`, `src/landing/**`, or `scripts/export-landing.mjs`.
+  The Apache config at `scripts/landing.htaccess` also triggers a DEV deploy.
   Uses the `landing-dev` environment and the `landing-dev` concurrency group
   with `cancel-in-progress: true`.
 - `.github/workflows/deploy-landing-prod.yml` — deploys on published GitHub
@@ -66,10 +67,18 @@ GitHub UI.
   already exist on the host — it is never created automatically.
 - Syncs only the staged artifact with `rsync -az --delete` scoped to the
   validated webroot.
+- Includes a root `.htaccess` with `DirectoryIndex index.html` and directory
+  listing disabled; it is staged with mode `644`.
 
 `rsync --delete` is destructive within the configured webroot. There is no
 automated rollback; recovery from an interrupted sync relies on a host-side
 backup.
+
+If Apache still reports that it cannot read `.htaccess`, check that the
+webroot and its parent directories are traversable by the web-server account
+(typically mode `755`) and that the deployed `.htaccess` is readable
+(typically mode `644`). The file contents cannot fix incorrect ownership or
+permissions on the webroot or its parent directories.
 
 ## Local export check
 
@@ -81,3 +90,4 @@ The command stages the artifact and fails on incomplete localization,
 unresolved `{{landing.*}}` placeholders, or missing referenced assets. The
 staged tree contains only the two localized pages, the `public/landing`
 supporting files, and the referenced `favicon.svg` and `logo-full.svg`.
+It also includes the root `.htaccess` required for Apache directory handling.
